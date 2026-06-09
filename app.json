@@ -17,7 +17,9 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.siren96.locket",
-      "associatedDomains": ["applinks:rdlocket1012-lgtm.github.io"],
+      "associatedDomains": [
+        "applinks:rdlocket1012-lgtm.github.io"
+      ],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Locket reads your photos locally to surface On This Day memories. Photos never leave your device.",
         "NSCameraUsageDescription": "Locket uses your camera to take photos for milestones and map pins.",
@@ -65,6 +67,26 @@
           "locationWhenInUsePermission": "Locket uses your location to help you pin places you visit together."
         }
       ]
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/34c35f43-76e1-4efc-8a85-8a8596485ba0"
+    },
+    "android": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    }
   }
 }
