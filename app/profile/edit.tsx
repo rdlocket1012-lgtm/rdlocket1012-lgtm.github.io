@@ -1,11 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  SafeAreaView, Image, Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { decode as decodeBase64 } from 'base64-arraybuffer';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { DETAIL_DEFS } from '@/constants/categories';
+import { DateField } from '@/components/ui/DateField';
+import { DETAIL_DEFS, type DetailDef } from '@/constants/categories';
 import { useAuth } from '@/hooks/useAuth';
 import { useDetails } from '@/hooks/useDetails';
 import { useAuthStore } from '@/stores/auth.store';
@@ -34,7 +39,11 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const custom = personDetails.filter((d) => !DETAIL_DEFS.some((def) => def.key === d.key) && d.key !== 'name');
+  const setValue = (key: string, val: string) => setValues((v) => ({ ...v, [key]: val }));
+
+  const custom = personDetails.filter(
+    (d) => !DETAIL_DEFS.some((def) => def.key === d.key) && d.key !== 'name',
+  );
 
   async function handleSave() {
     if (!coupleId) {
@@ -90,16 +99,13 @@ export default function EditProfileScreen() {
     if (result.canceled || !result.assets?.[0]?.base64) return;
     setUploading(true);
     try {
-      // Decode base64 → ArrayBuffer. (fetch().blob() uploads a 0-byte file in RN.)
       const arrayBuffer = decodeBase64(result.assets[0].base64);
       const path = `${profile.id}/avatar_${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, arrayBuffer, {
-        contentType: 'image/jpeg',
-        upsert: true,
+        contentType: 'image/jpeg', upsert: true,
       });
       if (upErr) throw new Error(upErr.message);
       const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-      // Cache-bust so the new image is fetched immediately.
       const publicUrl = `${pub.publicUrl}?t=${Date.now()}`;
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
       await useAuthStore.getState().fetchProfile(profile.id);
@@ -113,6 +119,7 @@ export default function EditProfileScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 16, paddingBottom: 12 }}>
           <TouchableOpacity onPress={() => router.back()}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
@@ -130,7 +137,7 @@ export default function EditProfileScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 60 }}>
           {/* Avatar (me only) */}
           {isMe && (
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
               <TouchableOpacity onPress={pickPhoto} activeOpacity={0.85}>
                 {profile?.avatar_url ? (
                   <Image source={{ uri: profile.avatar_url }} style={{ width: 96, height: 96, borderRadius: 48 }} />
@@ -150,7 +157,7 @@ export default function EditProfileScreen() {
           )}
 
           {/* Name */}
-          <FieldLabel>Name</FieldLabel>
+          <SectionLabel>Name</SectionLabel>
           <TextInput
             value={name}
             onChangeText={setName}
@@ -160,34 +167,23 @@ export default function EditProfileScreen() {
           />
 
           {/* Detail fields */}
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginTop: 20, marginBottom: 10 }}>
-            The little things
-          </Text>
+          <SectionLabel style={{ marginTop: 20 }}>The little things</SectionLabel>
           {DETAIL_DEFS.map((def) => (
-            <View key={def.key} style={{ marginBottom: 14 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <Icon name={def.icon} size={16} color={LK.ink70} />
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: LK.ink70 }}>{def.label}</Text>
-              </View>
-              <TextInput
-                value={values[def.key]}
-                onChangeText={(t) => setValues((v) => ({ ...v, [def.key]: t }))}
-                placeholder={isMe ? 'Add yours…' : 'Fill in or leave blank to ask'}
-                placeholderTextColor={LK.ink70}
-                style={inputStyle}
-              />
-            </View>
+            <DetailField
+              key={def.key}
+              def={def}
+              value={values[def.key] ?? ''}
+              onChange={(v) => setValue(def.key, v)}
+            />
           ))}
 
-          {/* Custom questions already added */}
+          {/* Custom questions */}
           {custom.length > 0 && (
             <>
-              <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginTop: 10, marginBottom: 10 }}>
-                Questions
-              </Text>
+              <SectionLabel style={{ marginTop: 10 }}>Questions</SectionLabel>
               {custom.map((d) => (
                 <View key={d.id} style={{ marginBottom: 14 }}>
-                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: LK.ink70, marginBottom: 6 }}>{d.label}</Text>
+                  <FieldLabel icon="sparkle" label={d.label} />
                   <TextInput
                     defaultValue={d.value ?? ''}
                     onEndEditing={(e) => coupleId && upsertDetail({ coupleId, person, key: d.key, label: d.label, value: e.nativeEvent.text.trim() || null })}
@@ -201,14 +197,12 @@ export default function EditProfileScreen() {
           )}
 
           {/* Add a question */}
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginTop: 10, marginBottom: 10 }}>
-            {isMe ? 'Add a detail' : 'Ask a question'}
-          </Text>
+          <SectionLabel style={{ marginTop: 10 }}>{isMe ? 'Add a detail' : 'Ask a question'}</SectionLabel>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput
               value={customQ}
               onChangeText={setCustomQ}
-              placeholder={isMe ? 'e.g. Shoe size' : "e.g. What's your dream trip?"}
+              placeholder={isMe ? 'e.g. Favourite restaurant' : "e.g. What's your dream trip?"}
               placeholderTextColor={LK.ink70}
               style={[inputStyle, { flex: 1, marginBottom: 0 }]}
             />
@@ -226,6 +220,167 @@ export default function EditProfileScreen() {
   );
 }
 
+// ─── Smart field router ────────────────────────────────────────────────────────
+
+function DetailField({ def, value, onChange }: { def: DetailDef; value: string; onChange: (v: string) => void }) {
+  return (
+    <View style={{ marginBottom: 18 }}>
+      <FieldLabel icon={def.icon} label={def.label} />
+      {def.type === 'date' ? (
+        <DateField
+          value={value || `${new Date().getFullYear() - 25}-01-01`}
+          onChange={onChange}
+        />
+      ) : def.type === 'color-chips' ? (
+        <ColorChipPicker colors={def.colors!} value={value} onChange={onChange} />
+      ) : def.type === 'chips' ? (
+        <ChipPicker options={def.options!} value={value} onChange={onChange} multiSelect={false} />
+      ) : def.type === 'multi-chips' ? (
+        <ChipPicker options={def.options!} value={value} onChange={onChange} multiSelect />
+      ) : (
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder={def.placeholder ?? 'Add yours…'}
+          placeholderTextColor={LK.ink70}
+          style={inputStyle}
+        />
+      )}
+    </View>
+  );
+}
+
+// ─── Chip picker ──────────────────────────────────────────────────────────────
+
+function ChipPicker({ options, value, onChange, multiSelect }: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  multiSelect: boolean;
+}) {
+  const selected = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : [];
+
+  function toggle(opt: string) {
+    if (multiSelect) {
+      const next = selected.includes(opt)
+        ? selected.filter((s) => s !== opt)
+        : [...selected, opt];
+      onChange(next.join(', '));
+    } else {
+      onChange(selected[0] === opt ? '' : opt);
+    }
+  }
+
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {options.map((opt) => {
+        const active = selected.includes(opt);
+        return (
+          <TouchableOpacity
+            key={opt}
+            onPress={() => toggle(opt)}
+            activeOpacity={0.75}
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 9999,
+              backgroundColor: active ? LK.ink : LK.ivory,
+              borderWidth: 1.5,
+              borderColor: active ? LK.ink : 'rgba(42,33,26,0.12)',
+            }}
+          >
+            <Text style={{
+              fontFamily: theme.fonts.body,
+              fontWeight: '600',
+              fontSize: 13,
+              color: active ? '#fff' : LK.ink,
+            }}>
+              {opt}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── Color swatch picker ──────────────────────────────────────────────────────
+
+function ColorChipPicker({ colors, value, onChange }: {
+  colors: { label: string; hex: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+      {colors.map((c) => {
+        const active = value === c.label;
+        const isLight = ['White', 'Nude', 'Yellow'].includes(c.label);
+        return (
+          <TouchableOpacity
+            key={c.label}
+            onPress={() => onChange(active ? '' : c.label)}
+            activeOpacity={0.8}
+            style={{ alignItems: 'center', gap: 4 }}
+          >
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: c.hex,
+              borderWidth: active ? 3 : 1.5,
+              borderColor: active ? LK.ink : 'rgba(42,33,26,0.12)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              {active && (
+                <Icon name="check" size={16} color={isLight ? LK.ink : '#fff'} />
+              )}
+            </View>
+            <Text style={{
+              fontFamily: theme.fonts.body,
+              fontSize: 10,
+              color: active ? LK.ink : LK.ink70,
+              fontWeight: active ? '700' : '400',
+            }}>
+              {c.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── Shared primitives ────────────────────────────────────────────────────────
+
+function FieldLabel({ icon, label }: { icon: string; label: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+      <Icon name={icon} size={15} color={LK.ink70} />
+      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: LK.ink70 }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function SectionLabel({ children, style }: { children: React.ReactNode; style?: object }) {
+  return (
+    <Text style={[{
+      fontFamily: theme.fonts.body,
+      fontSize: 12,
+      fontWeight: '800',
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+      color: LK.ink70,
+      marginBottom: 12,
+    }, style]}>
+      {children}
+    </Text>
+  );
+}
+
 const inputStyle = {
   backgroundColor: LK.ivory,
   borderRadius: 16,
@@ -236,11 +391,3 @@ const inputStyle = {
   marginBottom: 4,
   ...theme.shadow.sm,
 } as const;
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginBottom: 8 }}>
-      {children}
-    </Text>
-  );
-}
