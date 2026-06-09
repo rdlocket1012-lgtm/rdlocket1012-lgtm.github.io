@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "6BSN47U3U2.com.siren96.locket",
+        "paths": ["/invite", "/invite/*", "/reset-password", "/reset-password/*"]
+      }
+    ]
+  }
+}
