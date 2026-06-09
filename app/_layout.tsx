@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Stack, router, useURL } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import { useURL } from 'expo-linking';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
