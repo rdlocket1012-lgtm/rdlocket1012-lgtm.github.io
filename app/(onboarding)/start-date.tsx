@@ -25,7 +25,10 @@ export default function StartDateScreen() {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setBusy(true);
     try {
-      await AsyncStorage.setItem('onboarding_start_date', dateStr);
+      await AsyncStorage.multiSet([
+        ['onboarding_start_date', dateStr],
+        ['has_account', 'true'],
+      ]);
       // Establish the authenticated session + couple now, so every later
       // step (milestones, letters, pins) can actually persist data.
       await ensureCoupleSession(dateStr);

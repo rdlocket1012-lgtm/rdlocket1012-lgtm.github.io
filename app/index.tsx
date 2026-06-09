@@ -10,29 +10,25 @@ export default function RootIndex() {
     if (loading) return;
 
     async function navigate() {
-      const consent = await AsyncStorage.getItem('ai_consent_granted_at');
-      if (!consent) {
-        // Brand-new user (or signed-out returner): show the welcome screen
-        // with Get Started / Sign in. Get Started leads into ai-consent.
+      if (session) {
+        // Logged-in user — always go straight to tabs.
+        // Back-fill the flags so future cold-starts stay on the fast path.
+        await AsyncStorage.multiSet([
+          ['ai_consent_granted_at', new Date().toISOString()],
+          ['onboarding_done', 'true'],
+          ['has_account', 'true'],
+        ]);
+        router.replace('/(tabs)');
+        return;
+      }
+
+      // Not logged in — choose between welcome (new) and sign-in (returning).
+      const hasAccount = await AsyncStorage.getItem('has_account');
+      if (hasAccount) {
+        router.replace('/(auth)/sign-in');
+      } else {
         router.replace('/(auth)/welcome');
-        return;
       }
-
-      // Onboarding establishes the (anonymous) session + couple itself.
-      // If there's no session yet — including users who completed the old
-      // session-less onboarding — send them through onboarding to bootstrap.
-      if (!session) {
-        router.replace('/(onboarding)/start-date');
-        return;
-      }
-
-      const onboardingDone = await AsyncStorage.getItem('onboarding_done');
-      if (!onboardingDone) {
-        router.replace('/(onboarding)/start-date');
-        return;
-      }
-
-      router.replace('/(tabs)');
     }
 
     navigate();

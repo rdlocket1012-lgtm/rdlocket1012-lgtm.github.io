@@ -1,22 +1,33 @@
-import { Share } from 'react-native';
+import { Share, Alert } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 
 /** Generates a single-use invite token, stores it, and opens the share sheet. */
 export async function shareInvite() {
-  const coupleId = useAuthStore.getState().profile?.couple_id;
+  try {
+    const coupleId = useAuthStore.getState().profile?.couple_id;
 
-  // Cryptographically secure token — 24 hex chars (96 bits of entropy).
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  const token = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    // Generate a cryptographically random token (96 bits).
+    let token: string;
+    try {
+      const bytes = new Uint8Array(12);
+      crypto.getRandomValues(bytes);
+      token = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch {
+      // Fallback if crypto is unavailable
+      token = Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    }
 
-  if (coupleId) {
-    // Best-effort — ignore failure.
-    await supabase.from('partner_invites').insert({ couple_id: coupleId, token }).then(() => {}, () => {});
+    if (coupleId) {
+      // Best-effort — ignore failure if table doesn't exist yet.
+      try {
+        await supabase.from('partner_invites').insert({ couple_id: coupleId, token });
+      } catch { /* ignore */ }
+    }
+
+    const link = `https://rdlocket1012-lgtm.github.io/invite?token=${token}`;
+    await Share.share({ message: `Join me on Locket 💛 Tap to link our space: ${link}` });
+  } catch (e: any) {
+    Alert.alert('Could not share', e?.message ?? 'Please try again.');
   }
-
-  // HTTPS link: opens landing page → tries app → falls back to App Store.
-  const link = `https://rdlocket1012-lgtm.github.io/invite?token=${token}`;
-  await Share.share({ message: `Join me on Locket 💛 Tap to link our space: ${link}` });
 }

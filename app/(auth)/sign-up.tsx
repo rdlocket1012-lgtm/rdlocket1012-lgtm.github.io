@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,6 +39,7 @@ export default function SignUpScreen() {
     });
     setLoading(false);
     if (error) { Alert.alert('Sign up failed', error.message); return; }
+    await AsyncStorage.setItem('has_account', 'true');
     router.replace('/(onboarding)/ai-consent');
   }
 
@@ -49,12 +51,20 @@ export default function SignUpScreen() {
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
       });
-      const { data, error } = await supabase.auth.signInWithIdToken({
+      const { error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken!,
       });
       if (error) { Alert.alert('Apple sign-in failed', error.message); return; }
-      router.replace('/(onboarding)/ai-consent');
+      const hasAccount = await AsyncStorage.getItem('has_account');
+      await AsyncStorage.multiSet([['has_account', 'true'], ['ai_consent_granted_at', new Date().toISOString()]]);
+      // Returning Apple user → tabs. New Apple user → onboarding.
+      if (hasAccount) {
+        await AsyncStorage.setItem('onboarding_done', 'true');
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/(onboarding)/ai-consent');
+      }
     } catch (e: unknown) {
       if ((e as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert('Apple sign-in failed', 'Please try again.');
