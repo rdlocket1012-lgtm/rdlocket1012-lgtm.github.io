@@ -1,10 +1,9 @@
 import React, { useEffect } from 'react';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useURL } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as Linking from 'expo-linking';
 import { useAuth } from '@/hooks/useAuth';
 import { OfflineBanner } from '@/components/offline/OfflineBanner';
 import { setupPurchases } from '@/lib/revenuecat';
@@ -12,10 +11,18 @@ import { supabase } from '@/lib/supabase';
 import { registerForPush } from '@/lib/push';
 import '@/lib/notifications';
 
-/** Parses key=value pairs out of a URL hash or query string fragment. */
-function parseFragment(url: string): Record<string, string> {
-  const hash = url.includes('#') ? url.split('#')[1] : url.split('?')[1] ?? '';
-  return Object.fromEntries(new URLSearchParams(hash));
+/** Extracts key=value pairs from both the query string AND hash of a URL. */
+function parseAllParams(url: string): Record<string, string> {
+  try {
+    const [base, hash = ''] = url.split('#');
+    const query = base.includes('?') ? base.split('?')[1] : '';
+    return {
+      ...Object.fromEntries(new URLSearchParams(query)),
+      ...Object.fromEntries(new URLSearchParams(hash)),
+    };
+  } catch {
+    return {};
+  }
 }
 
 SplashScreen.preventAutoHideAsync();
@@ -23,29 +30,35 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const { session, loading } = useAuth();
 
-  // Deep link handler: extracts Supabase tokens from the URL hash and sets the session.
-  // This is required on native because the Supabase client doesn't auto-parse URLs like on web.
+  // useURL() from expo-router gives us the active deep-link URL reactively —
+  // it fires on cold-start AND when the app is foregrounded via a link.
+  const url = useURL();
+
   useEffect(() => {
-    async function handleDeepLink(url: string) {
-      const params = parseFragment(url);
-      if (params.access_token && params.refresh_token) {
-        // Establish the session — this triggers onAuthStateChange below.
-        await supabase.auth.setSession({
-          access_token: params.access_token,
-          refresh_token: params.refresh_token,
-        });
-      }
+    if (!url) return;
+    handleDeepLink(url);
+  }, [url]);
+
+  async function handleDeepLink(url: string) {
+    const params = parseAllParams(url);
+
+    if (params.code) {
+      // PKCE flow (Supabase default): exchange the code for a session.
+      // onAuthStateChange fires PASSWORD_RECOVERY after this succeeds.
+      await supabase.auth.exchangeCodeForSession(params.code);
+      return;
     }
 
-    // App opened from a cold start via deep link (e.g. email tap while app was closed).
-    Linking.getInitialURL().then(url => { if (url) handleDeepLink(url); });
+    if (params.access_token && params.refresh_token) {
+      // Implicit flow fallback: set the session directly from tokens.
+      await supabase.auth.setSession({
+        access_token: params.access_token,
+        refresh_token: params.refresh_token,
+      });
+    }
+  }
 
-    // App already open and a deep link arrives.
-    const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
-    return () => sub.remove();
-  }, []);
-
-  // Listen for PASSWORD_RECOVERY event — fired after setSession() above establishes the session.
+  // Routes to reset-password once exchangeCodeForSession/setSession establishes a recovery session.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
