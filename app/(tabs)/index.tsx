@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Modal } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Modal, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LK, tint, shade, rgba, theme, catColor } from '@/constants/theme';
@@ -11,6 +11,8 @@ import { Avatar, RoundIcon, IconChip, Sticker } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { TYPE_ICON } from '@/constants/milestone-types';
 import { DailyQuizCard } from '@/components/quiz/DailyQuizCard';
+import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
+import { usePressScale } from '@/hooks/usePressScale';
 import { StatusBubble } from '@/components/home/StatusBubble';
 import { NudgesLayer } from '@/components/nudges/NudgesLayer';
 import { usePartner } from '@/hooks/usePartner';
@@ -45,9 +47,11 @@ export default function HomeScreen() {
   const memoryYearsAgo = memory ? today.getFullYear() - new Date(memory.milestone_date).getFullYear() : 0;
   const memoryColor = memory ? catColor(memory.type) : null;
 
-  // Recent activity — built from the user's real milestones (most recently added first).
+  // Recent activity — past milestones only, most recently occurred first.
+  // Exclude the "upcoming" milestone so it doesn't appear twice (it already has its own card).
   const recentActivity = [...milestones]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .filter((m) => !m.is_future && m.id !== upcoming?.id)
+    .sort((a, b) => new Date(b.milestone_date).getTime() - new Date(a.milestone_date).getTime())
     .slice(0, 3)
     .map((m) => ({
       id: m.id,
@@ -93,21 +97,23 @@ export default function HomeScreen() {
               <Icon name="sparkle" size={20} color={shade(LK.pink, 0.5)} />
             </TouchableOpacity>
             <RoundIcon onPress={() => router.push('/settings')}>
-              <Icon name="gear" size={20} color={LK.ink} />
+              <Icon name="gear" size={22} color={LK.ink} strokeWidth={1.5} />
             </RoundIcon>
           </View>
         </View>
 
-        {/* Day counter */}
-        <View style={{ alignItems: 'center', paddingHorizontal: theme.layout.screenX, paddingVertical: 14 }}>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase', color: LK.ink70 }}>Day</Text>
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 84, lineHeight: 96, letterSpacing: -3, color: LK.ink, marginVertical: 2, includeFontPadding: false }}>
-            {dayCount.toLocaleString()}
-          </Text>
-          <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 24, color: shade(LK.gold, 0.45) }}>
-            together
-          </Text>
-        </View>
+        {/* Day counter — springs in on mount */}
+        <FadeSlideIn delay={60} fromY={10}>
+          <View style={{ alignItems: 'center', paddingHorizontal: theme.layout.screenX, paddingVertical: 14 }}>
+            <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase', color: LK.ink70 }}>Day</Text>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 84, lineHeight: 96, letterSpacing: -3, color: LK.ink, marginVertical: 2, includeFontPadding: false }}>
+              {dayCount.toLocaleString()}
+            </Text>
+            <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 24, color: shade(LK.gold, 0.45) }}>
+              together
+            </Text>
+          </View>
+        </FadeSlideIn>
 
         {/* Invite partner banner */}
         {!partnerJoined && (
@@ -132,6 +138,7 @@ export default function HomeScreen() {
         )}
 
         {/* On This Day hero */}
+        <FadeSlideIn delay={120}>
         <View style={{ paddingHorizontal: theme.layout.screenX }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 4 }}>
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.ink }}>On this day</Text>
@@ -178,7 +185,7 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
           ) : (
-            <View style={{ borderRadius: theme.radii.lg, height: 150, backgroundColor: LK.ivory, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 30, ...theme.shadow.sm }}>
+            <View style={{ borderRadius: theme.radii.lg, height: 180, backgroundColor: LK.ivory, alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 30, ...theme.shadow.sm }}>
               <IconChip color={LK.sky} size={48}><Icon name="sparkle" size={22} color={shade(LK.sky, 0.5)} /></IconChip>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: LK.ink, textAlign: 'center' }}>No memories on this day yet</Text>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, textAlign: 'center', lineHeight: 18 }}>
@@ -187,52 +194,46 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+        </FadeSlideIn>
 
         {/* Daily quiz */}
-        <DailyQuizCard />
+        <FadeSlideIn delay={180}>
+          <DailyQuizCard />
+        </FadeSlideIn>
 
-        {/* Quick actions */}
-        <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 22 }}>
-          <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 16, color: LK.ink70, marginBottom: 11, marginLeft: 2 }}>
-            Capture a moment…
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 11 }}>
-            {[
-              { color: LK.coral, icon: 'heart', label: 'Milestone', sheet: 'addMilestone' as const },
-              { color: LK.pink, icon: 'feather', label: 'Letter', sheet: 'compose' as const },
-              { color: LK.lilac, icon: 'mapPin', label: 'Map Pin', sheet: 'addPin' as const },
-            ].map((qa) => (
-              <TouchableOpacity
-                key={qa.sheet}
-                onPress={() => setSheet(qa.sheet)}
-                activeOpacity={0.8}
-                style={{
-                  flex: 1, height: 104, backgroundColor: tint(qa.color, 0.8),
-                  borderRadius: theme.radii.sm, paddingVertical: 16,
-                  alignItems: 'center', justifyContent: 'center', gap: 9,
-                  shadowColor: qa.color, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16,
-                }}
-              >
-                <View style={{
-                  width: 46, height: 46, borderRadius: 23,
-                  backgroundColor: qa.color, alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Icon name={qa.icon} size={23} color={shade(qa.color, 0.55)} />
-                </View>
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: shade(qa.color, 0.55) }}>
-                  {qa.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {/* Capture a moment card */}
+        <FadeSlideIn delay={240}>
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
+          <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 18, ...theme.shadow.card }}>
+            {/* Header — same pattern as DailyQuizCard */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 18, color: LK.ink }}>
+                Capture a moment ✨
+              </Text>
+            </View>
+            <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 15, color: LK.ink70, lineHeight: 22, marginBottom: 14 }}>
+              What's worth keeping from today?
+            </Text>
+            {/* Action tiles */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {[
+                { color: LK.coral, icon: 'heart', label: 'Milestone', sheet: 'addMilestone' as const },
+                { color: LK.pink, icon: 'feather', label: 'Letter', sheet: 'compose' as const },
+                { color: LK.lilac, icon: 'mapPin', label: 'Map Pin', sheet: 'addPin' as const },
+              ].map((qa) => (
+                <CaptureTile key={qa.sheet} {...qa} onPress={() => setSheet(qa.sheet)} />
+              ))}
+            </View>
           </View>
         </View>
+        </FadeSlideIn>
 
         {/* Upcoming milestone chip */}
         {upcoming && (
           <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 12 }}>
             <Sticker color={LK.gold} onPress={() => router.push(`/milestone/${upcoming.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 13, padding: 15 }}>
               <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: LK.gold, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="cake" size={22} color={shade(LK.gold, 0.55)} />
+                <Icon name={TYPE_ICON[upcoming.type] ?? 'sparkle'} size={22} color={shade(LK.gold, 0.55)} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: shade(LK.gold, 0.5) }}>Coming up</Text>
@@ -244,7 +245,8 @@ export default function HomeScreen() {
         )}
 
         {/* Recent activity — fully readable on free */}
-        <View style={{ paddingHorizontal: 22, paddingTop: 24 }}>
+        <FadeSlideIn delay={300}>
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 24 }}>
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.ink, marginBottom: 12 }}>Recent activity</Text>
 
           {recentActivity.length === 0 ? (
@@ -295,6 +297,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
         </View>
+        </FadeSlideIn>
       </ScrollView>
 
       {sheet === 'addMilestone' && <AddMilestoneModal onClose={() => setSheet(null)} isPremium={isPremium} onPaywall={() => setSheet('paywall')} />}
@@ -309,5 +312,33 @@ export default function HomeScreen() {
         userId={profile?.id ?? null}
       />
     </SafeAreaView>
+  );
+}
+
+function CaptureTile({ color, icon, label, onPress }: { color: string; icon: string; label: string; onPress: () => void }) {
+  const press = usePressScale(0.94);
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      activeOpacity={1}
+      style={{ flex: 1 }}
+    >
+      <Animated.View style={{
+        height: 96,
+        backgroundColor: tint(color, 0.8),
+        borderRadius: theme.radii.sm,
+        alignItems: 'center', justifyContent: 'center', gap: 9,
+        transform: [{ scale: press.scale }],
+      }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={22} color={shade(color, 0.55)} />
+        </View>
+        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: shade(color, 0.55) }}>
+          {label}
+        </Text>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
