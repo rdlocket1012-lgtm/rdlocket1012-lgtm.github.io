@@ -1,0 +1,70 @@
+{
+  "expo": {
+    "name": "Locket",
+    "slug": "locket-couples-memories",
+    "extra": {
+      "eas": {
+        "projectId": "34c35f43-76e1-4efc-8a85-8a8596485ba0"
+      }
+    },
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "favicon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "locket",
+    "ios": {
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "bundleIdentifier": "com.siren96.locket",
+      "associatedDomains": ["applinks:rdlocket1012-lgtm.github.io"],
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Locket reads your photos locally to surface On This Day memories. Photos never leave your device.",
+        "NSCameraUsageDescription": "Locket uses your camera to take photos for milestones and map pins.",
+        "NSLocationWhenInUseUsageDescription": "Locket uses your location to suggest map pins.",
+        "NSUserNotificationsUsageDescription": "Locket sends On This Day and partner activity notifications.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFF6E3"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Locket reads your photos locally for On This Day. Photos never leave your device."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Locket reads your photos locally for On This Day. Photos never leave your device.",
+          "savePhotosPermission": false,
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#FFF6E3"
+        }
+      ],
+      "expo-splash-screen",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Locket uses your location to help you pin places you visit together."
+        }
+      ]
+    ]
+  }
+}

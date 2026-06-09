@@ -1,0 +1,40 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "ios": { "simulator": false }
+    },
+    "preview": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "environment": "preview",
+      "ios": { "simulator": false }
+    },
+    "production": {
+      "autoIncrement": true,
+      "environment": "production"
+    }
+  },
+  "submit": {
+    "preview": {
+      "ios": {
+        "appleId": "siren.96@gmail.com",
+        "ascAppId": "6775300058",
+        "appleTeamId": "6BSN47U3U2"
+      }
+    },
+    "production": {
+      "ios": {
+        "appleId": "siren.96@gmail.com",
+        "ascAppId": "6775300058",
+        "appleTeamId": "6BSN47U3U2"
+      }
+    }
+  }
+}

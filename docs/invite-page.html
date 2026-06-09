@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Join me on Locket 💛</title>
+
+  <!-- Smart App Banner — shows "Open in App Store" bar on iOS Safari -->
+  <meta name="apple-itunes-app" content="app-id=6775300058" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #FFF6E3;
+      color: #2A211A;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #FFFBF2;
+      border-radius: 28px;
+      padding: 40px 28px 36px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 32px rgba(42,33,26,0.10);
+    }
+    .icon {
+      font-size: 56px;
+      line-height: 1;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 15px;
+      color: rgba(42,33,26,0.65);
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    .btn {
+      display: block;
+      background: #2A211A;
+      color: #FFF6E3;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 16px 24px;
+      border-radius: 999px;
+      text-decoration: none;
+      margin-bottom: 12px;
+      transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn-secondary {
+      background: transparent;
+      color: rgba(42,33,26,0.5);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+    .status {
+      font-size: 13px;
+      color: rgba(42,33,26,0.4);
+      margin-top: 20px;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">💛</div>
+    <h1>You've been invited to Locket</h1>
+    <p>
+      Your partner wants to share milestones, letters and a private map — just for the two of you.
+    </p>
+
+    <a id="openBtn" href="#" class="btn">Open in Locket</a>
+    <a id="storeBtn" href="https://apps.apple.com/app/id6775300058" class="btn" style="display:none; background:#E8D5A3; color:#2A211A;">
+      Download Locket on the App Store
+    </a>
+    <p class="status" id="status"></p>
+  </div>
+
+  <script>
+    (function () {
+      // Extract token from ?token= query param
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get('token');
+
+      if (!token) {
+        document.getElementById('status').textContent = 'This invite link is invalid.';
+        document.getElementById('openBtn').style.display = 'none';
+        return;
+      }
+
+      var appUrl    = 'locket://invite?token=' + encodeURIComponent(token);
+      // Replace 6775300058 with your real App Store numeric ID
+      var storeUrl  = 'https://apps.apple.com/app/id6775300058';
+
+      var openBtn  = document.getElementById('openBtn');
+      var storeBtn = document.getElementById('storeBtn');
+      var status   = document.getElementById('status');
+
+      openBtn.href = appUrl;
+
+      openBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        // Try to open the app
+        window.location.href = appUrl;
+
+        // After 2 seconds, if the page is still visible, the app isn't installed.
+        // Redirect to the App Store.
+        var timer = setTimeout(function () {
+          status.textContent = "Looks like Locket isn't installed — taking you to the App Store…";
+          openBtn.style.display = 'none';
+          storeBtn.style.display = 'block';
+          window.location.href = storeUrl;
+        }, 2000);
+
+        // If the user returns to this tab (app opened successfully), clear the timer.
+        document.addEventListener('visibilitychange', function () {
+          if (document.hidden) clearTimeout(timer);
+        });
+      });
+
+      // Auto-attempt on load (helps when link is tapped from iMessage preview)
+      setTimeout(function () {
+        openBtn.click();
+      }, 400);
+    })();
+  </script>
+</body>
+</html>
