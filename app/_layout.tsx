@@ -4,6 +4,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as Linking from 'expo-linking';
 import { useAuth } from '@/hooks/useAuth';
 import { OfflineBanner } from '@/components/offline/OfflineBanner';
 import { setupPurchases } from '@/lib/revenuecat';
@@ -11,12 +12,40 @@ import { supabase } from '@/lib/supabase';
 import { registerForPush } from '@/lib/push';
 import '@/lib/notifications';
 
+/** Parses key=value pairs out of a URL hash or query string fragment. */
+function parseFragment(url: string): Record<string, string> {
+  const hash = url.includes('#') ? url.split('#')[1] : url.split('?')[1] ?? '';
+  return Object.fromEntries(new URLSearchParams(hash));
+}
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { session, loading } = useAuth();
 
-  // Listen for PASSWORD_RECOVERY event — fired when user opens the reset-password deep link.
+  // Deep link handler: extracts Supabase tokens from the URL hash and sets the session.
+  // This is required on native because the Supabase client doesn't auto-parse URLs like on web.
+  useEffect(() => {
+    async function handleDeepLink(url: string) {
+      const params = parseFragment(url);
+      if (params.access_token && params.refresh_token) {
+        // Establish the session — this triggers onAuthStateChange below.
+        await supabase.auth.setSession({
+          access_token: params.access_token,
+          refresh_token: params.refresh_token,
+        });
+      }
+    }
+
+    // App opened from a cold start via deep link (e.g. email tap while app was closed).
+    Linking.getInitialURL().then(url => { if (url) handleDeepLink(url); });
+
+    // App already open and a deep link arrives.
+    const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    return () => sub.remove();
+  }, []);
+
+  // Listen for PASSWORD_RECOVERY event — fired after setSession() above establishes the session.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
