@@ -50,7 +50,7 @@ export function ScratchCard({ idea, color }: { idea: string; color: string }) {
         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: color, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon name="sparkle" size={22} color={shade(color, 0.55)} />
         </View>
-        <Text style={{ flex: 1, fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 16, color: LK.ink, lineHeight: 23 }}>{idea}</Text>
+        <Text style={{ flex: 1, fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 16, color: LK.espresso, lineHeight: 23 }}>{idea}</Text>
       </View>
 
       {/* Foil overlay (scratch this away) */}
@@ -61,7 +61,7 @@ export function ScratchCard({ idea, color }: { idea: string; color: string }) {
         >
           {/* Diagonal champagne-foil gradient — feels like treasure to uncover */}
           <LinearGradient
-            colors={[shade(LK.gold, 0.18), shade(LK.gold, 0.42), shade(LK.gold, 0.24)]}
+            colors={[shade(LK.marigold, 0.18), shade(LK.marigold, 0.42), shade(LK.marigold, 0.24)]}
             locations={[0, 0.5, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}

@@ -26,7 +26,7 @@ export function StatusBubble() {
         activeOpacity={0.8}
         style={{
           width: 26, height: 26, borderRadius: 13,
-          backgroundColor: LK.ivory, borderWidth: 2, borderColor: LK.cream,
+          backgroundColor: LK.ivory, borderWidth: 2, borderColor: LK.parchment,
           alignItems: 'center', justifyContent: 'center',
           position: 'absolute', bottom: -4, right: -6, zIndex: 5, ...theme.shadow.sm,
         }}
@@ -39,8 +39,8 @@ export function StatusBubble() {
 
       <Modal visible={open} transparent animationType="fade">
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)', justifyContent: 'center', padding: 28 }} activeOpacity={1} onPress={() => setOpen(false)}>
-          <TouchableOpacity activeOpacity={1} style={{ backgroundColor: LK.cream, borderRadius: 28, padding: 22, ...theme.shadow.card }}>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 21, color: LK.ink, textAlign: 'center' }}>How are you feeling?</Text>
+          <TouchableOpacity activeOpacity={1} style={{ backgroundColor: LK.parchment, borderRadius: 28, padding: 22, ...theme.shadow.card }}>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 21, color: LK.espresso, textAlign: 'center' }}>How are you feeling?</Text>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, textAlign: 'center', marginTop: 4 }}>Your partner sees this next to your name.</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: 18 }}>
               {EMOJIS.map((e) => (

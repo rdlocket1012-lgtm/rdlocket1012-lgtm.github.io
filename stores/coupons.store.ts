@@ -11,6 +11,7 @@ export type Coupon = {
   description: string | null;
   icon: string;
   color: string;
+  redeem_requested_at: string | null;  // recipient asked to redeem; awaiting gifter approval
   redeemed_at: string | null;
   deleted_at: string | null;
   created_at: string;
@@ -29,7 +30,10 @@ type CouponsState = {
   loading: boolean;
   fetchCoupons: (coupleId: string) => Promise<void>;
   addCoupon: (data: { couple_id: string; title: string; description: string | null; icon: string; color: string }) => Promise<void>;
-  redeemCoupon: (id: string) => Promise<void>;
+  requestRedeem: (id: string) => Promise<void>;   // recipient asks to redeem
+  cancelRequest: (id: string) => Promise<void>;   // recipient withdraws the request
+  approveRedeem: (id: string) => Promise<void>;   // gifter confirms → fully redeemed
+  declineRequest: (id: string) => Promise<void>;  // gifter declines → back to unredeemed
   deleteCoupon: (id: string) => Promise<void>;
   subscribe: (coupleId: string) => () => void;
 };
@@ -63,6 +67,7 @@ export const useCouponsStore = create<CouponsState>((set, get) => ({
     const optimistic: Coupon = {
       ...payload,
       id: `temp-${Date.now()}`,
+      redeem_requested_at: null,
       redeemed_at: null,
       deleted_at: null,
       created_at: new Date().toISOString(),
@@ -76,10 +81,32 @@ export const useCouponsStore = create<CouponsState>((set, get) => ({
     set((s) => ({ coupons: s.coupons.map((c) => (c.id === optimistic.id ? (inserted as Coupon) : c)) }));
   },
 
-  redeemCoupon: async (id) => {
+  requestRedeem: async (id) => {
     const at = new Date().toISOString();
-    set((s) => ({ coupons: s.coupons.map((c) => (c.id === id ? { ...c, redeemed_at: at } : c)) }));
-    const { error } = await supabase.from('coupons').update({ redeemed_at: at }).eq('id', id);
+    set((s) => ({ coupons: s.coupons.map((c) => (c.id === id ? { ...c, redeem_requested_at: at } : c)) }));
+    const { error } = await supabase.from('coupons').update({ redeem_requested_at: at }).eq('id', id);
+    if (error) {
+      set((s) => ({ coupons: s.coupons.map((c) => (c.id === id ? { ...c, redeem_requested_at: null } : c)) }));
+      throw new Error(error.message);
+    }
+  },
+
+  cancelRequest: async (id) => {
+    set((s) => ({ coupons: s.coupons.map((c) => (c.id === id ? { ...c, redeem_requested_at: null } : c)) }));
+    const { error } = await supabase.from('coupons').update({ redeem_requested_at: null }).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  approveRedeem: async (id) => {
+    const at = new Date().toISOString();
+    set((s) => ({ coupons: s.coupons.map((c) => (c.id === id ? { ...c, redeemed_at: at, redeem_requested_at: null } : c)) }));
+    const { error } = await supabase.from('coupons').update({ redeemed_at: at, redeem_requested_at: null }).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  declineRequest: async (id) => {
+    set((s) => ({ coupons: s.coupons.map((c) => (c.id === id ? { ...c, redeem_requested_at: null } : c)) }));
+    const { error } = await supabase.from('coupons').update({ redeem_requested_at: null }).eq('id', id);
     if (error) throw new Error(error.message);
   },
 

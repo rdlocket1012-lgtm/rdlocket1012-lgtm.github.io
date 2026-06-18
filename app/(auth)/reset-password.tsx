@@ -43,12 +43,12 @@ export default function ResetPasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={{ flex: 1, padding: 30, justifyContent: 'center' }}>
 
           <View style={{ marginBottom: 36 }}>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.ink, letterSpacing: -1 }}>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.espresso, letterSpacing: -1 }}>
               New password
             </Text>
             <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.ink70, marginTop: 8 }}>
@@ -107,7 +107,7 @@ export default function ResetPasswordScreen() {
 
 const inputStyle = {
   backgroundColor: LK.ivory, borderRadius: 16,
-  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink,
-  shadowColor: LK.ink, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso,
+  shadowColor: LK.espresso, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
 };
-const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.destructive, marginTop: 5 };
+const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.danger, marginTop: 5 };

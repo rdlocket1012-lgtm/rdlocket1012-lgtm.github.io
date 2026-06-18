@@ -10,6 +10,9 @@ export type Milestone = {
   type: string;
   note: string | null;
   note_rich_html: string | null;
+  /** Attached photo URLs (Supabase Storage). Added with the photos migration;
+   *  undefined until then, so the timeline photo strip simply doesn't render. */
+  photos?: string[] | null;
   is_future: boolean;
   deleted_at: string | null;
   created_at: string;

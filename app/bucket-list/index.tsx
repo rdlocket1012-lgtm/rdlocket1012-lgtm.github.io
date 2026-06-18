@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -13,7 +14,7 @@ import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { ScratchCard } from '@/components/bucket/ScratchCard';
 import { dateIdeasForDay } from '@/constants/date-ideas';
 
-const SCRATCH_COLORS = [LK.coral, LK.gold, LK.lilac, LK.mint, LK.pink, LK.sky];
+const SCRATCH_COLORS = [LK.coral, LK.marigold, LK.lilac, LK.success, LK.blush, LK.sky];
 
 export default function BucketListScreen() {
   const { items, addItem, toggleItem, deleteItem, updateItem } = useBucketList();
@@ -25,18 +26,22 @@ export default function BucketListScreen() {
   const [newTitle, setNewTitle] = useState('');
   const [newCat, setNewCat] = useState('travel');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [newLocation, setNewLocation] = useState('');
+  const [geocoding, setGeocoding] = useState(false);
 
   function openAdd() {
     setEditingId(null);
     setNewTitle('');
     setNewCat('travel');
+    setNewLocation('');
     setSheet('add');
   }
 
-  function openEdit(item: { id: string; title: string; category: string }) {
+  function openEdit(item: { id: string; title: string; category: string; location_name?: string | null }) {
     setEditingId(item.id);
     setNewTitle(item.title);
     setNewCat(item.category);
+    setNewLocation(item.location_name ?? '');
     setSheet('add');
   }
 
@@ -44,6 +49,7 @@ export default function BucketListScreen() {
     setSheet(null);
     setEditingId(null);
     setNewTitle('');
+    setNewLocation('');
   }
 
   const todo = items.filter((i) => !i.is_done);
@@ -53,8 +59,29 @@ export default function BucketListScreen() {
 
   async function handleAdd() {
     if (!newTitle.trim()) return;
+    setGeocoding(true);
+
+    // Geocode the optional location
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+    const locStr = newLocation.trim();
+    if (locStr) {
+      try {
+        const results = await Location.geocodeAsync(locStr);
+        if (results[0]) { latitude = results[0].latitude; longitude = results[0].longitude; }
+      } catch {}
+    }
+
+    setGeocoding(false);
+
     if (editingId) {
-      await updateItem(editingId, { title: newTitle.trim(), category: newCat });
+      await updateItem(editingId, {
+        title: newTitle.trim(),
+        category: newCat,
+        location_name: locStr || null,
+        latitude,
+        longitude,
+      });
       closeSheet();
       return;
     }
@@ -62,12 +89,25 @@ export default function BucketListScreen() {
       Alert.alert('Not ready', 'Your shared space is still setting up. Try again in a moment.');
       return;
     }
-    await addItem({ couple_id: couple.id, added_by: null, title: newTitle.trim(), category: newCat, note: null, target_date: null, is_done: false, completed_at: null, deleted_at: null } as any);
+    await addItem({
+      couple_id: couple.id,
+      added_by: null,
+      title: newTitle.trim(),
+      category: newCat,
+      note: null,
+      target_date: null,
+      is_done: false,
+      completed_at: null,
+      deleted_at: null,
+      latitude,
+      longitude,
+      location_name: locStr || null,
+    });
     closeSheet();
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
         {/* Header */}
         <ScreenHeader
@@ -77,9 +117,9 @@ export default function BucketListScreen() {
           right={
             <TouchableOpacity
               onPress={() => atCap ? setSheet('paywall') : openAdd()}
-              style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: atCap ? tint(LK.gold, 0.7) : LK.ink, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
+              style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: atCap ? tint(LK.marigold, 0.7) : LK.espresso, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
             >
-              <Icon name={atCap ? 'lock' : 'plus'} size={atCap ? 19 : 22} color={atCap ? shade(LK.gold, 0.5) : '#fff'} />
+              <Icon name={atCap ? 'lock' : 'plus'} size={atCap ? 19 : 22} color={atCap ? shade(LK.marigold, 0.5) : '#fff'} />
             </TouchableOpacity>
           }
         />
@@ -89,7 +129,7 @@ export default function BucketListScreen() {
           <TouchableOpacity
             onPress={() => setScratchMode((s) => !s)}
             activeOpacity={0.85}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: scratchMode ? LK.ink : tint(LK.lilac, 0.7), borderRadius: 16, paddingVertical: 12, paddingHorizontal: 15 }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: scratchMode ? LK.espresso : tint(LK.lilac, 0.7), borderRadius: 16, paddingVertical: 12, paddingHorizontal: 15 }}
           >
             <Icon name="sparkle" size={18} color={scratchMode ? '#fff' : shade(LK.lilac, 0.5)} />
             <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14, color: scratchMode ? '#fff' : shade(LK.lilac, 0.55) }}>
@@ -123,7 +163,7 @@ export default function BucketListScreen() {
                   onPress={() => setFilter(k)}
                   style={{ backgroundColor: filter === k ? LK.ivory : 'transparent', borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                 >
-                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: filter === k ? LK.ink : LK.ink70 }}>{label}</Text>
+                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: filter === k ? LK.espresso : LK.ink70 }}>{label}</Text>
                   <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70 }}>{count}</Text>
                 </TouchableOpacity>
               );
@@ -138,16 +178,16 @@ export default function BucketListScreen() {
         {!isPremium && items.length > 0 && (
           <TouchableOpacity onPress={() => setSheet('paywall')} style={{ marginHorizontal: 20, marginBottom: 4, backgroundColor: LK.ivory, borderRadius: theme.radii.sm, padding: 14, ...theme.shadow.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: atCap ? shade(LK.gold, 0.5) : LK.ink }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: atCap ? shade(LK.marigold, 0.5) : LK.espresso }}>
                 {atCap ? 'Free limit reached' : `${items.length} of ${FREE_LIMITS.BUCKET_LIST_ITEMS} on Free`}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Icon name="crown" size={13} color={shade(LK.gold, 0.5)} />
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(LK.gold, 0.5) }}>Unlimited</Text>
+                <Icon name="crown" size={13} color={shade(LK.marigold, 0.5)} />
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(LK.marigold, 0.5) }}>Unlimited</Text>
               </View>
             </View>
             <View style={{ height: 6, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.07)', overflow: 'hidden' }}>
-              <View style={{ width: `${Math.min(100, items.length / FREE_LIMITS.BUCKET_LIST_ITEMS * 100)}%` as any, height: '100%', borderRadius: 9999, backgroundColor: atCap ? LK.gold : LK.ink }} />
+              <View style={{ width: `${Math.min(100, items.length / FREE_LIMITS.BUCKET_LIST_ITEMS * 100)}%` as any, height: '100%', borderRadius: 9999, backgroundColor: atCap ? LK.marigold : LK.espresso }} />
             </View>
           </TouchableOpacity>
         )}
@@ -163,13 +203,13 @@ export default function BucketListScreen() {
                   </View>
                 ))}
               </View>
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 26, color: LK.ink, textAlign: 'center', maxWidth: 260, lineHeight: 30 }}>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 26, color: LK.espresso, textAlign: 'center', maxWidth: 260, lineHeight: 30 }}>
                 What do you dream of doing together?
               </Text>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, lineHeight: 22, textAlign: 'center', maxWidth: 250 }}>
                 Start your shared list — big adventures and tiny cosy plans alike.
               </Text>
-              <TouchableOpacity onPress={openAdd} style={{ backgroundColor: LK.ink, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity onPress={openAdd} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Icon name="plus" size={18} color="#fff" />
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Add to list</Text>
               </TouchableOpacity>
@@ -194,9 +234,9 @@ export default function BucketListScreen() {
                 >
                   {it.is_done && <Icon name="check" size={18} color={shade(color, 0.55)} />}
                 </TouchableOpacity>
-                <TouchableOpacity activeOpacity={0.7} onPress={() => openEdit(it)} style={{ flex: 1, minWidth: 0 }}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => openEdit({ ...it })} style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{
-                    fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.ink, lineHeight: 22,
+                    fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso, lineHeight: 22,
                     textDecorationLine: it.is_done ? 'line-through' : 'none',
                   }}>
                     {it.title}
@@ -209,6 +249,12 @@ export default function BucketListScreen() {
                       <Icon name={catDef?.icon ?? 'star'} size={13} color={shade(color, 0.5)} />
                       <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(color, 0.5) }}>{catDef?.label ?? it.category}</Text>
                     </View>
+                    {it.location_name && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(42,33,26,0.06)', borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Icon name="mapPin" size={11} color={LK.ink70} />
+                        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 11.5, color: LK.ink70 }}>{it.location_name}</Text>
+                      </View>
+                    )}
                     {it.is_done && it.completed_at && (
                       <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: LK.ink70 }}>
                         Done {new Date(it.completed_at).toLocaleDateString()}
@@ -228,7 +274,7 @@ export default function BucketListScreen() {
         <Modal animationType="slide" transparent>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
           <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={closeSheet} activeOpacity={1} />
-          <View style={{ backgroundColor: LK.cream, borderTopLeftRadius: 30, borderTopRightRadius: 30 }}>
+          <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30 }}>
             <View style={{ paddingTop: 14, alignItems: 'center' }}>
               <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
             </View>
@@ -236,11 +282,11 @@ export default function BucketListScreen() {
               <TouchableOpacity onPress={closeSheet}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.ink }}>{editingId ? 'Edit item' : 'Add to list'}</Text>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>{editingId ? 'Edit item' : 'Add to list'}</Text>
               <TouchableOpacity
                 onPress={handleAdd}
                 disabled={!newTitle.trim()}
-                style={{ backgroundColor: newTitle.trim() ? LK.ink : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
+                style={{ backgroundColor: newTitle.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
               >
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: newTitle.trim() ? '#fff' : LK.ink70 }}>{editingId ? 'Save' : 'Add'}</Text>
               </TouchableOpacity>
@@ -252,8 +298,19 @@ export default function BucketListScreen() {
                 onChangeText={setNewTitle}
                 placeholder="Something to do together…"
                 placeholderTextColor={LK.ink70}
-                style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink, marginBottom: 16, ...theme.shadow.sm }}
+                style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso, marginBottom: 12, ...theme.shadow.sm }}
               />
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: LK.ivory, borderRadius: 16, paddingHorizontal: 14, marginBottom: 16, ...theme.shadow.sm }}>
+                <View style={{ marginRight: 8 }}><Icon name="mapPin" size={16} color={LK.ink70} /></View>
+                <TextInput
+                  value={newLocation}
+                  onChangeText={setNewLocation}
+                  placeholder="Location (optional)"
+                  placeholderTextColor={LK.ink70}
+                  style={{ flex: 1, fontFamily: theme.fonts.body, fontSize: 15, color: LK.espresso, paddingVertical: 14 }}
+                />
+                {geocoding && <ActivityIndicator size="small" color={LK.ink70} style={{ marginLeft: 8 }} />}
+              </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {BUCKET_CATEGORIES.map((cat) => {
                   const on = newCat === cat.id;

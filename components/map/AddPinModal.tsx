@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  Modal, KeyboardAvoidingView, Platform, Alert,
+  ActivityIndicator, Image,
+} from 'react-native';
 import { LK, tint, shade, catColor, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { PIN_CATEGORIES } from '@/constants/categories';
@@ -10,6 +14,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { DateField } from '@/components/ui/DateField';
 import type { MapPin } from '@/stores/map.store';
 import * as Location from 'expo-location';
+import { enrichFromCoords, type PlacesEnrichment } from '@/lib/places';
 
 interface Props {
   onClose: () => void;
@@ -23,12 +28,77 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
   const [category, setCategory] = useState(editing?.category ?? 'trip');
   const [name, setName] = useState(editing?.name ?? '');
   const [placeName, setPlaceName] = useState(editing?.place_name ?? '');
-  const [visitedDate, setVisitedDate] = useState(editing?.visited_date ?? new Date().toISOString().split('T')[0]);
+  const [visitedDate, setVisitedDate] = useState(
+    editing?.visited_date ?? new Date().toISOString().split('T')[0],
+  );
   const [saving, setSaving] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [enrichment, setEnrichment] = useState<PlacesEnrichment | null>(
+    // Pre-populate from existing pin data when editing
+    editing?.place_id
+      ? {
+          place_id: editing.place_id,
+          name: editing.name,
+          address: editing.address ?? null,
+          website: editing.website ?? null,
+          photo_url: editing.photo_url ?? null,
+        }
+      : null,
+  );
+  const didAutofill = useRef(false);
 
   const c = catColor(category);
   const lat = coords?.latitude ?? editing?.latitude;
   const lng = coords?.longitude ?? editing?.longitude;
+
+  // ── Auto-fill on new pin drop ───────────────────────────────────────────────
+  // Layer 1: free Expo reverse-geocode (place label + street name)
+  // Layer 2: Google Places enrichment (official name, address, photo)
+  // Both run in parallel; Places result can arrive slightly later and updates
+  // state again — the user sees a progressive reveal.
+  useEffect(() => {
+    if (editing || !coords || didAutofill.current) return;
+    didAutofill.current = true;
+
+    (async () => {
+      setAutoFilling(true);
+
+      // Layer 1 — free reverse-geocode (fast, always runs)
+      try {
+        const results = await Location.reverseGeocodeAsync({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+        const r = results[0];
+        if (r) {
+          const placeLabel = [r.city ?? r.subregion ?? r.district, r.country]
+            .filter(Boolean)
+            .filter((v, i, a) => a.indexOf(v) === i)
+            .slice(0, 2)
+            .join(', ');
+          if (placeLabel) setPlaceName((prev) => prev || placeLabel);
+          const suggested = r.name && !/^\d+$/.test(r.name) ? r.name : '';
+          if (suggested) setName((prev) => prev || suggested);
+        }
+      } catch {
+        // Degrade gracefully
+      }
+
+      // Layer 2 — Google Places enrichment (may take a moment longer)
+      const result = await enrichFromCoords(coords.latitude, coords.longitude);
+      if (result) {
+        setEnrichment(result);
+        // Override the name with the official Google name (cleaner than OSM)
+        setName((prev) => {
+          // Only override if the user hasn't typed their own name yet,
+          // or if the current value came from reverse-geocode (not user input)
+          return result.name || prev;
+        });
+      }
+
+      setAutoFilling(false);
+    })();
+  }, [coords, editing]);
 
   async function handleSave() {
     if (!name.trim()) return;
@@ -39,7 +109,6 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
     }
     setSaving(true);
     try {
-      // Resolve coordinates: use map-picked / existing coords, else geocode the place name.
       let latitude = lat;
       let longitude = lng;
       if (latitude == null || longitude == null) {
@@ -50,18 +119,23 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
             latitude = results[0].latitude;
             longitude = results[0].longitude;
           }
-        } catch {
-          // geocoding unavailable — fall through to the guard below
-        }
+        } catch {}
       }
       if (latitude == null || longitude == null) {
         setSaving(false);
         Alert.alert(
           'Where is this place?',
-          'Enter a recognizable place name (like a city) so we can locate it, or close this and tap the spot on the map.'
+          'Enter a recognizable place name (like a city) so we can locate it, or tap the spot on the map.',
         );
         return;
       }
+
+      const placeFields = {
+        place_id: enrichment?.place_id ?? null,
+        address: enrichment?.address ?? null,
+        website: enrichment?.website ?? null,
+        photo_url: enrichment?.photo_url ?? null,
+      };
 
       if (editing) {
         await updatePin(editing.id, {
@@ -71,6 +145,7 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
           visited_date: visitedDate,
           latitude,
           longitude,
+          ...placeFields,
         });
       } else {
         await addPin({
@@ -85,6 +160,7 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
           note: null,
           added_by: null,
           deleted_at: null,
+          ...placeFields,
         });
       }
       onClose();
@@ -97,82 +173,167 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
 
   return (
     <Modal animationType="slide" transparent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
-      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={onClose} activeOpacity={1} />
-      <View style={{ backgroundColor: LK.cream, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '80%' }}>
-        <View style={{ paddingTop: 14, paddingBottom: 6, alignItems: 'center' }}>
-          <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
-        </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, justifyContent: 'flex-end' }}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }}
+          onPress={onClose}
+          activeOpacity={1}
+        />
+        <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
+          {/* Handle */}
+          <View style={{ paddingTop: 14, paddingBottom: 6, alignItems: 'center' }}>
+            <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
+          </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingBottom: 12 }}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.ink }}>{editing ? 'Edit pin' : 'Add a pin'}</Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={!name.trim() || saving}
-            style={{ backgroundColor: name.trim() ? LK.ink : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
-          >
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: name.trim() ? '#fff' : LK.ink70 }}>Save</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
-          {/* Location indicator */}
-          <View style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18, ...theme.shadow.sm }}>
-            <Icon name="mapPin" size={18} color={lat != null ? c.deep : LK.ink70} />
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: lat != null ? LK.ink : LK.ink70 }}>
-              {lat != null && lng != null
-                ? `Location set · ${lat.toFixed(3)}, ${lng.toFixed(3)}`
-                : "We'll locate the place name you enter below"}
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingBottom: 12 }}>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>
+              {editing ? 'Edit pin' : 'Add a pin'}
             </Text>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={!name.trim() || saving || autoFilling}
+              style={{
+                backgroundColor: name.trim() && !autoFilling ? LK.espresso : 'rgba(42,33,26,0.15)',
+                borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10,
+              }}
+            >
+              {saving
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: name.trim() && !autoFilling ? '#fff' : LK.ink70 }}>Save</Text>
+              }
+            </TouchableOpacity>
           </View>
 
-          <FieldLabel>Name</FieldLabel>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g. The little bridge"
-            placeholderTextColor={LK.ink70}
-            style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink, marginBottom: 18, ...theme.shadow.sm }}
-          />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}
+          >
+            {/* ── Photo banner (appears when Places returns a photo) ─────── */}
+            {enrichment?.photo_url ? (
+              <View style={{ borderRadius: 20, overflow: 'hidden', marginBottom: 18, height: 160 }}>
+                <Image
+                  source={{ uri: enrichment.photo_url }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+                {/* Subtle gradient overlay so text is legible if we add it */}
+                <View style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 48,
+                  backgroundColor: 'rgba(0,0,0,0.22)',
+                }} />
+              </View>
+            ) : null}
 
-          <FieldLabel>Place</FieldLabel>
-          <TextInput
-            value={placeName}
-            onChangeText={setPlaceName}
-            placeholder="City or neighbourhood"
-            placeholderTextColor={LK.ink70}
-            style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink, marginBottom: 18, ...theme.shadow.sm }}
-          />
+            {/* ── Location / auto-fill status ───────────────────────────── */}
+            <View style={{
+              backgroundColor: LK.ivory, borderRadius: 16, padding: 14,
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              marginBottom: 18, ...theme.shadow.sm,
+            }}>
+              <Icon name="mapPin" size={18} color={lat != null ? c.deep : LK.ink70} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: lat != null ? LK.espresso : LK.ink70 }}>
+                  {autoFilling
+                    ? 'Finding this place…'
+                    : lat != null && lng != null
+                    ? `Location set · ${lat.toFixed(3)}, ${lng.toFixed(3)}`
+                    : "We'll locate the place name you enter below"}
+                </Text>
+                {enrichment?.address && !autoFilling && (
+                  <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 3 }}>
+                    {enrichment.address}
+                  </Text>
+                )}
+              </View>
+              {autoFilling && <ActivityIndicator size="small" color={c.deep} />}
+            </View>
 
-          <FieldLabel>Category</FieldLabel>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
-            {PIN_CATEGORIES.map((cat) => {
-              const cc = catColor(cat.id);
-              const on = category === cat.id;
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  onPress={() => setCategory(cat.id)}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 6,
-                    backgroundColor: on ? cc.base : tint(cc.base, 0.82),
-                    borderRadius: 9999, paddingHorizontal: 13, paddingVertical: 9,
-                  }}
-                >
-                  <Icon name={PIN_ICON[cat.id] ?? 'mapPin'} size={16} color={cc.deep} />
-                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: cc.deep }}>{cat.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+            {/* ── Name ─────────────────────────────────────────────────── */}
+            <FieldLabel>Name</FieldLabel>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g. The little bridge"
+              placeholderTextColor={LK.ink70}
+              style={{
+                backgroundColor: LK.ivory, borderRadius: 16, padding: 14,
+                fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso,
+                marginBottom: 18, ...theme.shadow.sm,
+              }}
+            />
 
-          <FieldLabel>Date visited</FieldLabel>
-          <DateField value={visitedDate} onChange={setVisitedDate} />
-        </ScrollView>
-      </View>
+            {/* ── Place ────────────────────────────────────────────────── */}
+            <FieldLabel>Place</FieldLabel>
+            <TextInput
+              value={placeName}
+              onChangeText={setPlaceName}
+              placeholder="City or neighbourhood"
+              placeholderTextColor={LK.ink70}
+              style={{
+                backgroundColor: LK.ivory, borderRadius: 16, padding: 14,
+                fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso,
+                marginBottom: 18, ...theme.shadow.sm,
+              }}
+            />
+
+            {/* ── Website chip (if Places returned one) ─────────────────── */}
+            {enrichment?.website && !autoFilling && (
+              <View style={{ marginBottom: 18 }}>
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 8,
+                  backgroundColor: tint(LK.sky, 0.75), borderRadius: 12,
+                  paddingHorizontal: 14, paddingVertical: 10,
+                  alignSelf: 'flex-start',
+                }}>
+                  <Icon name="share" size={14} color={shade(LK.sky, 0.5)} />
+                  <Text
+                    numberOfLines={1}
+                    style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: shade(LK.sky, 0.5) }}
+                  >
+                    {enrichment.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* ── Category ────────────────────────────────────────────── */}
+            <FieldLabel>Category</FieldLabel>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+              {PIN_CATEGORIES.map((cat) => {
+                const cc = catColor(cat.id);
+                const on = category === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setCategory(cat.id)}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 6,
+                      backgroundColor: on ? cc.base : tint(cc.base, 0.82),
+                      borderRadius: 9999, paddingHorizontal: 13, paddingVertical: 9,
+                    }}
+                  >
+                    <Icon name={PIN_ICON[cat.id] ?? 'mapPin'} size={16} color={cc.deep} />
+                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: cc.deep }}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* ── Date visited ─────────────────────────────────────────── */}
+            <FieldLabel>Date visited</FieldLabel>
+            <DateField value={visitedDate} onChange={setVisitedDate} />
+          </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -180,7 +341,10 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginBottom: 8 }}>
+    <Text style={{
+      fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800',
+      letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginBottom: 8,
+    }}>
       {children}
     </Text>
   );

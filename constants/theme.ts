@@ -1,23 +1,39 @@
+// Canonical design tokens — names + values match docs/DESIGN.md §3.
 export const LK = {
-  cream: '#FFF6E3',
-  creamDeep: '#F6EBD2',
-  ivory: '#FFFDF7',
-  ink: '#2A211A',
+  // Canvas & surfaces (§3)
+  parchment: '#F3E9D2',     // app background — the "page"
+  parchmentDeep: '#F6EBD2', // pressed / deeper parchment
+  ivory: '#FBF5E8',         // default card surface
+  vellum: '#FFFDF7',        // raised cards, hero, modals, sheets
+
+  // Ink & text (§3)
+  espresso: '#2A211A',          // primary text, hand-drawn borders
+  sepia: '#6E6253',             // secondary text (solid)
+  faded: '#9A8A63',             // captions, hints — decorative only
+  hairline: 'rgba(42,33,26,0.10)', // subtle dividers
+  // Translucent ink variants — AA-verified for body secondary/decoration.
   ink70: 'rgba(42,33,26,0.66)',
   ink45: 'rgba(42,33,26,0.45)',
-  line: 'rgba(42,33,26,0.10)',
-  gold: '#FFC94D',
-  coral: '#FF7A6B',
-  pink: '#FF9EC4',
-  lilac: '#9B8CFF',
-  sky: '#5BB8E8',
-  mint: '#5FC79B',
-  sage: '#A8D08D',
-  amber: '#F6A94A',
+
+  // Brand accents (§3)
+  coral: '#FF7A6B',     // Lo coral — primary action, love
+  sky: '#5BB8E8',       // Kit sky — cool accent, info
+  blush: '#FF9EC4',     // playful, nudges, Love Cards
+  marigold: '#FFC94D',  // stars, day accent, highlights
+  gold: '#C2873C',      // treasured touches, Letters, warm pill borders
+  sage: '#A8D08D',      // calm/nature, success
+  lilac: '#9B8CFF',     // play/games
+
+  // Semantic (§3)
+  success: '#5FC79B',
+  warning: '#F6A94A',
+  danger: '#E5705F',
+  info: '#5BB8E8',
+
+  // Extended palette — milestone categories & accents
   teal: '#4FC2C2',
   dusk: '#8FA8C0',
   butter: '#FFE08A',
-  destructive: '#E5705F',
 } as const;
 
 function hexToRgb(h: string): [number, number, number] {
@@ -53,11 +69,11 @@ export function rgba(hex: string, a: number): string {
 }
 
 const CAT: Record<string, string> = {
-  firstDate: LK.coral, trip: LK.sky, moveIn: LK.mint, engagement: LK.pink,
-  wedding: LK.gold, pet: LK.lilac, job: LK.amber, newHome: LK.teal,
-  loss: LK.dusk, custom: LK.sage, achievement: LK.butter, firstTime: LK.pink,
-  anniversary: LK.coral, proposal: LK.pink, other: LK.sage,
-  restaurant: LK.coral, home: LK.mint, hiddenGem: LK.lilac,
+  firstDate: LK.coral, trip: LK.sky, moveIn: LK.success, engagement: LK.blush,
+  wedding: LK.marigold, pet: LK.lilac, job: LK.warning, newHome: LK.teal,
+  loss: LK.dusk, custom: LK.sage, achievement: LK.butter, firstTime: LK.blush,
+  anniversary: LK.coral, proposal: LK.blush, other: LK.sage,
+  restaurant: LK.coral, home: LK.success, hiddenGem: LK.lilac,
 };
 
 export function catColor(key: string): { base: string; soft: string; mid: string; deep: string } {
@@ -71,6 +87,8 @@ export const theme = {
     heading: 'BricolageGrotesque',
     body: 'PlusJakartaSans',
     serif: 'Newsreader',
+    hand: 'ShantellSans',
+    handMedium: 'ShantellSans-Medium',
   },
   radii: {
     sm: 16,
@@ -90,20 +108,20 @@ export const theme = {
   // WCAG-safe: `secondary` (ink70 ≈ 4.85:1) passes AA; reserve `tertiary`
   // (ink45 ≈ 2.6:1) for decoration only — dividers, em-dash placeholders.
   text: {
-    primary: LK.ink,
+    primary: LK.espresso,
     secondary: LK.ink70,
     tertiary: LK.ink45,
   },
   shadow: {
     card: {
-      shadowColor: LK.ink,
+      shadowColor: LK.espresso,
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.09,
       shadowRadius: 22,
       elevation: 5,
     },
     sm: {
-      shadowColor: LK.ink,
+      shadowColor: LK.espresso,
       shadowOffset: { width: 0, height: 5 },
       shadowOpacity: 0.06,
       shadowRadius: 14,

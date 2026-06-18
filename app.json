@@ -10,21 +10,28 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "favicon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "locket",
     "ios": {
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.siren96.locket",
+      "appleTeamId": "6BSN47U3U2",
       "associatedDomains": [
         "applinks:rdlocket1012-lgtm.github.io"
       ],
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.siren96.locket"
+        ]
+      },
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Locket reads your photos locally to surface On This Day memories. Photos never leave your device.",
         "NSCameraUsageDescription": "Locket uses your camera to take photos for milestones and map pins.",
         "NSLocationWhenInUseUsageDescription": "Locket uses your location to suggest map pins.",
         "NSUserNotificationsUsageDescription": "Locket sends On This Day and partner activity notifications.",
+        "NSCalendarsUsageDescription": "Locket adds your date nights and anniversaries to your calendar so you never miss a moment together.",
+        "NSCalendarsFullAccessUsageDescription": "Locket adds your date nights and anniversaries to your calendar so you never miss a moment together.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -66,7 +73,34 @@
         {
           "locationWhenInUsePermission": "Locket uses your location to help you pin places you visit together."
         }
-      ]
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": ""
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Locket uses your microphone to record voice letters for your partner."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Locket uses your microphone to record voice letters for your partner.",
+          "speechRecognitionPermission": "Locket transcribes your voice letters on-device so they're readable and searchable."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Locket adds your date nights and anniversaries to your calendar so you never miss a moment together."
+        }
+      ],
+      "@bacons/apple-targets",
+      "expo-asset"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

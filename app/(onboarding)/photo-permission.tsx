@@ -1,15 +1,16 @@
 import React from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LK, tint, shade, theme } from '@/constants/theme';
-import { Btn, StepDots } from '@/components/ui';
+import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { Shell, PrimaryCta, QuietCta } from '@/components/onboarding/Shell';
+import { success } from '@/lib/haptics';
 
 function PreviewCard() {
   return (
-    <View style={{ borderRadius: 24, overflow: 'hidden', height: 200, transform: [{ rotate: '-2deg' }] }}>
+    <View style={{ borderRadius: 24, overflow: 'hidden', height: 200, transform: [{ rotate: '-2deg' }], ...theme.shadow.card }}>
       <View style={{ flex: 1, backgroundColor: tint(LK.sky, 0.35) }}>
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, backgroundColor: 'rgba(20,15,10,0.55)' }} />
         <View style={{ position: 'absolute', bottom: 16, left: 18 }}>
@@ -26,61 +27,42 @@ function PreviewCard() {
 }
 
 export default function PhotoPermissionScreen() {
-  async function handleAllow() {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    await AsyncStorage.setItem('photo_permission_asked', 'true');
-    await AsyncStorage.setItem('onboarding_done', 'true');
+  async function done() {
+    await AsyncStorage.multiSet([
+      ['photo_permission_asked', 'true'],
+      ['onboarding_done', 'true'],
+    ]);
     router.replace('/(tabs)');
   }
 
-  async function handleSkip() {
-    await AsyncStorage.setItem('photo_permission_asked', 'true');
-    await AsyncStorage.setItem('onboarding_done', 'true');
-    router.replace('/(tabs)');
+  async function handleAllow() {
+    await MediaLibrary.requestPermissionsAsync();
+    success();
+    await done();
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
-      <TouchableOpacity
-        onPress={() => router.back()}
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        style={{ position: 'absolute', top: 56, left: 22, zIndex: 10, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
-      >
-        <Icon name="chevL" size={22} color={LK.ink} />
-      </TouchableOpacity>
-      <View style={{ flex: 1, padding: 30, justifyContent: 'center' }}>
-        <Text style={{
-          fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 31,
-          color: LK.ink, letterSpacing: -1, lineHeight: 36, marginBottom: 12,
-        }}>
-          Bring your photos to life
-        </Text>
-        <Text style={{
-          fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70,
-          lineHeight: 24, maxWidth: 295, marginBottom: 28,
-        }}>
-          Locket can surface your existing photos in{' '}
-          <Text style={{ fontWeight: '700', color: LK.ink }}>On This Day</Text>
-          . Your photos never leave your device.
-        </Text>
+    <Shell
+      step={6}
+      total={6}
+      title="One last thing — your photos"
+      why="On This Day quietly resurfaces moments from this date in past years. Photos never leave your phone."
+      footer={
+        <>
+          <PrimaryCta label="Allow photo access" onPress={handleAllow} />
+          <QuietCta label="Maybe later" onPress={done} />
+        </>
+      }
+    >
+      <View style={{ marginTop: 34 }}>
         <PreviewCard />
         <Text style={{
           fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70,
-          textAlign: 'center', marginTop: 20, lineHeight: 18,
+          textAlign: 'center', marginTop: 22, lineHeight: 18,
         }}>
-          Photos are read locally and never uploaded. Read our Privacy Policy in Settings.
+          Read locally, never uploaded. Privacy Policy lives in Settings.
         </Text>
       </View>
-
-      <View style={{ padding: 22, paddingBottom: 36, gap: 12 }}>
-        <Btn full kind="primary" onPress={handleAllow}>
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: '#fff' }}>Allow photo access</Text>
-        </Btn>
-        <Btn full kind="ghost" onPress={handleSkip}>
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.ink70 }}>Not now</Text>
-        </Btn>
-        <StepDots total={5} current={4} />
-      </View>
-    </SafeAreaView>
+    </Shell>
   );
 }

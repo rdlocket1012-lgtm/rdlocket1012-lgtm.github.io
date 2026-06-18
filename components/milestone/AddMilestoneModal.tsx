@@ -74,7 +74,7 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Pr
         style={{ flex: 1, justifyContent: 'flex-end' }}
       >
       <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={onClose} activeOpacity={1} />
-      <View style={{ backgroundColor: LK.cream, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
+      <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
         <View style={{ paddingTop: 14, paddingBottom: 6, alignItems: 'center' }}>
           <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
         </View>
@@ -84,11 +84,11 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Pr
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.ink }}>{editing ? 'Edit milestone' : 'New milestone'}</Text>
+          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>{editing ? 'Edit milestone' : 'New milestone'}</Text>
           <TouchableOpacity
             onPress={handleSave}
             disabled={!title.trim() || saving}
-            style={{ backgroundColor: title.trim() ? LK.ink : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
+            style={{ backgroundColor: title.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
           >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: title.trim() ? '#fff' : LK.ink70 }}>Save</Text>
           </TouchableOpacity>
@@ -127,7 +127,7 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Pr
             onChangeText={setTitle}
             placeholder="e.g. Our first trip"
             placeholderTextColor={LK.ink70}
-            style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink, marginBottom: 18, ...theme.shadow.sm }}
+            style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso, marginBottom: 18, ...theme.shadow.sm }}
           />
 
           {/* Date */}
@@ -149,7 +149,7 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Pr
               style={{
                 backgroundColor: LK.ivory, borderRadius: 16, padding: 14,
                 fontFamily: theme.fonts.serif, fontStyle: 'italic',
-                fontSize: 17, color: LK.ink, minHeight: 96,
+                fontSize: 17, color: LK.espresso, minHeight: 96,
                 textAlignVertical: 'top', lineHeight: 26,
                 opacity: isPremium ? 1 : 0.5,
                 ...theme.shadow.sm,
@@ -158,10 +158,10 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Pr
             {!isPremium && (
               <TouchableOpacity
                 onPress={onPaywall}
-                style={{ position: 'absolute', inset: 0, borderRadius: 16, backgroundColor: rgba(LK.cream, 0.4), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 } as any}
+                style={{ position: 'absolute', inset: 0, borderRadius: 16, backgroundColor: rgba(LK.parchment, 0.4), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 } as any}
               >
-                <Icon name="crown" size={16} color={shade(LK.gold, 0.5)} />
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: shade(LK.gold, 0.5) }}>Rich notes are Premium</Text>
+                <Icon name="crown" size={16} color={shade(LK.marigold, 0.5)} />
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: shade(LK.marigold, 0.5) }}>Rich notes are Premium</Text>
               </TouchableOpacity>
             )}
           </View>

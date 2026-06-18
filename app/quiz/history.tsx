@@ -10,7 +10,7 @@ import { usePartner } from '@/hooks/usePartner';
 import { QuizRow, resolveQuiz, resolveComments } from '@/stores/quiz.store';
 import { QUIZ_QUESTIONS, LETTERS } from '@/constants/quiz-questions';
 
-const OPTION_COLORS = [LK.coral, LK.gold, LK.lilac, LK.mint];
+const OPTION_COLORS = [LK.coral, LK.marigold, LK.lilac, LK.success];
 const CATEGORY_LABEL: Record<string, string> = {
   casual: 'Just for fun',
   romantic: 'Cozy & sweet',
@@ -51,15 +51,15 @@ function HistoryCard({ row, partnerName }: { row: QuizRow; partnerName: string }
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: LK.ink70 }}>
           {today ? 'Today' : formatDate(row.quiz_date)}
         </Text>
-        <View style={{ backgroundColor: tint(LK.gold, 0.7), borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 3 }}>
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 10.5, color: shade(LK.gold, 0.45) }}>
+        <View style={{ backgroundColor: tint(LK.marigold, 0.7), borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 3 }}>
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 10.5, color: shade(LK.marigold, 0.45) }}>
             {CATEGORY_LABEL[q.category] ?? q.category}
           </Text>
         </View>
       </View>
 
       {/* Question */}
-      <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 16, color: LK.ink, lineHeight: 24, marginBottom: 14 }}>
+      <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 16, color: LK.espresso, lineHeight: 24, marginBottom: 14 }}>
         {q.prompt}
       </Text>
 
@@ -109,12 +109,12 @@ function HistoryCard({ row, partnerName }: { row: QuizRow; partnerName: string }
 
 function ResultRow({ label, right, line }: { label: string; right: boolean; line: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: tint(right ? LK.mint : LK.amber, 0.4), borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 }}>
-      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: right ? LK.mint : 'rgba(42,33,26,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: tint(right ? LK.success : LK.warning, 0.4), borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 }}>
+      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: right ? LK.success : 'rgba(42,33,26,0.18)', alignItems: 'center', justifyContent: 'center' }}>
         <Icon name={right ? 'check' : 'x'} size={12} color={right ? '#fff' : LK.ink70} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: LK.ink }}>{label}</Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: LK.espresso }}>{label}</Text>
         <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, lineHeight: 16 }}>{line}</Text>
       </View>
     </View>
@@ -148,7 +148,7 @@ export default function QuizHistoryScreen() {
   const theyKnew = completed.filter(r => r.partnerGuessedRight).length;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <ScreenHeader eyebrow="Daily Match" title="Quiz History" onBack={() => router.back()} />
 
       {/* Stats strip */}
@@ -160,7 +160,7 @@ export default function QuizHistoryScreen() {
             { label: `${partnerName} knew you`, value: theyKnew },
           ].map(({ label, value }) => (
             <View key={label} style={{ flex: 1, backgroundColor: LK.ivory, borderRadius: 16, padding: 12, alignItems: 'center', ...theme.shadow.sm }}>
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.ink }}>{value}</Text>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso }}>{value}</Text>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, color: LK.ink70, marginTop: 2, textAlign: 'center' }}>{label}</Text>
             </View>
           ))}
@@ -169,11 +169,11 @@ export default function QuizHistoryScreen() {
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={LK.ink} />
+          <ActivityIndicator color={LK.espresso} />
         </View>
       ) : rows.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 22, color: LK.ink, textAlign: 'center', marginBottom: 10 }}>
+          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 22, color: LK.espresso, textAlign: 'center', marginBottom: 10 }}>
             No quizzes yet
           </Text>
           <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70, textAlign: 'center', lineHeight: 22 }}>

@@ -7,6 +7,9 @@ export type PartnerProfile = {
   display_name: string | null;
   avatar_url: string | null;
   status_emoji: string | null;
+  created_at: string | null;
+  timezone: string | null;
+  nudge_haptics: boolean | null;
 };
 
 /** Detects whether a second person has joined the couple, with Realtime updates. */
@@ -30,7 +33,7 @@ export function usePartner() {
     const fetch = () =>
       supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, status_emoji')
+        .select('id, display_name, avatar_url, status_emoji, created_at, timezone, nudge_haptics')
         .eq('couple_id', coupleId)
         .neq('id', myId)
         .maybeSingle()

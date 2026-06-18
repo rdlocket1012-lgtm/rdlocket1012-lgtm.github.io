@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 import { notifyPartner } from '@/lib/push';
+import { setPendingInvite, clearPendingInvite } from '@/lib/pending-invite';
 
 export default function InviteScreen() {
   const { token } = useLocalSearchParams<{ token?: string }>();
@@ -19,17 +20,16 @@ export default function InviteScreen() {
     (async () => {
       if (!token) { setPhase('error'); setError('This invite link is missing its code.'); return; }
       try {
-        // Ensure a session exists — but do NOT call bootstrap_couple here.
-        // Creating a couple for the joiner before join_couple runs would leave
-        // an orphan couple in the DB once join_couple moves them to the inviter's couple.
-        let { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          if (error) throw new Error(`Sign-in failed: ${error.message}`);
-          session = data.session;
-          if (session) useAuthStore.getState().setSession(session);
+        // A real, recoverable account is required to join — anonymous accounts
+        // can't survive a reinstall. If there's no real session yet, stash the
+        // token and send them through sign-up; the auth screens resume the join.
+        const { data: { session } } = await supabase.auth.getSession();
+        const isReal = !!session && !session.user.is_anonymous;
+        if (!isReal) {
+          await setPendingInvite(token);
+          router.replace('/(auth)/sign-up');
+          return;
         }
-        if (!session) throw new Error('Could not establish a session.');
         setPhase('ready');
       } catch (e: any) {
         setPhase('error');
@@ -47,6 +47,7 @@ export default function InviteScreen() {
       setError(rpcError.message);
       return;
     }
+    await clearPendingInvite();
     const uid = useAuthStore.getState().user?.id ?? useAuthStore.getState().profile?.id;
     if (uid) await useAuthStore.getState().fetchProfile(uid);
 
@@ -61,9 +62,9 @@ export default function InviteScreen() {
       if (data) setCoupleInfo(data);
     }
 
-    // Notify the creator — "She's here 💛"
+    // Notify the creator the moment their person arrives.
     try {
-      await notifyPartner('partner_joined', "She's here 💛", "Your partner just joined your Locket.");
+      await notifyPartner('partner_joined', "They're here 💛", 'Your person just joined your Locket.');
     } catch { /* best-effort */ }
 
     // Mark onboarding complete so re-opening the app goes straight to tabs.
@@ -73,34 +74,36 @@ export default function InviteScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <View style={{ flex: 1, padding: 30, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
         {phase === 'loading' || phase === 'joining' ? (
           <>
-            <ActivityIndicator color={LK.ink} size="large" />
+            <ActivityIndicator color={LK.espresso} size="large" />
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70 }}>
               {phase === 'joining' ? 'Linking your spaces…' : 'Getting things ready…'}
             </Text>
           </>
         ) : phase === 'done' ? (
-          <WelcomeHero coupleInfo={coupleInfo} onEnter={() => router.replace('/(tabs)')} />
+          // Joiner mini-flow: name → photo → home. Anchor date and connection
+          // style were already set by the inviter — never re-asked.
+          <WelcomeHero coupleInfo={coupleInfo} onEnter={() => router.replace('/(onboarding)/name?joiner=1')} />
         ) : phase === 'error' ? (
           <>
             <IconChip color={LK.coral} size={84}><Icon name="alert" size={40} color={shade(LK.coral, 0.5)} /></IconChip>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: LK.ink, textAlign: 'center' }}>Couldn't join</Text>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: LK.espresso, textAlign: 'center' }}>Couldn't join</Text>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70, textAlign: 'center', maxWidth: 290, lineHeight: 22 }}>{error}</Text>
-            <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={{ backgroundColor: LK.ink, borderRadius: 9999, paddingHorizontal: 26, paddingVertical: 15, marginTop: 8 }}>
+            <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 26, paddingVertical: 15, marginTop: 8 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Go to Locket</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             <IconChip color={LK.sky} size={92}><Icon name="heart" size={44} color={shade(LK.sky, 0.5)} /></IconChip>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 30, color: LK.ink, textAlign: 'center', letterSpacing: -1 }}>Join your partner</Text>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 30, color: LK.espresso, textAlign: 'center', letterSpacing: -1 }}>Join your partner</Text>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70, textAlign: 'center', maxWidth: 290, lineHeight: 22 }}>
               You've been invited to share a Locket space — your milestones, letters, map and Premium, together.
             </Text>
-            <TouchableOpacity onPress={handleJoin} style={{ backgroundColor: LK.ink, borderRadius: 9999, paddingHorizontal: 32, paddingVertical: 16, marginTop: 10, ...theme.shadow.card }}>
+            <TouchableOpacity onPress={handleJoin} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 32, paddingVertical: 16, marginTop: 10, ...theme.shadow.card }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: '#fff' }}>Join now</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={{ paddingVertical: 8 }}>
@@ -113,8 +116,7 @@ export default function InviteScreen() {
   );
 }
 
-const PERSONAL_MESSAGE =
-  "Hey Daljeet, I built this thinking of us — a place to grow together, collect memories, and have fun along the way. I hope someday it helps other people feel a little closer too. Hope you like it. Give honest opinions haan.\n\nLove you. — Rendell";
+const FALLBACK_MESSAGE = "Welcome to your shared space — it's been waiting for you. 💛";
 
 function WelcomeHero({ coupleInfo, onEnter }: {
   coupleInfo: { nickname: string; start_date: string | null; welcome_message?: string | null } | null;
@@ -162,30 +164,30 @@ function WelcomeHero({ coupleInfo, onEnter }: {
       {/* Text block */}
       <Animated.View style={{ opacity: textOpacity, transform: [{ translateY: textY }], alignItems: 'center', gap: 10 }}>
         {coupleInfo?.nickname && (
-          <View style={{ backgroundColor: tint(LK.gold, 0.7), borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 4 }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 13, letterSpacing: 0.5, color: shade(LK.gold, 0.5) }}>
+          <View style={{ backgroundColor: tint(LK.marigold, 0.7), borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 4 }}>
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 13, letterSpacing: 0.5, color: shade(LK.marigold, 0.5) }}>
               {coupleInfo.nickname}
             </Text>
           </View>
         )}
 
-        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 34, color: LK.ink, textAlign: 'center', letterSpacing: -1, lineHeight: 40 }}>
+        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 34, color: LK.espresso, textAlign: 'center', letterSpacing: -1, lineHeight: 40 }}>
           You're in. 💛
         </Text>
 
         {dayCount > 0 && (
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 60, color: LK.ink, letterSpacing: -2, lineHeight: 64 }}>
+          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 60, color: LK.espresso, letterSpacing: -2, lineHeight: 64 }}>
             {dayCount.toLocaleString()}
           </Text>
         )}
         {dayCount > 0 && (
-          <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 22, color: shade(LK.gold, 0.45) }}>
+          <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 22, color: shade(LK.marigold, 0.45) }}>
             days together
           </Text>
         )}
 
         <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 16, color: LK.ink70, textAlign: 'center', lineHeight: 26, marginTop: 8, maxWidth: 290 }}>
-          {coupleInfo?.welcome_message ?? PERSONAL_MESSAGE}
+          {coupleInfo?.welcome_message ?? FALLBACK_MESSAGE}
         </Text>
       </Animated.View>
 
@@ -194,7 +196,7 @@ function WelcomeHero({ coupleInfo, onEnter }: {
         <TouchableOpacity
           onPress={onEnter}
           activeOpacity={0.88}
-          style={{ backgroundColor: LK.ink, borderRadius: 9999, paddingVertical: 17, alignItems: 'center', ...theme.shadow.card }}
+          style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 17, alignItems: 'center', ...theme.shadow.card }}
         >
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: '#fff' }}>
             Open your Locket

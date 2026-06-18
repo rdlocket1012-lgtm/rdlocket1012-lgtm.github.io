@@ -26,7 +26,7 @@ export function Avatar({ initial, color, size = 40, style, imageUrl }: AvatarPro
 
 // ---------- IconChip ----------
 type IconChipProps = { children: React.ReactNode; color?: string; size?: number; soft?: string; style?: ViewStyle };
-export function IconChip({ children, color = LK.gold, size = 44, soft, style }: IconChipProps) {
+export function IconChip({ children, color = LK.marigold, size = 44, soft, style }: IconChipProps) {
   return (
     <View style={[{
       width: size, height: size,
@@ -53,18 +53,18 @@ type BtnProps = {
 };
 export function Btn({ children, onPress, kind = 'primary', color, full, style, textStyle, disabled }: BtnProps) {
   const bgMap: Record<BtnKind, string> = {
-    primary: LK.ink,
-    accent: LK.gold,
+    primary: LK.espresso,
+    accent: LK.marigold,
     soft: 'rgba(42,33,26,0.06)',
     ghost: 'transparent',
     outline: 'transparent',
   };
   const fgMap: Record<BtnKind, string> = {
     primary: '#fff',
-    accent: LK.ink,
-    soft: LK.ink,
-    ghost: LK.ink,
-    outline: LK.ink,
+    accent: LK.espresso,
+    soft: LK.espresso,
+    ghost: LK.espresso,
+    outline: LK.espresso,
   };
   const bg = color && kind === 'accent' ? color : (bgMap[kind] ?? bgMap.primary);
   const fg = fgMap[kind] ?? fgMap.primary;
@@ -153,7 +153,7 @@ export function Sticker({ children, color, tiltDeg = 0, soft, style, onPress, fl
 
 // ---------- Chip pill ----------
 type ChipProps = { children: React.ReactNode; color?: string; active?: boolean; onPress?: () => void; style?: ViewStyle };
-export function Chip({ children, color = LK.gold, active, onPress, style }: ChipProps) {
+export function Chip({ children, color = LK.marigold, active, onPress, style }: ChipProps) {
   const bg = active ? color : tint(color, 0.8);
   const fg = active ? shade(color, 0.62) : shade(color, 0.4);
   return (
@@ -170,28 +170,13 @@ export function Chip({ children, color = LK.gold, active, onPress, style }: Chip
   );
 }
 
-// ---------- StepDots ----------
-export function StepDots({ total, current }: { total: number; current: number }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 7, justifyContent: 'center' }}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View key={i} style={{
-          width: i === current ? 22 : 7, height: 7,
-          borderRadius: 9999,
-          backgroundColor: i === current ? LK.ink : 'rgba(42,33,26,0.18)',
-        }} />
-      ))}
-    </View>
-  );
-}
-
 // ---------- Divider ----------
 export function HDivider() {
-  return <View style={{ height: 1, backgroundColor: LK.line }} />;
+  return <View style={{ height: 1, backgroundColor: LK.hairline }} />;
 }
 
 // ---------- Spinner ----------
-export function Spinner({ color = LK.ink, size = 20 }: { color?: string; size?: number }) {
+export function Spinner({ color = LK.espresso, size = 20 }: { color?: string; size?: number }) {
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2.5, borderColor: 'rgba(42,33,26,0.15)', borderTopColor: color }} />
   );
@@ -202,7 +187,7 @@ export function Toast({ message }: { message: string }) {
   return (
     <View style={{
       position: 'absolute', left: 20, right: 20, bottom: 36,
-      backgroundColor: LK.ink, borderRadius: 9999,
+      backgroundColor: LK.espresso, borderRadius: 9999,
       paddingHorizontal: 20, paddingVertical: 12,
       alignItems: 'center',
       ...theme.shadow.card,

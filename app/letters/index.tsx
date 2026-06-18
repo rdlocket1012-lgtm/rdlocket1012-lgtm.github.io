@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { useLetters } from '@/hooks/useLetters';
 import { useCouple } from '@/hooks/useCouple';
+import { usePartner } from '@/hooks/usePartner';
 import { useAuthStore } from '@/stores/auth.store';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { FREE_LIMITS } from '@/constants/free-limits';
@@ -18,7 +19,14 @@ import type { Letter } from '@/stores/letters.store';
 export default function LettersScreen() {
   const { letters } = useLetters();
   const { isPremium } = useCouple();
+  const { partner } = usePartner();
   const myId = useAuthStore((s) => s.profile?.id);
+  const myProfile = useAuthStore((s) => s.profile);
+
+  const firstName = (name?: string | null, fallback = '') => (name?.trim().split(' ')[0]) || fallback;
+  const initial = (name?: string | null, fallback = '?') => (name?.trim()?.[0]?.toUpperCase()) || fallback;
+  const myName = firstName(myProfile?.display_name, 'You');
+  const partnerName = firstName(partner?.display_name, 'Partner');
   const [order, setOrder] = useState<'new' | 'old'>('new');
   const [sheet, setSheet] = useState<'compose' | 'paywall' | null>(null);
   const atCap = !isPremium && letters.length >= FREE_LIMITS.LETTERS;
@@ -38,14 +46,14 @@ export default function LettersScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Header */}
         <ScreenHeader
           eyebrow="Love"
           title="Letters"
           onBack={() => router.back()}
-          right={<RoundIcon onPress={handleCompose}><Icon name="feather" size={21} color={LK.ink} /></RoundIcon>}
+          right={<RoundIcon onPress={handleCompose}><Icon name="feather" size={21} color={LK.espresso} /></RoundIcon>}
         />
 
         <View style={{ paddingHorizontal: 22, paddingBottom: 4, paddingTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -69,12 +77,12 @@ export default function LettersScreen() {
         <View style={{ paddingHorizontal: 18, paddingTop: 10, gap: 12 }}>
           {sorted.length === 0 && (
             <View style={{ alignItems: 'center', paddingTop: 60, gap: 14 }}>
-              <IconChip color={LK.pink} size={72}><Icon name="feather" size={34} color={shade(LK.pink, 0.5)} /></IconChip>
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 26, color: LK.ink, textAlign: 'center' }}>No letters yet</Text>
+              <IconChip color={LK.blush} size={72}><Icon name="feather" size={34} color={shade(LK.blush, 0.5)} /></IconChip>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 26, color: LK.espresso, textAlign: 'center' }}>No letters yet</Text>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', lineHeight: 22, maxWidth: 250 }}>
                 Write something they'll keep forever.
               </Text>
-              <TouchableOpacity onPress={handleCompose} style={{ backgroundColor: LK.ink, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8 }}>
+              <TouchableOpacity onPress={handleCompose} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Write a letter</Text>
               </TouchableOpacity>
             </View>
@@ -83,14 +91,20 @@ export default function LettersScreen() {
             if (l.is_sealed_until && l.reveal_at && new Date(l.reveal_at) > new Date()) {
               return <SealedRow key={l.id} l={l} premium={isPremium} onPaywall={() => setSheet('paywall')} />;
             }
+            const mine = l.sender_id === myId;
             return (
               <Sticker key={l.id} tiltDeg={i % 2 === 0 ? -0.8 : 0.8} onPress={() => router.push(`/letter/${l.id}`)} style={{ flexDirection: 'row', gap: 13, alignItems: 'flex-start', padding: 16 }}>
-                <Avatar initial={l.sender_id === myId ? 'Y' : 'P'} color={LK.coral} size={42} />
+                <Avatar
+                  initial={mine ? initial(myProfile?.display_name, 'Y') : initial(partner?.display_name, 'P')}
+                  imageUrl={mine ? myProfile?.avatar_url : partner?.avatar_url}
+                  color={mine ? LK.coral : LK.blush}
+                  size={42}
+                />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14.5, color: LK.ink }}>
-                        {l.sender_id === myId ? 'You' : 'Partner'}
+                      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14.5, color: LK.espresso }}>
+                        {mine ? 'You' : partnerName}
                       </Text>
                       {isNew(l) && <NewTag />}
                     </View>
@@ -101,6 +115,11 @@ export default function LettersScreen() {
                   <Text numberOfLines={2} style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 15.5, color: LK.ink70, marginTop: 5, lineHeight: 22 }}>
                     "{l.body_rich_html.replace(/<[^>]+>/g, '').slice(0, 80)}…"
                   </Text>
+                  {l.reaction && (
+                    <View style={{ alignSelf: 'flex-start', marginTop: 8, backgroundColor: tint(LK.blush, 0.5), borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 14 }}>{l.reaction}</Text>
+                    </View>
+                  )}
                 </View>
               </Sticker>
             );
@@ -121,24 +140,24 @@ function SealedRow({ l, premium, onPaywall }: { l: Letter; premium: boolean; onP
       activeOpacity={0.85}
       style={{
         borderRadius: theme.radii.lg, padding: 18,
-        backgroundColor: tint(LK.gold, 0.7),
+        backgroundColor: tint(LK.marigold, 0.7),
         ...theme.shadow.sm,
       }}
       accessibilityLabel="Sealed letter"
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
-        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: LK.gold, alignItems: 'center', justifyContent: 'center', flexShrink: 0, shadowColor: LK.gold, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10 }}>
-          <Icon name="lock" size={22} color={shade(LK.gold, 0.6)} />
+        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: LK.marigold, alignItems: 'center', justifyContent: 'center', flexShrink: 0, shadowColor: LK.marigold, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10 }}>
+          <Icon name="lock" size={22} color={shade(LK.marigold, 0.6)} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14.5, color: LK.ink }}>Sealed letter</Text>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: shade(LK.gold, 0.5), fontWeight: '700', marginTop: 3 }}>
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14.5, color: LK.espresso }}>Sealed letter</Text>
+          <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: shade(LK.marigold, 0.5), fontWeight: '700', marginTop: 3 }}>
             Opens {l.reveal_at ? new Date(l.reveal_at).toLocaleDateString() : ''}
           </Text>
         </View>
         {!premium && (
           <View style={{ backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Icon name="crown" size={12} color={shade(LK.gold, 0.5)} />
+            <Icon name="crown" size={12} color={shade(LK.marigold, 0.5)} />
           </View>
         )}
       </View>

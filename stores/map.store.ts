@@ -15,6 +15,11 @@ export type MapPin = {
   visited_date: string | null;
   deleted_at: string | null;
   created_at: string;
+  // Places API enrichment (null until fetched)
+  place_id: string | null;
+  address: string | null;
+  website: string | null;
+  photo_url: string | null;
 };
 
 type MapState = {

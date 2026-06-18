@@ -13,6 +13,9 @@ export type BucketItem = {
   completed_at: string | null;
   deleted_at: string | null;
   created_at: string;
+  latitude: number | null;
+  longitude: number | null;
+  location_name: string | null;
 };
 
 type BucketState = {

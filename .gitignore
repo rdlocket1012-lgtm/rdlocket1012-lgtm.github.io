@@ -31,6 +31,8 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.local
 .env*.local
 
 # typescript
@@ -39,3 +41,14 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# mascot animation intermediates (source GIF/MP4/WebM kept locally, not committed — final .webp are tracked)
+assets/animations/_GIF/
+assets/animations/_source/
+assets/animations/_webm/
+assets/animations/_webp/
+
+# Claude Code tooling / skills (local only — not part of the app)
+.claude/
+.agents/
+skills-lock.json

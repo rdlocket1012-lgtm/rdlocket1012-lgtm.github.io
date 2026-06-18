@@ -12,6 +12,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { NewTag } from '@/components/ui/NewTag';
 import { useCoupons } from '@/hooks/useCoupons';
 import { useCouple } from '@/hooks/useCouple';
+import { usePartner } from '@/hooks/usePartner';
 import { useAuthStore } from '@/stores/auth.store';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { notifyPartner } from '@/lib/push';
@@ -20,10 +21,10 @@ import { iGifted, type Coupon } from '@/stores/coupons.store';
 const firstName = () => (useAuthStore.getState().profile?.display_name || 'Your partner').split(' ')[0];
 
 const COLORS: Record<string, string> = {
-  pink: LK.pink, coral: LK.coral, lilac: LK.lilac,
-  gold: LK.gold, mint: LK.mint, sky: LK.sky, amber: LK.amber,
+  pink: LK.blush, coral: LK.coral, lilac: LK.lilac,
+  gold: LK.marigold, mint: LK.success, sky: LK.sky, amber: LK.warning,
 };
-const couponColor = (k: string) => COLORS[k] ?? LK.pink;
+const couponColor = (k: string) => COLORS[k] ?? LK.blush;
 
 const TEMPLATES = [
   { title: 'One home-cooked meal',         description: 'Your favourite, made with love.',    icon: 'fork',    color: 'coral' },
@@ -35,8 +36,10 @@ const TEMPLATES = [
 ];
 
 export default function CouponsScreen() {
-  const { coupons, addCoupon, redeemCoupon, deleteCoupon } = useCoupons();
+  const { coupons, addCoupon, requestRedeem, cancelRequest, approveRedeem, declineRequest, deleteCoupon } = useCoupons();
   const { couple } = useCouple();
+  const { partner } = usePartner();
+  const partnerName = (partner?.display_name || 'your partner').split(' ')[0];
   const [sheet, setSheet] = useState(false);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -71,22 +74,71 @@ export default function CouponsScreen() {
     }
   }
 
-  function confirmRedeem(c: Coupon) {
+  // Step 1 (recipient): ask to redeem — does NOT consume the coupon.
+  function confirmRequest(c: Coupon) {
     Alert.alert(
       `Redeem "${c.title}"?`,
-      'Your partner will see this has been redeemed.',
+      `${firstName()} will get a request to approve this. It's only used once they say yes.`,
+      [
+        { text: 'Not yet', style: 'cancel' },
+        {
+          text: 'Send request 💛',
+          onPress: async () => {
+            try {
+              await requestRedeem(c.id);
+              notifyPartner('coupon_redeem_request', 'Coupon request 🎟️', `${firstName()} wants to redeem "${c.title}"`);
+              try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
+            } catch (e: any) {
+              Alert.alert('Could not send', e?.message ?? 'Try again.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  async function handleCancelRequest(c: Coupon) {
+    try { await cancelRequest(c.id); } catch (e: any) { Alert.alert('Could not cancel', e?.message ?? 'Try again.'); }
+  }
+
+  // Step 2 (gifter): approve the partner's request → coupon is consumed.
+  function confirmApprove(c: Coupon) {
+    Alert.alert(
+      `Approve "${c.title}"?`,
+      `This marks the coupon as redeemed and lets ${firstName()} know you're on it.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Redeem 💛',
+          text: 'Approve 🎉',
           onPress: async () => {
             try {
-              await redeemCoupon(c.id);
-              notifyPartner('coupon_redeemed', 'Coupon redeemed 🎉', `${firstName()} just redeemed "${c.title}"`);
+              await approveRedeem(c.id);
+              notifyPartner('coupon_redeemed', 'Coupon approved 🎉', `${firstName()} approved "${c.title}" — enjoy!`);
               try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
-              Alert.alert('Redeemed! 🎉', `"${c.title}" is all yours!`);
             } catch (e: any) {
-              Alert.alert('Could not redeem', e?.message ?? 'Try again.');
+              Alert.alert('Could not approve', e?.message ?? 'Try again.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function confirmDecline(c: Coupon) {
+    Alert.alert(
+      `Decline "${c.title}"?`,
+      'The coupon stays unused — your partner can ask again later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Decline',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await declineRequest(c.id);
+              notifyPartner('coupon_declined', 'Not right now 💛', `${firstName()} can't redeem "${c.title}" just yet`);
+            } catch (e: any) {
+              Alert.alert('Could not decline', e?.message ?? 'Try again.');
             }
           },
         },
@@ -97,7 +149,7 @@ export default function CouponsScreen() {
   const hasAnything = coupons.length > 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         <ScreenHeader
           eyebrow="Little favours"
@@ -106,7 +158,7 @@ export default function CouponsScreen() {
           right={
             <TouchableOpacity
               onPress={openCreate}
-              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: LK.ink, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
             >
               <Icon name="plus" size={22} color="#fff" />
             </TouchableOpacity>
@@ -119,13 +171,13 @@ export default function CouponsScreen() {
           <SectionLabel
             icon="gift"
             label="For you"
-            color={LK.pink}
+            color={LK.blush}
             sub="Coupons your partner has gifted you"
           />
           {forMe.length === 0 ? (
             <EmptySlot
               icon="gift"
-              color={LK.pink}
+              color={LK.blush}
               message="No coupons waiting for you yet — your partner hasn't gifted any."
             />
           ) : (
@@ -135,7 +187,9 @@ export default function CouponsScreen() {
                 c={c}
                 mode="recipient"
                 isNew={isNew(c)}
-                onRedeem={() => confirmRedeem(c)}
+                partnerName={partnerName}
+                onRequest={() => confirmRequest(c)}
+                onCancelRequest={() => handleCancelRequest(c)}
               />
             ))
           )}
@@ -160,6 +214,9 @@ export default function CouponsScreen() {
                 key={c.id}
                 c={c}
                 mode="gifter"
+                partnerName={partnerName}
+                onApprove={() => confirmApprove(c)}
+                onDecline={() => confirmDecline(c)}
                 onDelete={() => deleteCoupon(c.id)}
               />
             ))
@@ -188,8 +245,8 @@ export default function CouponsScreen() {
 
           {!hasAnything && (
             <View style={{ alignItems: 'center', paddingTop: 30, gap: 12 }}>
-              <IconChip color={LK.amber} size={66}><Icon name="receipt" size={30} color={shade(LK.amber, 0.5)} /></IconChip>
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 23, color: LK.ink, textAlign: 'center' }}>
+              <IconChip color={LK.warning} size={66}><Icon name="receipt" size={30} color={shade(LK.warning, 0.5)} /></IconChip>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 23, color: LK.espresso, textAlign: 'center' }}>
                 Gift the first coupon
               </Text>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, textAlign: 'center', maxWidth: 260, lineHeight: 21 }}>
@@ -197,7 +254,7 @@ export default function CouponsScreen() {
               </Text>
               <TouchableOpacity
                 onPress={openCreate}
-                style={{ backgroundColor: LK.ink, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 6, flexDirection: 'row', gap: 8, alignItems: 'center' }}
+                style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 6, flexDirection: 'row', gap: 8, alignItems: 'center' }}
               >
                 <Icon name="plus" size={18} color="#fff" />
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Create a coupon</Text>
@@ -212,7 +269,7 @@ export default function CouponsScreen() {
         <Modal animationType="slide" transparent>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
             <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} activeOpacity={1} onPress={() => setSheet(false)} />
-            <View style={{ backgroundColor: LK.cream, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
+            <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
               <View style={{ paddingTop: 14, alignItems: 'center' }}>
                 <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
               </View>
@@ -221,14 +278,14 @@ export default function CouponsScreen() {
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
                 </TouchableOpacity>
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.ink }}>Gift a coupon</Text>
+                  <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>Gift a coupon</Text>
                   <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70 }}>Your partner will receive this</Text>
                 </View>
                 <TouchableOpacity
                   onPress={handleCreate}
                   disabled={picked == null && !title.trim()}
                   style={{
-                    backgroundColor: (picked != null || title.trim()) ? LK.ink : 'rgba(42,33,26,0.15)',
+                    backgroundColor: (picked != null || title.trim()) ? LK.espresso : 'rgba(42,33,26,0.15)',
                     borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10,
                   }}
                 >
@@ -261,7 +318,7 @@ export default function CouponsScreen() {
                       >
                         <IconChip color={col} size={42}><Icon name={t.icon} size={20} color={shade(col, 0.5)} /></IconChip>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 15.5, color: LK.ink }}>{t.title}</Text>
+                          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 15.5, color: LK.espresso }}>{t.title}</Text>
                           <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 1 }}>{t.description}</Text>
                         </View>
                         {on && <Icon name="check" size={18} color={shade(col, 0.5)} />}
@@ -278,14 +335,14 @@ export default function CouponsScreen() {
                   onChangeText={(t) => { setTitle(t); setPicked(null); }}
                   placeholder="e.g. One spontaneous adventure"
                   placeholderTextColor={LK.ink70}
-                  style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink, marginBottom: 10, ...theme.shadow.sm }}
+                  style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso, marginBottom: 10, ...theme.shadow.sm }}
                 />
                 <TextInput
                   value={desc}
                   onChangeText={setDesc}
                   placeholder="Add a little detail (optional)"
                   placeholderTextColor={LK.ink70}
-                  style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink, ...theme.shadow.sm }}
+                  style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso, ...theme.shadow.sm }}
                 />
               </ScrollView>
             </View>
@@ -305,7 +362,7 @@ function SectionLabel({ icon, label, color, sub, style }: { icon: string; label:
         <Icon name={icon} size={14} color={shade(color, 0.45)} />
       </View>
       <View>
-        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 13.5, color: LK.ink }}>{label}</Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 13.5, color: LK.espresso }}>{label}</Text>
         <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70 }}>{sub}</Text>
       </View>
     </View>
@@ -322,22 +379,29 @@ function EmptySlot({ icon, color, message }: { icon: string; color: string; mess
 }
 
 function CouponCard({
-  c, mode, onRedeem, onDelete, isNew = false,
+  c, mode, partnerName = 'your partner', onRequest, onCancelRequest, onApprove, onDecline, onDelete, isNew = false,
 }: {
   c: Coupon;
   mode: 'recipient' | 'gifter' | 'redeemed';
-  onRedeem?: () => void;
+  partnerName?: string;
+  onRequest?: () => void;
+  onCancelRequest?: () => void;
+  onApprove?: () => void;
+  onDecline?: () => void;
   onDelete?: () => void;
   isNew?: boolean;
 }) {
   const col = couponColor(c.color);
   const isRedeemed = mode === 'redeemed';
+  const isPending = !isRedeemed && !!c.redeem_requested_at;
 
   return (
     <View style={{
       backgroundColor: isRedeemed ? LK.ivory : tint(col, 0.78),
       borderRadius: theme.radii.lg, padding: 16,
       opacity: isRedeemed ? 0.7 : 1,
+      borderWidth: mode === 'gifter' && isPending ? 2 : 0,
+      borderColor: mode === 'gifter' && isPending ? col : 'transparent',
       ...theme.shadow.card,
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
@@ -346,7 +410,7 @@ function CouponCard({
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 18, color: LK.ink, textDecorationLine: isRedeemed ? 'line-through' : 'none', flexShrink: 1 }}>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 18, color: LK.espresso, textDecorationLine: isRedeemed ? 'line-through' : 'none', flexShrink: 1 }}>
               {c.title}
             </Text>
             {isNew && <NewTag />}
@@ -359,32 +423,84 @@ function CouponCard({
               Redeemed {new Date(c.redeemed_at).toLocaleDateString()}
             </Text>
           )}
-          {mode === 'gifter' && !isRedeemed && (
+          {/* Recipient, pending: request awaiting approval */}
+          {mode === 'recipient' && isPending && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 }}>
+              <Icon name="clockTab" size={11} color={shade(col, 0.45)} />
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, color: shade(col, 0.5) }}>
+                Waiting for {partnerName} to approve
+              </Text>
+            </View>
+          )}
+          {/* Gifter, pending: partner is asking */}
+          {mode === 'gifter' && isPending && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 }}>
+              <Icon name="gift" size={11} color={shade(col, 0.45)} />
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11.5, color: shade(col, 0.5) }}>
+                {partnerName} wants to redeem this 🎟️
+              </Text>
+            </View>
+          )}
+          {/* Gifter, idle: waiting for them to ask */}
+          {mode === 'gifter' && !isPending && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 }}>
               <Icon name="lock" size={11} color={shade(col, 0.45)} />
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, color: shade(col, 0.5) }}>
-                Waiting for your partner to redeem
+                Waiting for {partnerName} to redeem
               </Text>
             </View>
           )}
         </View>
-        {onDelete && (
+        {/* Hide trash while a request is in flight to avoid mis-taps */}
+        {onDelete && !isPending && (
           <TouchableOpacity onPress={onDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Icon name="trash" size={16} color={isRedeemed ? LK.ink70 : shade(col, 0.4)} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Only the recipient can redeem */}
-      {mode === 'recipient' && onRedeem && (
+      {/* Recipient idle → request to redeem */}
+      {mode === 'recipient' && !isPending && onRequest && (
         <TouchableOpacity
-          onPress={onRedeem}
+          onPress={onRequest}
           activeOpacity={0.85}
-          style={{ marginTop: 13, backgroundColor: LK.ink, borderRadius: 9999, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, ...theme.shadow.sm }}
+          style={{ marginTop: 13, backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, ...theme.shadow.sm }}
         >
           <Icon name="gift" size={17} color="#fff" />
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, letterSpacing: 0.5, color: '#fff' }}>REDEEM</Text>
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, letterSpacing: 0.5, color: '#fff' }}>REQUEST TO REDEEM</Text>
         </TouchableOpacity>
+      )}
+
+      {/* Recipient pending → cancel request */}
+      {mode === 'recipient' && isPending && onCancelRequest && (
+        <TouchableOpacity
+          onPress={onCancelRequest}
+          activeOpacity={0.85}
+          style={{ marginTop: 13, backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 12, alignItems: 'center' }}
+        >
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.ink70 }}>Cancel request</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Gifter pending → approve / decline */}
+      {mode === 'gifter' && isPending && (
+        <View style={{ flexDirection: 'row', gap: 9, marginTop: 13 }}>
+          <TouchableOpacity
+            onPress={onDecline}
+            activeOpacity={0.85}
+            style={{ flex: 1, backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 13, alignItems: 'center' }}
+          >
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: LK.ink70 }}>Decline</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onApprove}
+            activeOpacity={0.85}
+            style={{ flex: 1.6, backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7, ...theme.shadow.sm }}
+          >
+            <Icon name="check" size={16} color="#fff" />
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14.5, letterSpacing: 0.4, color: '#fff' }}>APPROVE</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );

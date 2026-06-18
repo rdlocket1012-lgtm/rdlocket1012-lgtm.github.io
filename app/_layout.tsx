@@ -1,16 +1,26 @@
 import React, { useEffect } from 'react';
 import { Stack, router } from 'expo-router';
+import Mapbox from '@rnmapbox/maps';
+
+// Initialise Mapbox once at app startup — must run before any MapView renders.
+try {
+  Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '');
+} catch {
+  // guard against missing native module in dev/OTA scenarios
+}
 import { useURL } from 'expo-linking';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuth } from '@/hooks/useAuth';
+import { useSyncTimezone } from '@/hooks/useSyncTimezone';
 import { OfflineBanner } from '@/components/offline/OfflineBanner';
 import { setupPurchases } from '@/lib/revenuecat';
 import { supabase } from '@/lib/supabase';
 import { registerForPush } from '@/lib/push';
-import '@/lib/notifications';
+import { registerNudgeCategories, setupNudgeResponseHandler } from '@/lib/notifications';
+import { routeAfterAuth } from '@/lib/post-auth';
 
 /** Extracts key=value pairs from both the query string AND hash of a URL. */
 function parseAllParams(url: string): Record<string, string> {
@@ -31,6 +41,9 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const { session, loading } = useAuth();
 
+  // Keep our own timezone synced so the partner sees our correct local time.
+  useSyncTimezone();
+
   // useURL() from expo-router gives us the active deep-link URL reactively —
   // it fires on cold-start AND when the app is foregrounded via a link.
   const url = useURL();
@@ -45,8 +58,13 @@ export default function RootLayout() {
 
     if (params.code) {
       // PKCE flow (Supabase default): exchange the code for a session.
-      // onAuthStateChange fires PASSWORD_RECOVERY after this succeeds.
-      await supabase.auth.exchangeCodeForSession(params.code);
+      // For recovery, onAuthStateChange fires PASSWORD_RECOVERY (handled below).
+      const { data } = await supabase.auth.exchangeCodeForSession(params.code);
+      // Email-confirmation link → session is now live; route into the app
+      // (onboarding if not set up yet, home if already a couple).
+      if (url.includes('confirm-email') && data.session) {
+        router.replace((await routeAfterAuth(data.session.user.id)) as never);
+      }
       return;
     }
 
@@ -58,6 +76,13 @@ export default function RootLayout() {
       });
     }
   }
+
+  // Register the interactive "Bite Back!" notification category + its handler.
+  useEffect(() => {
+    registerNudgeCategories();
+    const teardown = setupNudgeResponseHandler();
+    return teardown;
+  }, []);
 
   // Routes to reset-password once exchangeCodeForSession/setSession establishes a recovery session.
   useEffect(() => {
@@ -84,6 +109,8 @@ export default function RootLayout() {
     PlusJakartaSans: require('../assets/fonts/PlusJakartaSans-Regular.ttf'),
     'PlusJakartaSans-Bold': require('../assets/fonts/PlusJakartaSans-Bold.ttf'),
     Newsreader: require('../assets/fonts/Newsreader-Regular.ttf'),
+    ShantellSans: require('../assets/fonts/ShantellSans-Regular.ttf'),
+    'ShantellSans-Medium': require('../assets/fonts/ShantellSans-Medium.ttf'),
   });
 
   const fontsReady = fontsLoaded || !!fontError;
@@ -104,11 +131,15 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)/forgot-password" />
         <Stack.Screen name="(auth)/reset-password" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="map/index" />
         <Stack.Screen name="milestone/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="milestone/photo-viewer" options={{ presentation: 'modal', animation: 'fade' }} />
         <Stack.Screen name="invite" options={{ presentation: 'modal' }} />
         <Stack.Screen name="letters/index" />
         <Stack.Screen name="coupons/index" />
         <Stack.Screen name="letter/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="games/index" />
+        <Stack.Screen name="games/this-or-that" />
         <Stack.Screen name="bucket-list/index" />
         <Stack.Screen name="bucket-list/add-item" options={{ presentation: 'modal' }} />
         <Stack.Screen name="settings/index" options={{ presentation: 'modal' }} />

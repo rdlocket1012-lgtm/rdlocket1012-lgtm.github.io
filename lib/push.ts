@@ -43,15 +43,20 @@ export async function registerForPush(profileId: string): Promise<void> {
   }
 }
 
-export type PushType = 'letter' | 'coupon_gift' | 'coupon_redeemed' | 'milestone' | 'quiz' | 'partner_joined';
+export type PushType = 'letter' | 'coupon_gift' | 'coupon_redeem_request' | 'coupon_redeemed' | 'coupon_declined' | 'milestone' | 'quiz' | 'partner_joined' | 'nudge_hug' | 'nudge_kiss_request' | 'letter_reaction' | 'bite' | 'thumb_kiss' | 'live_invite';
 
 /**
  * Asks the secure `notify` Edge Function to push a message to the caller's
  * partner. Best-effort and fire-and-forget — failures never surface to the user.
  */
-export async function notifyPartner(type: PushType, title: string, body: string): Promise<void> {
+export async function notifyPartner(
+  type: PushType,
+  title: string,
+  body: string,
+  categoryId?: string,
+): Promise<void> {
   try {
-    await supabase.functions.invoke('notify', { body: { type, title, body } });
+    await supabase.functions.invoke('notify', { body: { type, title, body, categoryId } });
   } catch {
     // ignore — notification is non-critical
   }

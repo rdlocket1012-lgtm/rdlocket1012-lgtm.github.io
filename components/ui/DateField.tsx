@@ -37,7 +37,7 @@ export function DateField({ value, onChange }: { value: string; onChange: (iso: 
         >
           <View style={{ transform: [{ rotate: '180deg' }] }}><Icon name="chevD" size={16} color={LK.ink70} /></View>
         </TouchableOpacity>
-        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 16, color: LK.ink, paddingVertical: 4 }}>{label}</Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 16, color: LK.espresso, paddingVertical: 4 }}>{label}</Text>
         <TouchableOpacity
           onPress={onDown}
           hitSlop={{ top: 10, bottom: 10, left: 14, right: 14 }}
@@ -55,7 +55,7 @@ export function DateField({ value, onChange }: { value: string; onChange: (iso: 
         onPress={() => setOpen((o) => !o)}
         style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...theme.shadow.sm }}
       >
-        <Text style={{ fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink }}>
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso }}>
           {d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
         </Text>
         <Icon name="calendar" size={18} color={LK.ink70} />

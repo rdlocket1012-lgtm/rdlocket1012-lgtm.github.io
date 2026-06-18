@@ -25,6 +25,7 @@ export default function SettingsScreen() {
   const [notifOTD, setNotifOTD] = useState(true);
   const [notifLetters, setNotifLetters] = useState(true);
   const [analytics, setAnalytics] = useState(true);
+  const [nudgeHaptics, setNudgeHaptics] = useState(profile?.nudge_haptics !== false);
 
   // Load persisted preferences. Defaults stay `true` when nothing is stored yet.
   useEffect(() => {
@@ -69,6 +70,23 @@ export default function SettingsScreen() {
   async function toggleAnalytics(on: boolean) {
     setAnalytics(on);
     await AsyncStorage.setItem('pref_analytics', on ? '1' : '0');
+  }
+
+  // Keep the local switch in sync if the profile loads/changes after mount.
+  useEffect(() => {
+    setNudgeHaptics(profile?.nudge_haptics !== false);
+  }, [profile?.nudge_haptics]);
+
+  async function toggleNudgeHaptics(on: boolean) {
+    if (!profile?.id) return;
+    setNudgeHaptics(on); // optimistic
+    const { error } = await supabase.from('profiles').update({ nudge_haptics: on }).eq('id', profile.id);
+    if (error) {
+      setNudgeHaptics(!on);
+      Alert.alert('Could not save', error.message);
+      return;
+    }
+    useAuthStore.getState().setProfile({ ...useAuthStore.getState().profile!, nudge_haptics: on });
   }
 
   async function handleSignOut() {
@@ -132,7 +150,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <ScreenHeader eyebrow="You & the app" title="Settings" onBack={() => router.back()} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 60 }}>
@@ -153,17 +171,17 @@ export default function SettingsScreen() {
             )}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.ink }}>{couple?.nickname ?? 'Your relationship'}</Text>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso }}>{couple?.nickname ?? 'Your relationship'}</Text>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>
               {couple?.start_date ? `Together since ${new Date(couple.start_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}` : ''}
             </Text>
           </View>
           {isPremium
-            ? <View style={{ backgroundColor: tint(LK.gold, 0.7), borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 6 }}>
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(LK.gold, 0.5) }}>Premium</Text>
+            ? <View style={{ backgroundColor: tint(LK.marigold, 0.7), borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(LK.marigold, 0.5) }}>Premium</Text>
               </View>
-            : <TouchableOpacity onPress={() => setSheet('paywall')} style={{ backgroundColor: LK.gold, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 8 }}>
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.ink }}>Upgrade</Text>
+            : <TouchableOpacity onPress={() => setSheet('paywall')} style={{ backgroundColor: LK.marigold, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 8 }}>
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.espresso }}>Upgrade</Text>
               </TouchableOpacity>
           }
         </View>
@@ -178,7 +196,7 @@ export default function SettingsScreen() {
               <Icon name="heart" size={19} color={shade(LK.sky, 0.5)} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.ink }}>Invite your partner</Text>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.espresso }}>Invite your partner</Text>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 1 }}>Send them a private link to join.</Text>
             </View>
             <Icon name="share" size={17} color={shade(LK.sky, 0.5)} />
@@ -193,19 +211,35 @@ export default function SettingsScreen() {
         <SectionLabel>Subscription & Billing</SectionLabel>
         <SGroup>
           <SRow icon="sync" color={LK.sage} title="Restore purchases" onPress={handleRestorePurchases} />
-          <SRow icon="crown" color={LK.gold} title="What's included in Premium" chevron onPress={() => setSheet('paywall')} last />
+          <SRow icon="crown" color={LK.marigold} title="What's included in Premium" chevron onPress={() => setSheet('paywall')} last />
         </SGroup>
 
         <SectionLabel>Notifications</SectionLabel>
         <SGroup>
-          <SRow icon="sparkle" color={LK.amber} title="On This Day" toggle value={notifOTD} onToggle={toggleOTD} />
-          <SRow icon="envelope" color={LK.pink} title="Letters from partner" toggle value={notifLetters} onToggle={toggleLetters} last />
+          <SRow icon="sparkle" color={LK.warning} title="On This Day" toggle value={notifOTD} onToggle={toggleOTD} />
+          <SRow icon="envelope" color={LK.blush} title="Letters from partner" toggle value={notifLetters} onToggle={toggleLetters} last />
+        </SGroup>
+
+        <SectionLabel>Nudges & buzzing</SectionLabel>
+        <SGroup>
+          <SRow
+            icon="heart"
+            color={LK.blush}
+            title="Nudge vibration"
+            sub={nudgeHaptics
+              ? 'Hugs, kisses & bites buzz your phone'
+              : "Nudges arrive silently — your partner sees they'll be quiet"}
+            toggle
+            value={nudgeHaptics}
+            onToggle={toggleNudgeHaptics}
+            last
+          />
         </SGroup>
 
         <SectionLabel>Privacy & Data</SectionLabel>
         <SGroup>
           <SRow icon="shield" color={LK.sage} title="Analytics & crash reports" sub="Never shared with advertisers" toggle value={analytics} onToggle={toggleAnalytics} />
-          <SRow icon="clockTab" color={LK.amber} title="Data retention" sub="30-day soft delete" chevron last onPress={() => Alert.alert('Data Retention', 'When you remove a milestone, letter or map pin, it\'s kept for 30 days before permanent deletion. The same applies if you delete your account.')} />
+          <SRow icon="clockTab" color={LK.warning} title="Data retention" sub="30-day soft delete" chevron last onPress={() => Alert.alert('Data Retention', 'When you remove a milestone, letter or map pin, it\'s kept for 30 days before permanent deletion. The same applies if you delete your account.')} />
         </SGroup>
 
         <SectionLabel>Legal</SectionLabel>
@@ -217,18 +251,18 @@ export default function SettingsScreen() {
 
         <SectionLabel>Support</SectionLabel>
         <SGroup>
-          <SRow icon="star" color={LK.gold} title="Rate Locket" onPress={() => Alert.alert('Thank you!', 'We appreciate your support.')} />
-          <SRow icon="chat" color={LK.mint} title="Send feedback" chevron onPress={() => Linking.openURL('mailto:hello@locket.app')} />
+          <SRow icon="star" color={LK.marigold} title="Rate Locket" onPress={() => Alert.alert('Thank you!', 'We appreciate your support.')} />
+          <SRow icon="chat" color={LK.success} title="Send feedback" chevron onPress={() => Linking.openURL('mailto:hello@locket.app')} />
           <SRow icon="help" color={LK.lilac} title="Help & FAQ" chevron last onPress={() => Alert.alert('Help', 'Contact us at hello@locket.app')} />
         </SGroup>
 
         <SectionLabel danger>Account</SectionLabel>
         <SGroup>
           {partnerJoined && (
-            <SRow icon="door" color={LK.amber} title="Disconnect from partner" sub="Separate your shared space" chevron onPress={handleDisconnect} />
+            <SRow icon="door" color={LK.warning} title="Disconnect from partner" sub="Separate your shared space" chevron onPress={handleDisconnect} />
           )}
           <SRow icon="door" color={LK.dusk} title="Sign out" onPress={handleSignOut} />
-          <SRow icon="trash" color={LK.destructive} title="Delete my account" danger onPress={handleDeleteAccount} last />
+          <SRow icon="trash" color={LK.danger} title="Delete my account" danger onPress={handleDeleteAccount} last />
         </SGroup>
 
         <View style={{ alignItems: 'center', paddingTop: 22 }}>
@@ -244,7 +278,7 @@ export default function SettingsScreen() {
 
 function SectionLabel({ children, danger }: { children: React.ReactNode; danger?: boolean }) {
   return (
-    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: danger ? LK.destructive : shade(LK.gold, 0.5), paddingVertical: 8, paddingHorizontal: 8 }}>
+    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: danger ? LK.danger : shade(LK.marigold, 0.5), paddingVertical: 8, paddingHorizontal: 8 }}>
       {children}
     </Text>
   );
@@ -273,21 +307,21 @@ interface SRowProps {
 }
 
 function SRow({ icon, color, title, sub, chevron, toggle, value, onToggle, onPress, danger, last }: SRowProps) {
-  const titleColor = danger ? LK.destructive : LK.ink;
+  const titleColor = danger ? LK.danger : LK.espresso;
   return (
     <TouchableOpacity
       onPress={toggle ? undefined : onPress}
       disabled={toggle && !onPress}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: LK.line, minHeight: 52 }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: LK.hairline, minHeight: 52 }}
     >
-      <IconChip color={danger ? LK.destructive : color} size={32}>
+      <IconChip color={danger ? LK.danger : color} size={32}>
         <Icon name={icon} size={17} color={danger ? '#fff' : shade(color, 0.5)} />
       </IconChip>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 15.5, color: titleColor }}>{title}</Text>
         {sub && <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 2, lineHeight: 18 }}>{sub}</Text>}
       </View>
-      {toggle && <Switch value={value} onValueChange={onToggle} trackColor={{ true: LK.mint, false: 'rgba(42,33,26,0.18)' }} />}
+      {toggle && <Switch value={value} onValueChange={onToggle} trackColor={{ true: LK.success, false: 'rgba(42,33,26,0.18)' }} />}
       {chevron && !toggle && <Icon name="chevR" size={16} color={LK.ink70} />}
     </TouchableOpacity>
   );

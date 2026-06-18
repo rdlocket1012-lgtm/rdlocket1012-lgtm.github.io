@@ -10,12 +10,13 @@ export const PIN_CATEGORIES = [
 export type PinCategoryId = typeof PIN_CATEGORIES[number]['id'];
 
 export const BUCKET_CATEGORIES = [
-  { id: 'Travel', label: 'Travel', icon: 'plane', color: '#5BB8E8' },
-  { id: 'Food', label: 'Food', icon: 'fork', color: '#FF7A6B' },
-  { id: 'Adventure', label: 'Adventure', icon: 'mountain', color: '#5FC79B' },
-  { id: 'Cozy', label: 'Cozy', icon: 'mug', color: '#FF9EC4' },
-  { id: 'Milestone', label: 'Milestone', icon: 'star', color: '#FFC94D' },
-  { id: 'Someday', label: 'Someday', icon: 'moon', color: '#9B8CFF' },
+  { id: 'Travel',    label: 'Travel',    icon: 'plane',    color: '#5BB8E8' },
+  { id: 'Food',      label: 'Food',      icon: 'fork',     color: '#FF7A6B' },
+  { id: 'Adventure', label: 'Adventure', icon: 'mountain', color: '#A8D08D' },
+  { id: 'Cozy',      label: 'Cozy',      icon: 'mug',      color: '#FF9EC4' },
+  { id: 'Milestone', label: 'Milestone', icon: 'star',     color: '#FFC94D' },
+  { id: 'Someday',   label: 'Someday',   icon: 'moon',     color: '#9B8CFF' },
+  { id: 'Intimate',  label: 'Intimate',  icon: 'heart',    color: '#C2873C' },
 ] satisfies Array<{ id: string; label: string; icon: string; color: string }>;
 
 export type BucketCategoryId = typeof BUCKET_CATEGORIES[number]['id'];
@@ -28,6 +29,7 @@ export interface DetailDef {
   label: string;
   type?: DetailInputType;
   multiSelect?: boolean;
+  allowOther?: boolean;
   options?: string[];
   colors?: { label: string; hex: string }[];
   placeholder?: string;
@@ -45,6 +47,7 @@ export const DETAIL_DEFS: DetailDef[] = [
     icon: 'palette',
     label: 'Favorite color',
     type: 'color-chips',
+    multiSelect: true,
     colors: [
       { label: 'Red',     hex: '#E84545' },
       { label: 'Pink',    hex: '#F48FB1' },
@@ -63,7 +66,8 @@ export const DETAIL_DEFS: DetailDef[] = [
     icon: 'flower',
     label: 'Favorite flower',
     type: 'chips',
-    options: ['Rose', 'Sunflower', 'Tulip', 'Lavender', 'Lily', 'Daisy', 'Peony', 'Orchid', 'Other'],
+    options: ['Rose', 'Sunflower', 'Tulip', 'Lavender', 'Lily', 'Daisy', 'Peony', 'Orchid'],
+    allowOther: true,
   },
   {
     key: 'song',
@@ -113,6 +117,7 @@ export const DETAIL_DEFS: DetailDef[] = [
     icon: 'heart',
     label: 'Love language',
     type: 'chips',
+    multiSelect: true,
     options: ['Words of Affirmation', 'Acts of Service', 'Receiving Gifts', 'Quality Time', 'Physical Touch'],
   },
   {

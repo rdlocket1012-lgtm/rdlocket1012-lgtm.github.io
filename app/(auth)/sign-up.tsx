@@ -1,46 +1,62 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
+import { routeAfterAuth } from '@/lib/post-auth';
 import { LK, theme } from '@/constants/theme';
-import { Btn } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
-
-const passwordSchema = z
-  .string()
-  .min(8, 'At least 8 characters')
-  .regex(/[a-z]/, 'Add a lowercase letter')
-  .regex(/[A-Z]/, 'Add an uppercase letter')
-  .regex(/[0-9]/, 'Add a number')
-  .regex(/[^A-Za-z0-9]/, 'Add a special character');
+import { Canvas, BackOrb, PrimaryCta, T } from '@/components/onboarding/Shell';
+import { PressableScale } from '@/components/onboarding/PressableScale';
 
 const schema = z.object({
   name: z.string().min(1, 'Enter your name'),
   email: z.string().email('Enter a valid email'),
-  password: passwordSchema,
+  password: z.string().min(8, 'At least 8 characters'),
 });
 type FormData = z.infer<typeof schema>;
 
 export default function SignUpScreen() {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   async function onSubmit(data: FormData) {
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data: res, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
-      options: { data: { display_name: data.name } },
+      // Deep-link the confirmation back into the app (same mechanism as the
+      // password-reset link), so tapping it opens onboarding instead of the
+      // dashboard Site URL (which 404s). Must be allow-listed in Supabase →
+      // Authentication → URL Configuration → Redirect URLs.
+      options: { data: { display_name: data.name }, emailRedirectTo: 'locket://confirm-email' },
     });
     setLoading(false);
     if (error) { Alert.alert('Sign up failed', error.message); return; }
-    await AsyncStorage.setItem('has_account', 'true');
-    router.replace('/(onboarding)/ai-consent');
+    await AsyncStorage.multiSet([
+      ['has_account', 'true'],
+      ['display_name', data.name.trim()],
+      ['ai_consent_granted_at', new Date().toISOString()],
+    ]);
+    // With PKCE, email sign-up returns no session until the address is
+    // confirmed — don't walk them into onboarding without a real account.
+    if (!res.session) {
+      Alert.alert(
+        'Confirm your email',
+        "We just sent a confirmation link to your inbox. Tap it, then come back and sign in — we'll set up your Locket from there.",
+        [{ text: 'OK', onPress: () => router.replace('/(auth)/sign-in') }],
+      );
+      return;
+    }
+    router.replace((await routeAfterAuth(res.user?.id)) as never);
   }
 
   async function handleAppleSignIn() {
@@ -51,20 +67,15 @@ export default function SignUpScreen() {
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
       });
-      const { error } = await supabase.auth.signInWithIdToken({
+      const { data: res, error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken!,
       });
       if (error) { Alert.alert('Apple sign-in failed', error.message); return; }
-      const hasAccount = await AsyncStorage.getItem('has_account');
       await AsyncStorage.multiSet([['has_account', 'true'], ['ai_consent_granted_at', new Date().toISOString()]]);
-      // Returning Apple user → tabs. New Apple user → onboarding.
-      if (hasAccount) {
-        await AsyncStorage.setItem('onboarding_done', 'true');
-        router.replace('/(tabs)');
-      } else {
-        router.replace('/(onboarding)/ai-consent');
-      }
+      // Couple-aware: returning Apple user → home, brand-new → onboarding,
+      // pending invite → resume the join.
+      router.replace((await routeAfterAuth(res.user?.id)) as never);
     } catch (e: unknown) {
       if ((e as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert('Apple sign-in failed', 'Please try again.');
@@ -73,47 +84,63 @@ export default function SignUpScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <Canvas>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-          <View style={{ flex: 1, padding: 30, justifyContent: 'center' }}>
-            <View style={{ marginBottom: 32 }}>
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 46, color: LK.ink, letterSpacing: -1.5 }}>
-                Locket
-              </Text>
-              <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 24, lineHeight: 30, color: LK.ink, marginTop: 16, maxWidth: 280 }}>
-                Your relationship's living memory.
-              </Text>
-              <Text style={{ fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink70, marginTop: 12, lineHeight: 24, maxWidth: 270 }}>
-                Every milestone, letter and place — kept together, just for the two of you.
-              </Text>
-            </View>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1, paddingTop: insets.top + 10, paddingBottom: Math.max(insets.bottom, 18),
+            paddingHorizontal: theme.layout.screenX,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <BackOrb />
 
+          <Animated.View entering={FadeInDown.delay(70).springify().damping(19)} style={{ paddingTop: 30 }}>
+            <Text style={T.title}>Create your Locket</Text>
+            <Text style={T.why}>One account. One private space for the two of you.</Text>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(170).springify().damping(19)} style={{ marginTop: 30 }}>
             <AppleAuthentication.AppleAuthenticationButton
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
               cornerRadius={9999}
-              style={{ height: 54, marginBottom: 12 }}
+              style={{ height: 56 }}
               onPress={handleAppleSignIn}
             />
+            <Text style={{
+              fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70,
+              textAlign: 'center', marginTop: 12, lineHeight: 18,
+            }}>
+              Private to the two of you — encrypted, never analysed by AI.{'\n'}
+              Apple sign-in keeps even your email yours.
+            </Text>
+          </Animated.View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: LK.line }} />
-              <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70 }}>or continue with email</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: LK.line }} />
-            </View>
-
-            <View style={{ gap: 12, marginBottom: 20 }}>
-              {(['name', 'email', 'password'] as const).map((field) => (
-                <View key={field}>
-                  <Controller
-                    control={control}
-                    name={field}
-                    render={({ field: { onChange, value } }) => (
-                      <>
+          <Animated.View entering={FadeInDown.delay(250).springify().damping(19)} style={{ marginTop: 18 }}>
+            {!emailOpen ? (
+              <PressableScale haptic="soft" onPress={() => setEmailOpen(true)} style={{ alignItems: 'center', paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: LK.ink70 }}>
+                  Use email instead
+                </Text>
+                <Icon name="chevD" size={15} color={LK.ink70} />
+              </PressableScale>
+            ) : (
+              <Animated.View entering={FadeInDown.springify().damping(19)} style={{ gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 2 }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
+                  <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70 }}>with email</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
+                </View>
+                {(['name', 'email', 'password'] as const).map((field) => (
+                  <View key={field}>
+                    <Controller
+                      control={control}
+                      name={field}
+                      render={({ field: { onChange, value } }) => (
                         <TextInput
                           style={inputStyle}
-                          placeholder={field === 'name' ? 'Your name' : field === 'email' ? 'Email' : 'Password'}
+                          placeholder={field === 'name' ? 'Your name' : field === 'email' ? 'Email' : 'Password (8+ characters)'}
                           placeholderTextColor={LK.ink70}
                           keyboardType={field === 'email' ? 'email-address' : 'default'}
                           autoCapitalize={field === 'name' ? 'words' : 'none'}
@@ -121,69 +148,39 @@ export default function SignUpScreen() {
                           value={value}
                           onChangeText={onChange}
                         />
-                        {field === 'password' && <PasswordHints value={value ?? ''} />}
-                      </>
-                    )}
-                  />
-                  {field !== 'password' && errors[field] && <Text style={errorStyle}>{errors[field]?.message}</Text>}
-                </View>
-              ))}
-            </View>
+                      )}
+                    />
+                    {errors[field] && <Text style={errorStyle}>{errors[field]?.message}</Text>}
+                  </View>
+                ))}
+                <PrimaryCta
+                  label={loading ? 'Creating account…' : 'Create account'}
+                  busy={loading}
+                  onPress={handleSubmit(onSubmit)}
+                />
+              </Animated.View>
+            )}
+          </Animated.View>
 
-            <Btn full kind="primary" onPress={handleSubmit(onSubmit)} disabled={loading}>
-              <Text style={{ color: '#fff', fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17 }}>
-                {loading ? 'Creating account…' : 'Create account'}
-              </Text>
-            </Btn>
+          <View style={{ flex: 1 }} />
 
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, textAlign: 'center', marginTop: 14, lineHeight: 17 }}>
-              Apple sign-in keeps your email private. Your memories stay yours.
-            </Text>
-
-            <TouchableOpacity onPress={() => router.push('/(auth)/sign-in')} style={{ marginTop: 16, alignItems: 'center' }}>
+          <Animated.View entering={FadeInDown.delay(330).springify().damping(19)}>
+            <PressableScale haptic="soft" onPress={() => router.push('/(auth)/sign-in')} style={{ alignItems: 'center', paddingVertical: 12 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70 }}>
                 Already have an account?{' '}
-                <Text style={{ fontWeight: '700', color: LK.ink }}>Sign in</Text>
+                <Text style={{ fontWeight: '700', color: LK.espresso }}>Sign in</Text>
               </Text>
-            </TouchableOpacity>
-          </View>
+            </PressableScale>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
-
-const PASSWORD_RULES: { label: string; test: (v: string) => boolean }[] = [
-  { label: '8+ characters', test: (v) => v.length >= 8 },
-  { label: 'Lowercase letter', test: (v) => /[a-z]/.test(v) },
-  { label: 'Uppercase letter', test: (v) => /[A-Z]/.test(v) },
-  { label: 'Number', test: (v) => /[0-9]/.test(v) },
-  { label: 'Special character', test: (v) => /[^A-Za-z0-9]/.test(v) },
-];
-
-function PasswordHints({ value }: { value: string }) {
-  return (
-    <View style={{ marginTop: 8, gap: 5, paddingHorizontal: 4 }}>
-      {PASSWORD_RULES.map((rule) => {
-        const met = rule.test(value);
-        return (
-          <View key={rule.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-            <View style={{ width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: met ? LK.mint : 'rgba(42,33,26,0.10)' }}>
-              {met && <Icon name="check" size={10} color="#fff" />}
-            </View>
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: met ? LK.ink70 : LK.ink70 }}>
-              {rule.label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
+    </Canvas>
   );
 }
 
 const inputStyle = {
   backgroundColor: LK.ivory, borderRadius: 16,
-  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink,
-  shadowColor: LK.ink, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-};
-const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.destructive, marginTop: 5 };
+  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso,
+  shadowColor: LK.espresso, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+} as const;
+const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.danger, marginTop: 5 } as const;

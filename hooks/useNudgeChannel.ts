@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export type NudgeKind = 'sparkles' | 'hug' | 'kiss';
+export type NudgeKind = 'sparkles' | 'hug' | 'kiss' | 'kiss_request' | 'kiss_accepted' | 'bite' | 'thumb_kiss_invite';
 
 /**
  * Realtime "nudge" channel for a couple, built on Supabase broadcast + presence.

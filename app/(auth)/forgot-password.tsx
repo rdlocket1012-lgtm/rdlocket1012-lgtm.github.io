@@ -30,17 +30,17 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={{ flex: 1, padding: 30, justifyContent: 'center' }}>
 
           {/* Back */}
           <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 32, alignSelf: 'flex-start', padding: 4 }}>
-            <Icon name="chevron-left" size={24} color={LK.ink} />
+            <Icon name="chevron-left" size={24} color={LK.espresso} />
           </TouchableOpacity>
 
           <View style={{ marginBottom: 36 }}>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.ink, letterSpacing: -1 }}>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.espresso, letterSpacing: -1 }}>
               Reset password
             </Text>
             <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.ink70, marginTop: 8, lineHeight: 26 }}>
@@ -80,7 +80,7 @@ export default function ForgotPasswordScreen() {
             </>
           ) : (
             <Btn full kind="outline" onPress={() => router.back()}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: LK.ink }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: LK.espresso }}>
                 Back to sign in
               </Text>
             </Btn>
@@ -94,7 +94,7 @@ export default function ForgotPasswordScreen() {
 
 const inputStyle = {
   backgroundColor: LK.ivory, borderRadius: 16,
-  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink,
-  shadowColor: LK.ink, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso,
+  shadowColor: LK.espresso, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
 };
-const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.destructive, marginTop: 5 };
+const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.danger, marginTop: 5 };

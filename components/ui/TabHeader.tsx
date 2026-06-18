@@ -33,7 +33,7 @@ export function TabHeader({ eyebrow, title, right, accent }: {
         </Text>
         <Text style={{
           fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 40,
-          letterSpacing: -1.5, color: accent ?? LK.ink, lineHeight: 44,
+          letterSpacing: -1.5, color: accent ?? LK.espresso, lineHeight: 44,
         }}>
           {title}
         </Text>

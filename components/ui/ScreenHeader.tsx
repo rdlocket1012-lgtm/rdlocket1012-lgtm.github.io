@@ -15,14 +15,14 @@ export function ScreenHeader({ eyebrow, title, onBack, right }: {
     <View style={{ paddingHorizontal: 22, paddingTop: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 46 }}>
         {onBack ? (
-          <RoundIcon onPress={onBack}><Icon name="chevL" size={20} color={LK.ink} /></RoundIcon>
+          <RoundIcon onPress={onBack}><Icon name="chevL" size={20} color={LK.espresso} /></RoundIcon>
         ) : (
           <View style={{ width: 44, height: 44 }} />
         )}
         {right ?? <View style={{ width: 44, height: 44 }} />}
       </View>
       <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', color: LK.ink70, marginTop: 10, marginLeft: 1 }}>{eyebrow}</Text>
-      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 40, letterSpacing: -1.5, color: LK.ink, lineHeight: 44 }}>{title}</Text>
+      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 40, letterSpacing: -1.5, color: LK.espresso, lineHeight: 44 }}>{title}</Text>
     </View>
   );
 }

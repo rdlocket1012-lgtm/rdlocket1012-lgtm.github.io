@@ -79,6 +79,11 @@ export function Icon({ name, size = 24, color = 'currentColor', strokeWidth = 2 
     wifi: <G {...p}><Path d="M5 12.55a11 11 0 0114 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0" /><Circle cx="12" cy="20" r="1" fill={color} stroke="none" /></G>,
     wifiOff: <G {...p}><Path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.56 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0" /><Circle cx="12" cy="20" r="1" fill={color} stroke="none" /></G>,
     plane2: <Path {...p} d="M5.5 12.5L3 11l1-2 3 .6 4-4c.8-.8 2.2-1.2 2.8-.6.6.6.2 2-.6 2.8l-4 4 .6 3-2 1-1.5-2.5-1.4 2.2-1.8-.2.2-1.8 2.2-1.4z" />,
+    mic: <G {...p}><Rect x="9" y="3" width="6" height="11" rx="3" /><Path d="M6 11a6 6 0 0012 0M12 17v4M9 21h6" /></G>,
+    play: <Path {...p} d="M7 5l11 7-11 7z" />,
+    pause: <G {...p}><Path d="M8 5v14M16 5v14" /></G>,
+    gameController: <G {...p}><Path d="M8 8h8a5 5 0 015 5v1a3 3 0 01-5.2 2L14 14h-4l-1.8 2A3 3 0 013 14v-1a5 5 0 015-5z" /><Path d="M7.5 11.5v2M6.5 12.5h2" /><Circle cx="15.5" cy="11.8" r="1" fill={color} stroke="none" /><Circle cx="17" cy="13.8" r="1" fill={color} stroke="none" /></G>,
+    scroll: <G {...p}><Path d="M6 4h10a2 2 0 012 2v12a2 2 0 01-2 2H8a2 2 0 01-2-2z" /><Path d="M9 8h6M9 12h6M9 16h3" /></G>,
   };
 
   return (

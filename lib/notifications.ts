@@ -1,5 +1,8 @@
 import * as Notifications from 'expo-notifications';
+import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { notifyPartner } from '@/lib/push';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -10,6 +13,43 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
+
+/**
+ * Registers the interactive "bite" notification category so an incoming bite
+ * push shows a [Bite Back! 🦷] action button. Tapping it doesn't open the app.
+ */
+export async function registerNudgeCategories(): Promise<void> {
+  try {
+    await Notifications.setNotificationCategoryAsync('bite', [
+      {
+        identifier: 'BITE_BACK',
+        buttonTitle: 'Bite Back! 🦷',
+        options: { opensAppToForeground: false },
+      },
+    ]);
+  } catch {
+    // best-effort
+  }
+}
+
+let nudgeResponseSub: { remove: () => void } | null = null;
+
+/**
+ * Wires the "Bite Back!" retaliation loop: when the user taps the action button
+ * on a bite notification, fire a sharp haptic and send a bite straight back —
+ * without fully opening the app.
+ */
+export function setupNudgeResponseHandler(): () => void {
+  nudgeResponseSub?.remove();
+  nudgeResponseSub = Notifications.addNotificationResponseReceivedListener(async (response) => {
+    if (response.actionIdentifier !== 'BITE_BACK') return;
+    try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
+    // Ensure the persisted session is loaded before invoking the secure function.
+    await supabase.auth.getSession();
+    await notifyPartner('bite', 'Ouch! 🦷', 'Bitten back! 🦷 Open to keep the war going…', 'bite');
+  });
+  return () => { nudgeResponseSub?.remove(); nudgeResponseSub = null; };
+}
 
 export async function requestPermissions(): Promise<boolean> {
   if (Platform.OS === 'android') return true;
