@@ -18,9 +18,9 @@ type Game = {
 // reads as a home for many games (the layout the user asked for).
 const GAMES: Game[] = [
   { key: 'tot',   emoji: '🔀', name: 'this or that', tagline: 'Tap your pick, see if you match.', color: LK.lilac, route: '/games/this-or-that' },
+  { key: 'draw',  emoji: '✏️', name: 'draw & guess', tagline: 'Draw it, guess it, laugh.', color: LK.sky, route: '/games/draw-and-guess' },
   { key: 'wyr',   emoji: '🤔', name: 'would you rather', tagline: 'Pick a side, spark a chat.', color: LK.coral },
   { key: 'triv',  emoji: '💡', name: 'love trivia', tagline: 'How well do you know us?', color: LK.success },
-  { key: 'doodle', emoji: '✏️', name: 'doodle duel', tagline: 'Draw it, guess it, laugh.', color: LK.sky },
   { key: 'memory', emoji: '🧠', name: 'memory match', tagline: 'Flip cards, find the pairs.', color: LK.blush },
 ];
 

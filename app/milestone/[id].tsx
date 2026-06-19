@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { IconChip, RoundIcon } from '@/components/ui';
-import { TYPE_ICON } from '@/constants/milestone-types';
+import { IconChip } from '@/components/ui/icon-chip';
+import { RoundIcon } from '@/components/ui/round-icon';
+import { TYPE_ICON, MILESTONE_TYPES } from '@/constants/milestone-types';
 import { useMilestones } from '@/hooks/useMilestones';
 import { useCouple } from '@/hooks/useCouple';
 import { AddMilestoneModal } from '@/components/milestone/AddMilestoneModal';
@@ -24,6 +27,12 @@ export default function MilestoneDetailScreen() {
   const milestone = m!;
 
   const c = catColor(milestone.type);
+  const catLabel = MILESTONE_TYPES.find((t) => t.id === milestone.type)?.label ?? 'Moment';
+  const photos = milestone.photos ?? [];
+
+  function openPhotos(index: number) {
+    router.push({ pathname: '/milestone/photo-viewer', params: { photos: JSON.stringify(photos), index: String(index) } });
+  }
 
   async function handleDelete() {
     await deleteMilestone(milestone.id);
@@ -31,7 +40,7 @@ export default function MilestoneDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       {/* Colored header */}
       <View style={{ backgroundColor: tint(c.base, 0.35), paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -54,11 +63,11 @@ export default function MilestoneDetailScreen() {
           {milestone.title}
         </Text>
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: shade(c.base, 0.55), marginTop: 8 }}>
-          {parseLocalDate(milestone.milestone_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+          {catLabel} · {parseLocalDate(milestone.milestone_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
         </Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 22, paddingBottom: 60 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 22, paddingBottom: 80 }}>
         {milestone.note ? (
           <>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: LK.ink70, marginBottom: 8 }}>
@@ -72,6 +81,22 @@ export default function MilestoneDetailScreen() {
           <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 17, color: LK.ink70, lineHeight: 28 }}>
             No note yet — tap the pencil above to add the story behind this moment.
           </Text>
+        )}
+
+        {/* Photo grid (§13.18) — renders when photos are attached */}
+        {photos.length > 0 && (
+          <View style={{ marginTop: 24 }}>
+            <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: LK.ink70, marginBottom: 10 }}>
+              Photos
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {photos.map((uri, i) => (
+                <Pressable key={`${i}-${uri}`} onPress={() => openPhotos(i)} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.96 : 1 }] })}>
+                  <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: rgba(LK.espresso, 0.05) }} contentFit="cover" transition={150} />
+                </Pressable>
+              ))}
+            </View>
+          </View>
         )}
       </ScrollView>
 

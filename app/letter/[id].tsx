@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, ActionSheetIOS, Alert, Platform, Share } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActionSheetIOS, Alert, Platform, Share } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { RoundIcon, Avatar } from '@/components/ui';
+import { RoundIcon } from '@/components/ui/round-icon';
+import { Avatar } from '@/components/ui/avatar';
 import { useLetters } from '@/hooks/useLetters';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
@@ -93,7 +95,7 @@ export default function LetterReaderScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FBF3E0' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 6 }}>
         <RoundIcon onPress={() => router.back()}>
           <Icon name="chevL" size={20} color={LK.espresso} />
@@ -103,7 +105,7 @@ export default function LetterReaderScreen() {
         </RoundIcon>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 30, paddingVertical: 18, paddingBottom: 60 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 30, paddingVertical: 18, paddingBottom: 80 }}>
         {/* Sender header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 24 }}>
           <Avatar initial={senderInitial} imageUrl={senderAvatar} color={isMine ? LK.coral : LK.blush} size={44} />
@@ -134,7 +136,7 @@ export default function LetterReaderScreen() {
 
         {/* Letter body / transcript */}
         {(!letter.audio_path || letter.transcript) && (
-          <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 20.5, color: '#3a2e22', lineHeight: 34 }}>
+          <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 20.5, color: LK.espresso, lineHeight: 34 }}>
             {bodyText}
           </Text>
         )}
@@ -144,7 +146,7 @@ export default function LetterReaderScreen() {
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginBottom: 12 }}>
             {letter.reaction ? 'Reacted' : 'React to this letter'}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 8, backgroundColor: '#FFFDF7', borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 8, ...theme.shadow.sm }}>
+          <View style={{ flexDirection: 'row', gap: 8, backgroundColor: LK.vellum, borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 8, ...theme.shadow.sm }}>
             {REACTIONS.map((emoji) => {
               const active = letter.reaction === emoji;
               return (

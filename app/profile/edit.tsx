@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  SafeAreaView, Image, Alert, ActivityIndicator,
+  Alert, ActivityIndicator,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { decode as decodeBase64 } from 'base64-arraybuffer';
@@ -129,7 +131,7 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 16, paddingBottom: 12 }}>

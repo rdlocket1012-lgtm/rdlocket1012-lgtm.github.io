@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Pressable, FlatList, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -141,8 +142,8 @@ export default function HomeScreen() {
   useEffect(() => {
     if (isAnniversary && !reducedMotion) {
       pulse.value = withSequence(
-        withSpring(1.12, { damping: 12, stiffness: 260 }),
-        withSpring(1, { damping: 12, stiffness: 260 }),
+        withSpring(1.12, theme.spring.bounce),
+        withSpring(1, theme.spring.bounce),
       );
     }
   }, [isAnniversary, reducedMotion]);
@@ -277,13 +278,29 @@ export default function HomeScreen() {
         {partnerJoined && !streak.loading && (
           <FadeSlideIn delay={160}>
             <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
-              <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 10, ...theme.shadow.sm }}>
-                <Text style={{ fontSize: 22 }}>🔥</Text>
-                <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: LK.espresso, letterSpacing: -0.5 }}>
+              <View
+                style={{
+                  backgroundColor: LK.ivory,
+                  borderRadius: 20,
+                  borderCurve: 'continuous',
+                  padding: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
+                } as any}
+              >
+                <Image
+                  source={require('../../assets/doodles/flame.svg')}
+                  style={{ width: 24, height: 24 }}
+                  contentFit="contain"
+                  tintColor={streak.current > 0 ? LK.coral : LK.faded}
+                />
+                <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: streak.current > 0 ? LK.coral : LK.espresso, letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>
                   {streak.current}
                 </Text>
                 <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.sepia, flex: 1 }}>
-                  day streak
+                  {streak.current === 0 ? 'start a new streak today' : 'day streak'}
                 </Text>
                 {streak.best > 0 && (
                   <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '700', color: LK.faded }}>

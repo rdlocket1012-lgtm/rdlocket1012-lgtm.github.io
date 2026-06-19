@@ -92,7 +92,7 @@ export function FabActionsOverlay({ visible, onClose }: { visible: boolean; onCl
             {ACTIONS.map((a, i) => {
               const enter = reduced
                 ? FadeIn.duration(150)
-                : FadeIn.springify().damping(18).stiffness(280).delay(i * 40);
+                : FadeIn.springify().damping(theme.spring.warm.damping).stiffness(theme.spring.warm.stiffness).delay(i * 40);
               return (
                 <Animated.View key={a.key} entering={enter} exiting={FadeOut.duration(120)}>
                   <Pressable
@@ -140,7 +140,7 @@ export function FabActionsOverlay({ visible, onClose }: { visible: boolean; onCl
 
           {/* The FAB stays put and shows ✕ while open (§8.11). Tapping it closes. */}
           <Animated.View
-            entering={reduced ? FadeIn.duration(120) : ZoomIn.springify().damping(22).stiffness(280)}
+            entering={reduced ? FadeIn.duration(120) : ZoomIn.springify().damping(theme.spring.snappy.damping).stiffness(theme.spring.snappy.stiffness)}
             exiting={FadeOut.duration(120)}
             style={{
               position: 'absolute',

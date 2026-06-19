@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { SwipeCard } from '@/components/game/SwipeCard';
+import MascotAnimation from '@/components/ui/mascot-animation';
 import { useLiveSession, type LiveEvent } from '@/hooks/useLiveSession';
 import { notifyPartner } from '@/lib/push';
 import { LIVE_PROMPTS, categoryIndices, categoryOfIndex, fillNames } from '@/constants/live-games';
@@ -265,107 +269,165 @@ export const LiveLayer = forwardRef<LiveHandle, {
 
       {/* Invited (accept/decline) */}
       <CenterModal visible={mode === 'invited'}>
-        <Text style={{ fontSize: 40, textAlign: 'center' }}>💞</Text>
+        <View style={{ alignItems: 'center', marginBottom: 4 }}>
+          <MascotAnimation name="connected" size={80} />
+        </View>
         <Text style={styles.h}>{partner} wants to play</Text>
         <Text style={styles.p}>This or That — answer together and see how in sync you are.</Text>
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
           <View style={{ flex: 1 }}><GhostBtn label="Not now" onPress={decline} /></View>
-          <View style={{ flex: 1.4 }}><SolidBtn label="Join 🎉" onPress={accept} /></View>
+          <View style={{ flex: 1.4 }}><SolidBtn label="Join" onPress={accept} /></View>
         </View>
       </CenterModal>
 
       {/* Playing */}
-      <Modal visible={mode === 'playing'} transparent animationType="fade" onRequestClose={quit}>
-        <View style={styles.gameBg}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <View>
+      <Modal visible={mode === 'playing'} animationType="fade" onRequestClose={quit} statusBarTranslucent>
+        <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top', 'bottom']}>
+          {/* Lilac progress bar (§13.20) */}
+          <View style={{ height: 4, backgroundColor: 'rgba(155,140,255,0.20)' }}>
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: LK.lilac, width: `${(round / Math.max(order.length, 1)) * 100}%` }} />
+          </View>
+
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
+            <View style={{ flex: 1 }}>
               {playedCat && (
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 12, letterSpacing: 0.5, color: 'rgba(255,255,255,0.55)', marginBottom: 2 }}>
-                  {playedCat.emoji}  {playedCat.name.toUpperCase()}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: playedCat.color }} />
+                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11.5, color: shade(playedCat.color, 0.45), letterSpacing: 0.6 }}>
+                    {playedCat.name.toUpperCase()}
+                  </Text>
+                </View>
               )}
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
-                Round {Math.min(round + 1, order.length)} of {order.length}
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.sepia, marginTop: 2 }}>
+                {round + 1} of {order.length}
               </Text>
             </View>
-            <TouchableOpacity onPress={quit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Icon name="x" size={24} color="rgba(255,255,255,0.8)" />
+            <TouchableOpacity onPress={quit} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(42,33,26,0.07)', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="x" size={18} color={LK.sepia} />
             </TouchableOpacity>
           </View>
 
-          {order[round] != null && (() => {
-            const prompt = LIVE_PROMPTS[order[round]];
-            const fill = (s: string) => fillNames(s, name1, name2);
-            return (
-              <>
-                <Text style={styles.gameQ}>{fill(prompt.q)}</Text>
-                <View style={{ gap: 14, marginTop: 26 }}>
-                  {(['a', 'b'] as const).map((key) => {
-                    const mine = myChoice === key;
-                    const theirs = partnerChoice === key;
-                    const col = key === 'a' ? LK.coral : LK.sky;
-                    return (
-                      <Pressable
-                        key={key}
-                        onPress={() => choose(key)}
-                        disabled={!!myChoice}
-                        style={{
-                          backgroundColor: mine ? col : 'rgba(255,255,255,0.1)',
-                          borderRadius: 20, padding: 20,
-                          borderWidth: mine ? 0 : 1.5, borderColor: 'rgba(255,255,255,0.2)',
-                        }}
-                      >
-                        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, color: '#fff', textAlign: 'center' }}>
-                          {fill(prompt[key])}
-                        </Text>
-                        {/* Reveal who picked what once both have answered */}
-                        {revealed && (mine || theirs) && (
-                          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 }}>
-                            {mine && <Pill text="You" />}
-                            {theirs && <Pill text={partner} />}
-                          </View>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
+          {/* Game area */}
+          <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: 'center' }}>
+            {order[round] != null && (() => {
+              const prompt = LIVE_PROMPTS[order[round]];
+              const fill = (s: string) => fillNames(s, name1, name2);
 
-                <View style={{ marginTop: 26, minHeight: 70, alignItems: 'center', justifyContent: 'center' }}>
-                  {!revealed ? (
-                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>
-                      {myChoice ? `Waiting for ${partner}…` : 'Tap your pick — you answer at the same time'}
+              if (!myChoice && !revealed) {
+                // ── Swipe phase ──────────────────────────────────
+                return (
+                  <View>
+                    <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 15, color: LK.sepia, textAlign: 'center', marginBottom: 20 }}>
+                      Swipe to answer — you both go at once
                     </Text>
+                    <SwipeCard
+                      key={`round-${round}`}
+                      prompt={prompt}
+                      name1={name1}
+                      name2={name2}
+                      disabled={false}
+                      onChoose={(c) => choose(c)}
+                    />
+                  </View>
+                );
+              }
+
+              if (myChoice && !revealed) {
+                // ── Waiting for partner ──────────────────────────
+                return (
+                  <View style={{ alignItems: 'center', gap: 20 }}>
+                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: tint(LK.sky, 0.55), alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 22, color: shade(LK.sky, 0.5) }}>
+                        {partner.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <PulsingDots />
+                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.sepia }}>
+                      Waiting for {partner}…
+                    </Text>
+                    <View style={{ backgroundColor: LK.ivory, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 10, borderWidth: 1.5, borderColor: myChoice === 'a' ? tint(LK.coral, 0.6) : tint(LK.sky, 0.6) }}>
+                      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: LK.espresso }}>
+                        Your pick: {fill(prompt[myChoice])}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              }
+
+              // ── Reveal ───────────────────────────────────────
+              const myText = fill(prompt[myChoice!]);
+              const partnerText = fill(prompt[partnerChoice!]);
+              return (
+                <View style={{ alignItems: 'center', gap: 16 }}>
+                  {matched ? (
+                    <>
+                      <MascotAnimation name="quiz-matched" size={120} />
+                      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso }}>
+                        Matched!
+                      </Text>
+                      <View style={{ backgroundColor: 'rgba(95,199,155,0.18)', borderRadius: 9999, borderWidth: 1.5, borderColor: tint(LK.success, 0.5), paddingHorizontal: 20, paddingVertical: 10 }}>
+                        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.espresso }}>{myText}</Text>
+                      </View>
+                      {matchCount > 1 && (
+                        <View style={{ backgroundColor: tint(LK.coral, 0.65), borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                          <Image source={require('../../assets/doodles/flame.svg')} style={{ width: 14, height: 14 }} contentFit="contain" tintColor={LK.coral} />
+                          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 13, color: shade(LK.coral, 0.55) }}>{matchCount} streak</Text>
+                        </View>
+                      )}
+                    </>
                   ) : (
                     <>
-                      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 20, color: matched ? LK.success : '#fff', textAlign: 'center' }}>
-                        {matched ? 'Matched! 💛' : 'Opposites attract 😄'}
+                      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso }}>
+                        Different taste!
                       </Text>
-                      <TouchableOpacity onPress={next} style={styles.nextBtn}>
-                        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, color: LK.espresso }}>
-                          {round + 1 >= order.length ? 'See results' : 'Next'}
-                        </Text>
-                      </TouchableOpacity>
+                      <Text style={{ fontFamily: theme.fonts.body, fontSize: 13.5, color: LK.sepia, textAlign: 'center' }}>
+                        Opposites keep it interesting
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                        <View style={{ flex: 1, backgroundColor: tint(LK.coral, 0.6), borderRadius: 16, padding: 14, alignItems: 'center' }}>
+                          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.coral, 0.55), marginBottom: 4 }}>You</Text>
+                          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso, textAlign: 'center' }}>{myText}</Text>
+                        </View>
+                        <View style={{ flex: 1, backgroundColor: tint(LK.sky, 0.6), borderRadius: 16, padding: 14, alignItems: 'center' }}>
+                          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.sky, 0.55), marginBottom: 4 }}>{partner}</Text>
+                          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso, textAlign: 'center' }}>{partnerText}</Text>
+                        </View>
+                      </View>
                     </>
                   )}
+                  <TouchableOpacity
+                    onPress={next}
+                    style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 32, paddingVertical: 14, marginTop: 8, ...theme.shadow.sm }}
+                  >
+                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, color: '#fff' }}>
+                      {round + 1 >= order.length ? 'See results →' : 'Next card →'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              </>
-            );
-          })()}
-        </View>
+              );
+            })()}
+          </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Summary */}
       <CenterModal visible={mode === 'summary'}>
-        <Text style={{ fontSize: 44, textAlign: 'center' }}>{matchCount >= order.length * 0.6 ? '💞' : '😄'}</Text>
-        <Text style={styles.h}>You matched {matchCount} of {order.length}</Text>
+        <View style={{ alignItems: 'center', marginBottom: 4 }}>
+          <MascotAnimation name="quiz-matched" size={100} />
+        </View>
+        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 48, color: LK.espresso, textAlign: 'center', letterSpacing: -1.5, fontVariant: ['tabular-nums'] }}>
+          {Math.round((matchCount / Math.max(order.length, 1)) * 100)}%
+        </Text>
+        <Text style={styles.h}>{matchCount} of {order.length} matched</Text>
         <Text style={styles.p}>
           {matchCount >= order.length * 0.6
-            ? "You two really are in sync 💛"
+            ? "You two really are in sync"
             : 'Opposites keep it interesting — play again?'}
         </Text>
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
           <View style={{ flex: 1 }}><GhostBtn label="Done" onPress={quit} /></View>
-          <View style={{ flex: 1.4 }}><SolidBtn label="Play again 🔁" onPress={() => invite(playedCat?.id)} /></View>
+          <View style={{ flex: 1.4 }}><SolidBtn label="Play again" onPress={() => invite(playedCat?.id)} /></View>
         </View>
       </CenterModal>
     </>
@@ -373,6 +435,21 @@ export const LiveLayer = forwardRef<LiveHandle, {
 });
 
 // ── Small pieces ─────────────────────────────────────────────────────────
+function PulsingDots() {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setActive((d) => (d + 1) % 3), 420);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <View style={{ flexDirection: 'row', gap: 6 }}>
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: LK.sepia, opacity: active === i ? 1 : 0.28 }} />
+      ))}
+    </View>
+  );
+}
+
 function CenterModal({ visible, children }: { visible: boolean; children: React.ReactNode }) {
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -380,13 +457,6 @@ function CenterModal({ visible, children }: { visible: boolean; children: React.
         <View style={{ backgroundColor: LK.parchment, borderRadius: 26, padding: 24 }}>{children}</View>
       </View>
     </Modal>
-  );
-}
-function Pill({ text }: { text: string }) {
-  return (
-    <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 2 }}>
-      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11, color: '#fff' }}>{text}</Text>
-    </View>
   );
 }
 function SolidBtn({ label, onPress }: { label: string; onPress: () => void }) {
@@ -408,13 +478,10 @@ const styles = StyleSheet.create({
   bannerWrap: { position: 'absolute', left: 0, right: 0, bottom: 96, alignItems: 'center', paddingHorizontal: 16 },
   banner: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#FFFDF7', borderRadius: 9999, paddingLeft: 16, paddingRight: 6, paddingVertical: 6,
+    backgroundColor: LK.vellum, borderRadius: 9999, paddingLeft: 16, paddingRight: 6, paddingVertical: 6,
     ...theme.shadow.card, maxWidth: 360, width: '100%',
   },
   bannerBtn: { backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 9 },
   h: { fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 21, color: LK.espresso, textAlign: 'center', marginTop: 8 },
   p: { fontFamily: theme.fonts.body, fontSize: 13.5, color: LK.ink70, textAlign: 'center', marginTop: 6, lineHeight: 20 },
-  gameBg: { flex: 1, backgroundColor: 'rgba(26,18,30,0.94)', paddingHorizontal: 26, paddingTop: 80, paddingBottom: 40 },
-  gameQ: { fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 26, color: '#fff', textAlign: 'center' },
-  nextBtn: { backgroundColor: '#fff', borderRadius: 9999, paddingHorizontal: 28, paddingVertical: 13, marginTop: 14 },
 });

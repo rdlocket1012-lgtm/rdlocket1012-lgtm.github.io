@@ -1,236 +1,272 @@
-import React, { useState } from 'react';
+import React, { useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, SafeAreaView,
-  TextInput, Modal, KeyboardAvoidingView, Platform, Alert,
-  ActivityIndicator,
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  Alert,
 } from 'react-native';
-import { router } from 'expo-router';
-import { LK, tint, shade, theme } from '@/constants/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Stack, router } from 'expo-router';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { Image } from 'expo-image';
+import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
-import { usePrivateNotes, NOTE_TAGS, type NoteTag, type PrivateNote } from '@/hooks/usePrivateNotes';
+import { StationeryRules } from '@/components/ui/stationery-rules';
+import { usePrivateNotes, type PrivateNote } from '@/hooks/usePrivateNotes';
+import { useAuthStore } from '@/stores/auth.store';
+
+const EMPTY_ILLUS = require('../../assets/illustrations/empty-states/no-letters.png');
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export default function NotesScreen() {
-  const { notes, loading, addNote, removeNote, updateNote } = usePrivateNotes();
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<PrivateNote | null>(null);
+  const profile = useAuthStore((s) => s.profile);
+  const { notes, loading, removeNote } = usePrivateNotes();
+
+  const handleDelete = useCallback((note: PrivateNote) => {
+    Alert.alert('Delete note?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => removeNote(note.id),
+      },
+    ]);
+  }, [removeNote]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 22, paddingTop: 14, paddingBottom: 10, gap: 12 }}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Icon name="chevL" size={20} color={LK.espresso} />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: LK.espresso, letterSpacing: -0.5 }}>My Notes</Text>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 1 }}>Just for your eyes 🔒</Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => { setEditing(null); setShowModal(true); }}
-          style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Icon name="plus" size={22} color="#fff" />
-        </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
+      <Stack.Screen
+        options={{
+          title: 'My Notes',
+          headerShown: true,
+          headerLargeTitle: true,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: LK.parchment },
+          headerTintColor: LK.espresso,
+          headerBackTitle: '',
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => router.push('/notes/compose')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="New note"
+            >
+              <Image
+                source="sf:square.and.pencil"
+                style={{ width: 22, height: 22 }}
+                contentFit="contain"
+                tintColor={LK.espresso}
+              />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+
+      {/* Private indicator eyebrow */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 20, paddingBottom: 8 }}>
+        <Image source="sf:lock.fill" style={{ width: 11, height: 11 }} contentFit="contain" tintColor={LK.faded} />
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, color: LK.faded }}>
+          private — only you can see this
+        </Text>
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={LK.ink70} />
-        </View>
+        <SkeletonList />
       ) : notes.length === 0 ? (
-        <EmptyState onPress={() => setShowModal(true)} />
+        <EmptyState />
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 12 }}>
-          {notes.map((note, i) => (
-            <FadeSlideIn key={note.id} delay={i * 40}>
+        <FlatList
+          data={notes}
+          keyExtractor={(n) => n.id}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 80, gap: 12 }}
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item: note, index }) => (
+            <Animated.View entering={index < 10 ? FadeInUp.duration(280).delay(index * 30) : undefined}>
               <NoteCard
                 note={note}
-                onEdit={() => { setEditing(note); setShowModal(true); }}
-                onDelete={() => {
-                  Alert.alert('Delete note?', 'This cannot be undone.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: () => removeNote(note.id) },
-                  ]);
-                }}
+                onEdit={() => router.push({ pathname: '/notes/compose', params: { id: note.id } })}
+                onDelete={() => handleDelete(note)}
               />
-            </FadeSlideIn>
-          ))}
-        </ScrollView>
-      )}
-
-      {showModal && (
-        <NoteModal
-          initial={editing}
-          onClose={() => { setShowModal(false); setEditing(null); }}
-          onSave={(content, tag) => {
-            if (editing) {
-              updateNote(editing.id, content, tag);
-            } else {
-              addNote(content, tag);
-            }
-            setShowModal(false);
-            setEditing(null);
-          }}
+            </Animated.View>
+          )}
         />
       )}
     </SafeAreaView>
   );
 }
 
-// ─── Note Card ────────────────────────────────────────────────────────────────
-function NoteCard({ note, onEdit, onDelete }: { note: PrivateNote; onEdit: () => void; onDelete: () => void }) {
-  const tagDef = NOTE_TAGS.find((t) => t.id === note.tag);
-  const date = new Date(note.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+function NoteCard({
+  note,
+  onEdit,
+  onDelete,
+}: {
+  note: PrivateNote;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const preview = note.content.trim().split('\n').slice(0, 2).join(' ').slice(0, 120);
+  const date = formatDate(note.created_at);
 
   return (
-    <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 16, ...theme.shadow.card }}>
-      {tagDef && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-          <View style={{ backgroundColor: tint(tagDef.color, 0.75), borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, color: shade(tagDef.color, 0.4), letterSpacing: 0.3 }}>
-              {tagDef.label}
+    <TouchableOpacity
+      onPress={onEdit}
+      activeOpacity={0.85}
+      accessibilityLabel={`Note: ${preview}`}
+    >
+      <View
+        style={{
+          backgroundColor: LK.ivory,
+          borderRadius: 20,
+          borderCurve: 'continuous',
+          borderWidth: 1.5,
+          borderColor: 'rgba(42,33,26,0.10)',
+          overflow: 'hidden',
+          minHeight: 96,
+          ...theme.shadow.card,
+        }}
+      >
+        {/* Faint stationery rules at 30% opacity */}
+        <StationeryRules opacity={0.3} leftMargin={0} />
+
+        <View style={{ padding: 16 }}>
+          {/* Top row: date + lock badge */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Text
+              style={{
+                fontFamily: theme.fonts.body,
+                fontWeight: '500',
+                fontSize: 12,
+                color: LK.faded,
+              }}
+            >
+              {date}
             </Text>
+            <Image
+              source="sf:lock.fill"
+              style={{ width: 12, height: 12 }}
+              contentFit="contain"
+              tintColor={LK.sepia}
+            />
           </View>
-        </View>
-      )}
-      <Text style={{ fontFamily: theme.fonts.body, fontSize: 15.5, color: LK.espresso, lineHeight: 23 }}>{note.content}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70 }}>{date}</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={onEdit} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Icon name="pen" size={16} color={LK.ink70} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Icon name="trash" size={16} color={LK.ink70} />
+
+          {/* Preview text — Newsreader Italic */}
+          <Text
+            numberOfLines={2}
+            style={{
+              fontFamily: theme.fonts.serif,
+              fontStyle: 'italic',
+              fontSize: 14,
+              color: LK.sepia,
+              lineHeight: 21,
+            }}
+          >
+            {preview}
+          </Text>
+
+          {/* Delete button */}
+          <TouchableOpacity
+            onPress={onDelete}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{ position: 'absolute', bottom: 14, right: 16 }}
+            accessibilityLabel="Delete note"
+          >
+            <Icon name="trash" size={14} color={LK.faded} />
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
-function EmptyState({ onPress }: { onPress: () => void }) {
+function EmptyState() {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 36 }}>
-      <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: tint(LK.marigold, 0.6), alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
-        <Icon name="lock" size={32} color={shade(LK.marigold, 0.45)} />
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 20 }}>
+      <Image
+        source={EMPTY_ILLUS}
+        style={{ width: 120, height: 120 }}
+        contentFit="contain"
+      />
+      <View style={{ alignItems: 'center', gap: 8 }}>
+        <Text
+          style={{
+            fontFamily: theme.fonts.heading,
+            fontWeight: '700',
+            fontSize: 22,
+            color: LK.espresso,
+            textAlign: 'center',
+          }}
+        >
+          Just for you
+        </Text>
+        <Text
+          style={{
+            fontFamily: theme.fonts.hand,
+            fontSize: 18,
+            color: LK.sepia,
+            textAlign: 'center',
+          }}
+        >
+          a private space for your thoughts
+        </Text>
       </View>
-      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 20, color: LK.espresso, textAlign: 'center', marginBottom: 10 }}>
-        Your private space
-      </Text>
-      <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', lineHeight: 22, maxWidth: 270, marginBottom: 28 }}>
-        Gift ideas, little observations, things you want to remember about her — all yours, completely private.
-      </Text>
       <TouchableOpacity
-        onPress={onPress}
-        style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 28, paddingVertical: 14 }}
+        onPress={() => router.push('/notes/compose')}
+        style={{
+          backgroundColor: LK.coral,
+          borderRadius: 9999,
+          paddingHorizontal: 32,
+          paddingVertical: 14,
+        }}
+        accessibilityLabel="Write a note"
       >
-        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: '#fff' }}>Add your first note</Text>
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontWeight: '700',
+            fontSize: 15,
+            color: '#fff',
+          }}
+        >
+          Write something
+        </Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-// ─── Compose/Edit Modal ───────────────────────────────────────────────────────
-function NoteModal({
-  initial,
-  onClose,
-  onSave,
-}: {
-  initial: PrivateNote | null;
-  onClose: () => void;
-  onSave: (content: string, tag: NoteTag | null) => void;
-}) {
-  const [content, setContent] = useState(initial?.content ?? '');
-  const [tag, setTag] = useState<NoteTag | null>(initial?.tag ?? null);
-
+function SkeletonCard() {
   return (
-    <Modal animationType="slide" transparent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={onClose} activeOpacity={1} />
-        <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30 }}>
-          {/* Handle */}
-          <View style={{ paddingTop: 14, paddingBottom: 6, alignItems: 'center' }}>
-            <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
-          </View>
+    <View
+      style={{
+        backgroundColor: LK.ivory,
+        borderRadius: 20,
+        borderCurve: 'continuous',
+        borderWidth: 1.5,
+        borderColor: 'rgba(42,33,26,0.08)',
+        height: 96,
+        overflow: 'hidden',
+        ...theme.shadow.card,
+      }}
+    >
+      <StationeryRules opacity={0.2} leftMargin={0} />
+      <View style={{ padding: 16, gap: 10 }}>
+        <View style={{ width: 80, height: 10, borderRadius: 5, backgroundColor: 'rgba(42,33,26,0.08)' }} />
+        <View style={{ width: '90%', height: 12, borderRadius: 6, backgroundColor: 'rgba(42,33,26,0.06)' }} />
+        <View style={{ width: '65%', height: 12, borderRadius: 6, backgroundColor: 'rgba(42,33,26,0.06)' }} />
+      </View>
+    </View>
+  );
+}
 
-          {/* Title row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingBottom: 14 }}>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>
-              {initial ? 'Edit note' : 'New note'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => { if (content.trim()) onSave(content.trim(), tag); }}
-              disabled={!content.trim()}
-              style={{ backgroundColor: content.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
-            >
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: content.trim() ? '#fff' : LK.ink70 }}>Save</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
-            {/* Tag selector */}
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11.5, letterSpacing: 0.9, textTransform: 'uppercase', color: LK.ink70, marginBottom: 10 }}>
-              Category
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
-              {NOTE_TAGS.map((t) => {
-                const on = tag === t.id;
-                return (
-                  <TouchableOpacity
-                    key={t.id}
-                    onPress={() => setTag(on ? null : t.id)}
-                    style={{
-                      backgroundColor: on ? tint(t.color, 0.55) : tint(t.color, 0.82),
-                      borderRadius: 9999, paddingHorizontal: 13, paddingVertical: 9,
-                      borderWidth: on ? 1.5 : 0,
-                      borderColor: on ? shade(t.color, 0.3) : 'transparent',
-                    }}
-                  >
-                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: shade(t.color, 0.45) }}>
-                      {t.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Content */}
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11.5, letterSpacing: 0.9, textTransform: 'uppercase', color: LK.ink70, marginBottom: 10 }}>
-              Note
-            </Text>
-            <TextInput
-              value={content}
-              onChangeText={setContent}
-              multiline
-              autoFocus
-              placeholder="Write anything — a gift idea, something she mentioned, a little detail you want to remember…"
-              placeholderTextColor={LK.ink70}
-              style={{
-                backgroundColor: LK.ivory,
-                borderRadius: 16,
-                padding: 16,
-                fontFamily: theme.fonts.body,
-                fontSize: 15.5,
-                color: LK.espresso,
-                lineHeight: 24,
-                minHeight: 140,
-                textAlignVertical: 'top',
-                ...theme.shadow.sm,
-              }}
-            />
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+function SkeletonList() {
+  return (
+    <View style={{ paddingHorizontal: 20, paddingTop: 8, gap: 12 }}>
+      {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
+    </View>
   );
 }

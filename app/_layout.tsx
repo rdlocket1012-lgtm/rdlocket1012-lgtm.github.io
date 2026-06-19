@@ -125,11 +125,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <OfflineBanner />
-      <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="(onboarding)" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(auth)/forgot-password" />
-        <Stack.Screen name="(auth)/reset-password" />
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(auth)/forgot-password" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(auth)/reset-password" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="map/index" />
         <Stack.Screen name="milestone/[id]" options={{ presentation: 'modal' }} />
@@ -140,11 +140,14 @@ export default function RootLayout() {
         <Stack.Screen name="letter/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="games/index" />
         <Stack.Screen name="games/this-or-that" />
+        <Stack.Screen name="games/draw-and-guess" options={{ headerShown: false }} />
         <Stack.Screen name="bucket-list/index" />
         <Stack.Screen name="bucket-list/add-item" options={{ presentation: 'modal' }} />
         <Stack.Screen name="settings/index" options={{ presentation: 'modal' }} />
         <Stack.Screen name="settings/danger-zone" options={{ presentation: 'modal' }} />
         <Stack.Screen name="quiz/history" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="notes/index" />
+        <Stack.Screen name="notes/compose" options={{ presentation: 'formSheet', sheetGrabberVisible: true }} />
         <Stack.Screen name="profile/about" />
         <Stack.Screen name="profile/edit" options={{ presentation: 'modal' }} />
       </Stack>

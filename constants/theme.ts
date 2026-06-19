@@ -112,6 +112,19 @@ export const theme = {
     secondary: LK.ink70,
     tertiary: LK.ink45,
   },
+  // §10.2 Spring tokens — always reference by name; never hardcode damping/stiffness.
+  spring: {
+    snappy:  { damping: 22, stiffness: 320 }, // tab pill, icon taps, badges
+    warm:    { damping: 18, stiffness: 280 }, // card entrances, sheet slides
+    gentle:  { damping: 14, stiffness: 220 }, // hero card, day counter
+    bounce:  { damping: 12, stiffness: 260 }, // FAB press, milestone pop (~8% overshoot)
+  },
+  // §10.2 Timing tokens
+  timing: {
+    micro: 150,       // button press, icon tap
+    transition: 280,  // card entrance, sheet open
+    exit: 150,        // exits always faster than entrances
+  },
   shadow: {
     card: {
       shadowColor: LK.espresso,

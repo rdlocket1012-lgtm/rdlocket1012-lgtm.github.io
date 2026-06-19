@@ -37,7 +37,7 @@ const TABS: Record<string, { label: string; icon: string }> = {
   us: { label: 'Us', icon: 'heart' },
 };
 
-const spring = { damping: 22, stiffness: 280 };
+const spring = theme.spring.snappy;
 
 function TabButton({
   focused,

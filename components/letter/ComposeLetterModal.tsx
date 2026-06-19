@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Easing } from 'react-native';
+import { Image } from 'expo-image';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { IconChip, Chip } from '@/components/ui';
+import { Chip } from '@/components/ui';
 import { useLetters } from '@/hooks/useLetters';
 import { useAuth } from '@/hooks/useAuth';
 import { useCouple } from '@/hooks/useCouple';
@@ -10,11 +11,18 @@ import { usePartner } from '@/hooks/usePartner';
 import { notifyPartner } from '@/lib/push';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { uploadVoiceLetter, formatDuration } from '@/lib/audio-letter';
+import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
+import {
+  LOVE_CARD_ILLUSTRATIONS,
+  encodeLoveCard,
+  type IllustrationKey,
+} from '@/constants/love-card-illustrations';
 
 interface Props {
   onClose: () => void;
   isPremium: boolean;
   onPaywall: () => void;
+  initialMode?: 'text' | 'voice' | 'card';
 }
 
 const SEAL_OPTIONS = [
@@ -24,7 +32,7 @@ const SEAL_OPTIONS = [
   { label: '5 years from now', getValue: () => { const d = new Date(); d.setFullYear(d.getFullYear() + 5); return d.toISOString().split('T')[0]; } },
 ];
 
-export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
+export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode = 'text' }: Props) {
   const { sendLetter } = useLetters();
   const { profile } = useAuth();
   const { couple } = useCouple();
@@ -37,7 +45,9 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
   const [sealedLabel, setSealedLabel] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState<'text' | 'voice'>('text');
+  const [mode, setMode] = useState<'text' | 'voice' | 'card'>(initialMode);
+  const [cardIllus, setCardIllus] = useState<IllustrationKey>('envelope');
+  const [cardMessage, setCardMessage] = useState('');
   const recorder = useVoiceRecorder();
 
   useEffect(() => {
@@ -110,33 +120,50 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
     }
   }
 
+  async function handleSendCard() {
+    if (!cardMessage.trim() || !couple?.id || !profile?.id) return;
+    setSaving(true);
+    try {
+      await sendLetter({
+        couple_id: couple.id,
+        sender_id: profile.id,
+        recipient_id: null,
+        body_rich_html: encodeLoveCard(cardIllus, cardMessage.trim()),
+        is_draft: false,
+        is_sealed_until: false,
+        reveal_at: null,
+        sent_at: new Date().toISOString(),
+        deleted_at: null,
+        audio_path: null,
+        audio_duration: null,
+        transcript: null,
+      });
+      const name = (profile?.display_name || 'Your partner').split(' ')[0];
+      notifyPartner('letter', 'A Love Card 💌', `${name} sent you a Love Card`);
+      setSent(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (sent) {
+    // The send peak moment (§10.5) — full-screen mascot overlay, self-dismissing → close.
     return (
-      <Modal animationType="fade" transparent>
-        <View style={{ flex: 1, backgroundColor: tint(LK.blush, 0.6), alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-          <IconChip color={LK.blush} size={96}>
-            <Icon name="envelope" size={46} color={shade(LK.blush, 0.5)} />
-          </IconChip>
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 30, color: LK.espresso, marginTop: 22, letterSpacing: -1, textAlign: 'center' }}>
-            Sealed & sent
-          </Text>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 15.5, color: LK.ink70, marginTop: 10, lineHeight: 24, maxWidth: 260, textAlign: 'center' }}>
-            Your letter is on its way. It's now read-only — kept forever.
-          </Text>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 28, paddingVertical: 16, marginTop: 26 }}
-          >
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Back to letters</Text>
-          </TouchableOpacity>
-        </View>
+      <Modal animationType="none" transparent>
+        <SendMomentOverlay
+          visible
+          name="letter-send"
+          message={sealedDate ? `Sealed for ${partnerFirstName}` : `On its way to ${partnerFirstName}`}
+          subMessage={sealedDate ? 'They’ll open it when the day comes' : 'They’ll feel it the moment they open the app'}
+          onDismiss={onClose}
+        />
       </Modal>
     );
   }
 
   return (
     <Modal animationType="slide" transparent={false}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#FBF3E0' }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: LK.ivory }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 56, paddingBottom: 6 }}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -150,8 +177,15 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
             )}
           </View>
           {(() => {
-            const canSend = mode === 'text' ? !!text.trim() : recorder.state === 'done' && !!recorder.audioUri;
-            const onPress = mode === 'text' ? handleSend : handleSendVoice;
+            const canSend =
+              mode === 'text' ? !!text.trim() :
+              mode === 'voice' ? recorder.state === 'done' && !!recorder.audioUri :
+              !!cardMessage.trim();
+            const onPress =
+              mode === 'text' ? handleSend :
+              mode === 'voice' ? handleSendVoice :
+              handleSendCard;
+            const label = mode === 'card' ? 'Send with love' : 'Seal & send';
             return (
               <TouchableOpacity
                 onPress={onPress}
@@ -160,27 +194,31 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
               >
                 {saving
                   ? <ActivityIndicator size="small" color="#fff" />
-                  : <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: canSend ? '#fff' : LK.ink70 }}>Seal & send</Text>}
+                  : <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: canSend ? '#fff' : LK.ink70 }}>{label}</Text>}
               </TouchableOpacity>
             );
           })()}
         </View>
 
-        {/* Mode toggle: Write / Voice */}
+        {/* Mode toggle: Write / Voice / Love Card */}
         <View style={{ flexDirection: 'row', alignSelf: 'center', backgroundColor: 'rgba(42,33,26,0.06)', borderRadius: 9999, padding: 4, marginTop: 4 }}>
-          {(['text', 'voice'] as const).map((m) => (
+          {([
+            { id: 'text', icon: 'feather', label: 'Write' },
+            { id: 'voice', icon: 'mic', label: 'Voice' },
+            { id: 'card', icon: 'heart.fill', label: 'Love Card' },
+          ] as const).map((m) => (
             <TouchableOpacity
-              key={m}
-              onPress={() => setMode(m)}
+              key={m.id}
+              onPress={() => setMode(m.id)}
               style={{
                 flexDirection: 'row', alignItems: 'center', gap: 6,
-                backgroundColor: mode === m ? LK.ivory : 'transparent',
-                borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 8,
+                backgroundColor: mode === m.id ? LK.ivory : 'transparent',
+                borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 8,
               }}
             >
-              <Icon name={m === 'text' ? 'feather' : 'mic'} size={15} color={mode === m ? LK.espresso : LK.ink70} />
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: mode === m ? LK.espresso : LK.ink70 }}>
-                {m === 'text' ? 'Write' : 'Voice'}
+              <Icon name={m.icon} size={14} color={mode === m.id ? (m.id === 'card' ? LK.coral : LK.espresso) : LK.ink70} />
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: mode === m.id ? LK.espresso : LK.ink70 }}>
+                {m.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -232,8 +270,16 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
               textAlignVertical: 'top',
             }}
           />
-        ) : (
+        ) : mode === 'voice' ? (
           <VoiceRecorderPanel recorder={recorder} partnerFirstName={partnerFirstName} />
+        ) : (
+          <LoveCardCompose
+            selectedIllus={cardIllus}
+            message={cardMessage}
+            partnerFirstName={partnerFirstName}
+            onSelectIllus={setCardIllus}
+            onMessageChange={setCardMessage}
+          />
         )}
 
         {/* Seal until picker */}
@@ -359,6 +405,223 @@ function VoiceRecorderPanel({ recorder, partnerFirstName }: {
           : state === 'recording'
           ? 'Listening… tap to stop.'
           : 'Tap "Seal & send" to deliver your voice letter.'}
+      </Text>
+    </ScrollView>
+  );
+}
+
+// ── Love Card compose ────────────────────────────────────────────────────────
+
+function LoveCardCompose({
+  selectedIllus,
+  message,
+  partnerFirstName,
+  onSelectIllus,
+  onMessageChange,
+}: {
+  selectedIllus: IllustrationKey;
+  message: string;
+  partnerFirstName: string;
+  onSelectIllus: (k: IllustrationKey) => void;
+  onMessageChange: (t: string) => void;
+}) {
+  const selected = LOVE_CARD_ILLUSTRATIONS.find((i) => i.key === selectedIllus)!;
+
+  return (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
+      {/* Live card preview (3:4 ratio, §8.1 Love Card spec) */}
+      <View style={{ paddingHorizontal: 40, paddingTop: 16, paddingBottom: 12 }}>
+        <View
+          style={{
+            backgroundColor: LK.vellum,
+            borderRadius: 16,
+            borderCurve: 'continuous',
+            borderWidth: 1.5,
+            borderColor: LK.espresso,
+            aspectRatio: 3 / 4,
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            boxShadow: '0 4px 16px rgba(42,33,26,0.10), 0 1px 3px rgba(42,33,26,0.06)',
+          }}
+        >
+          {/* Inner border */}
+          <View
+            style={{
+              position: 'absolute',
+              inset: 10,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: LK.espresso,
+              pointerEvents: 'none',
+            }}
+          />
+          <Image
+            source={selected.source}
+            style={{ width: '60%', aspectRatio: 1 }}
+            contentFit="contain"
+          />
+          {message.trim() ? (
+            <Text
+              style={{
+                fontFamily: theme.fonts.serif,
+                fontStyle: 'italic',
+                fontSize: 15,
+                color: LK.espresso,
+                textAlign: 'center',
+                paddingHorizontal: 20,
+                marginTop: 12,
+              }}
+              numberOfLines={3}
+            >
+              {message}
+            </Text>
+          ) : (
+            <Text
+              style={{
+                fontFamily: theme.fonts.serif,
+                fontStyle: 'italic',
+                fontSize: 14,
+                color: 'rgba(42,33,26,0.30)',
+                textAlign: 'center',
+                paddingHorizontal: 20,
+                marginTop: 12,
+              }}
+            >
+              your message here…
+            </Text>
+          )}
+          <Text
+            style={{
+              fontFamily: theme.fonts.body,
+              fontSize: 12,
+              fontWeight: '500',
+              color: LK.faded,
+              marginTop: 10,
+            }}
+          >
+            for {partnerFirstName}
+          </Text>
+        </View>
+      </View>
+
+      {/* Illustration picker */}
+      <Text
+        style={{
+          fontFamily: theme.fonts.body,
+          fontWeight: '700',
+          fontSize: 11,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: LK.faded,
+          paddingHorizontal: 20,
+          marginBottom: 10,
+        }}
+      >
+        Illustration
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+      >
+        {LOVE_CARD_ILLUSTRATIONS.map((illus) => {
+          const active = illus.key === selectedIllus;
+          return (
+            <TouchableOpacity
+              key={illus.key}
+              onPress={() => onSelectIllus(illus.key)}
+              style={{
+                width: 72,
+                alignItems: 'center',
+                gap: 6,
+              }}
+              accessibilityLabel={illus.label}
+            >
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 14,
+                  borderCurve: 'continuous',
+                  backgroundColor: active ? tint(illus.accentColor, 0.82) : LK.ivory,
+                  borderWidth: active ? 2 : 1.5,
+                  borderColor: active ? illus.accentColor : 'rgba(42,33,26,0.10)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Image source={illus.source} style={{ width: 44, height: 44 }} contentFit="contain" />
+              </View>
+              <View
+                style={{
+                  height: 4,
+                  width: 28,
+                  borderRadius: 2,
+                  backgroundColor: illus.accentColor,
+                  opacity: active ? 1 : 0.35,
+                }}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Message field */}
+      <Text
+        style={{
+          fontFamily: theme.fonts.body,
+          fontWeight: '700',
+          fontSize: 11,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: LK.faded,
+          paddingHorizontal: 20,
+          marginTop: 18,
+          marginBottom: 10,
+        }}
+      >
+        Message
+      </Text>
+      <TextInput
+        value={message}
+        onChangeText={onMessageChange}
+        multiline
+        maxLength={120}
+        placeholder={`Something sweet for ${partnerFirstName}…`}
+        placeholderTextColor="rgba(42,33,26,0.30)"
+        style={{
+          marginHorizontal: 20,
+          backgroundColor: LK.ivory,
+          borderRadius: 14,
+          borderCurve: 'continuous',
+          borderWidth: 1.5,
+          borderColor: 'rgba(42,33,26,0.12)',
+          padding: 16,
+          fontFamily: theme.fonts.serif,
+          fontStyle: 'italic',
+          fontSize: 15,
+          color: LK.espresso,
+          lineHeight: 22,
+          minHeight: 80,
+          textAlignVertical: 'top',
+        }}
+      />
+      <Text
+        style={{
+          alignSelf: 'flex-end',
+          marginRight: 20,
+          marginTop: 6,
+          fontFamily: theme.fonts.body,
+          fontSize: 11,
+          color: LK.faded,
+        }}
+      >
+        {message.length}/120
       </Text>
     </ScrollView>
   );

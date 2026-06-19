@@ -13,6 +13,7 @@ import { useNudgeChannel, NudgeKind } from '@/hooks/useNudgeChannel';
 import { notifyPartner } from '@/lib/push';
 import { useBiteFx } from '@/stores/bite-fx.store';
 import { useAuthStore } from '@/stores/auth.store';
+import MascotAnimation from '@/components/ui/mascot-animation';
 
 /** Whether incoming nudge buzzing is allowed for me (default on). */
 const myHapticsOn = () => useAuthStore.getState().profile?.nudge_haptics !== false;
@@ -296,7 +297,7 @@ function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, 
           opacity: anim,
           transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }],
         }}>
-          <Pressable style={{ backgroundColor: '#FFFDF7', borderRadius: 28, padding: 22, ...theme.shadow.card }}>
+          <Pressable style={{ backgroundColor: LK.vellum, borderRadius: 28, padding: 22, ...theme.shadow.card }}>
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>
               Send a little love 💛
             </Text>
@@ -371,13 +372,12 @@ function CatchItOverlay({ partnerName, onCatch, onDecline }: { partnerName: stri
         { backgroundColor: 'rgba(20,15,10,0.72)', alignItems: 'center', justifyContent: 'center', padding: 30, opacity },
       ]}>
         <Animated.View style={{
-          backgroundColor: '#FFFDF7', borderRadius: 30, padding: 30,
+          backgroundColor: LK.vellum, borderRadius: 30, padding: 30,
           alignItems: 'center', width: '100%', maxWidth: 340,
           ...theme.shadow.card,
           transform: [{ scale }],
         }}>
-          {/* Animated kiss emoji */}
-          <Text style={{ fontSize: 64, marginBottom: 12 }}>💋</Text>
+          <MascotAnimation name="kiss-receive" size={100} style={{ marginBottom: 8 }} />
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 26, color: LK.espresso, textAlign: 'center', letterSpacing: -0.5 }}>
             Incoming kiss!
           </Text>
@@ -395,7 +395,7 @@ function CatchItOverlay({ partnerName, onCatch, onDecline }: { partnerName: stri
             }}
           >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 17, color: shade(LK.blush, 0.55) }}>
-              Catch it! 💋
+              Catch it!
             </Text>
           </TouchableOpacity>
 
@@ -431,17 +431,17 @@ function CaughtConfirmation({ partnerName, onClose }: { partnerName: string; onC
         alignItems: 'center', justifyContent: 'center', padding: 30, opacity,
       }]}>
         <Animated.View style={{
-          backgroundColor: '#FFFDF7', borderRadius: 30, padding: 28,
+          backgroundColor: LK.vellum, borderRadius: 30, padding: 28,
           alignItems: 'center', width: '100%', maxWidth: 320,
           ...theme.shadow.card,
           transform: [{ scale }],
         }}>
-          <Text style={{ fontSize: 56, marginBottom: 10 }}>💋</Text>
+          <MascotAnimation name="kiss-send" size={88} style={{ marginBottom: 6 }} />
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 24, color: LK.espresso, textAlign: 'center' }}>
-            Caught it! 💋
+            Caught it!
           </Text>
           <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', marginTop: 8, lineHeight: 21 }}>
-            {partnerName} caught your kiss 💛
+            {partnerName} caught your kiss
           </Text>
         </Animated.View>
       </Animated.View>

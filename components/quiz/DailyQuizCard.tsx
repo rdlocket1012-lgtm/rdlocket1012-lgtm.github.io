@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { DoodleBackground } from '@/components/ui/doodle-background';
 import { useQuiz } from '@/hooks/useQuiz';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
 import { usePartner } from '@/hooks/usePartner';
@@ -95,19 +97,32 @@ export function DailyQuizCard({ hideStreak = false }: { hideStreak?: boolean }) 
 
   return (
     <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 22 }}>
-      <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 18, ...theme.shadow.card }}>
+      <View
+        style={{
+          backgroundColor: LK.vellum,
+          borderRadius: 28,
+          borderCurve: 'continuous',
+          borderWidth: 2,
+          borderColor: LK.lilac,
+          overflow: 'hidden',
+          transform: [{ rotate: '1.5deg' }],
+          boxShadow: '0 4px 16px rgba(42,33,26,0.10), 0 1px 3px rgba(42,33,26,0.06)',
+        } as any}
+      >
+        <DoodleBackground group="lilac" density="medium" />
+        <View style={{ padding: 18 }}>
         {/* Eyebrow: category + history — keeps the title row clean */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: shade(LK.marigold, 0.5) }}>
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: shade(LK.lilac, 0.5) }}>
             {CATEGORY_LABEL[q.category]}
           </Text>
           <TouchableOpacity onPress={() => router.push('/quiz/history')} hitSlop={{ top: 13, bottom: 13, left: 13, right: 13 }} accessibilityLabel="Quiz history">
-            <Icon name="list" size={18} color={LK.ink70} />
+            <Image source="sf:clock.arrow.circlepath" style={{ width: 18, height: 18 }} contentFit="contain" tintColor={LK.faded} />
           </TouchableOpacity>
         </View>
 
         {/* Title */}
-        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 20, color: LK.espresso }}>Daily Match 🧠</Text>
+        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 20, color: LK.espresso }}>Daily Match</Text>
 
         {/* Gentle, guilt-free streak line (carries the 🔥 — no duplicate chip).
             Hidden on Home, where the dedicated Zone C streak row shows it instead (§9.3). */}
@@ -122,7 +137,7 @@ export function DailyQuizCard({ hideStreak = false }: { hideStreak?: boolean }) 
           />
         )}
 
-        <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.espresso, lineHeight: 26, marginTop: selecting ? 12 : 6, marginBottom: selecting ? 12 : 14 }}>
+        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 17, color: LK.espresso, lineHeight: 26, textAlign: 'center', marginTop: selecting ? 12 : 6, marginBottom: selecting ? 12 : 14 }}>
           {selecting && choosingGuess ? `Which one will ${partnerName} pick?` : q.prompt}
         </Text>
 
@@ -256,6 +271,7 @@ export function DailyQuizCard({ hideStreak = false }: { hideStreak?: boolean }) 
             )}
           </View>
         )}
+        </View>
       </View>
 
       {/* One-time "how it works" explainer */}
@@ -369,25 +385,28 @@ function Badge({ text, c }: { text: string; c: string }) {
 function StreakLine({ streak, partnerName }: { streak: { current: number; best: number; todayDone: boolean; freezeActive: boolean; loading: boolean }; partnerName: string }) {
   if (streak.loading) return null;
 
-  let text: string;
-  if (streak.current === 0) {
-    text = `Answer today to start a streak with ${partnerName} 💛`;
+  const active = streak.current > 0;
+
+  let body: string;
+  if (!active) {
+    body = `Answer today to start a streak with ${partnerName}`;
   } else if (streak.todayDone) {
-    text = `🔥 ${streak.current} ${streak.current === 1 ? 'day' : 'days'} connected — you're both on it 💛`;
+    body = `${streak.current} ${streak.current === 1 ? 'day' : 'days'} connected — you're both on it`;
   } else {
-    text = `🔥 ${streak.current}-day streak going — answer today to keep it glowing`;
+    body = `${streak.current}-day streak — answer today to keep it glowing`;
   }
 
   return (
-    <View style={{ marginTop: 6, marginBottom: 2 }}>
-      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: shade(LK.coral, 0.5), lineHeight: 18 }}>
-        {text}
+    <View style={{ marginTop: 6, marginBottom: 2, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <Image
+        source={require('../../assets/doodles/flame.svg')}
+        style={{ width: 14, height: 14 }}
+        contentFit="contain"
+        tintColor={active ? LK.coral : LK.faded}
+      />
+      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: shade(active ? LK.coral : LK.sepia, 0.3), lineHeight: 18, flex: 1 }}>
+        {body}
       </Text>
-      {streak.freezeActive && (
-        <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, marginTop: 1 }}>
-          Missed a day — no worries, your streak's safe 🛟
-        </Text>
-      )}
     </View>
   );
 }

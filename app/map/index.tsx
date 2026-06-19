@@ -6,6 +6,7 @@ import {
 import Mapbox, {
   MapView, Camera, PointAnnotation, UserLocation,
 } from '@rnmapbox/maps';
+import { LinearGradient } from 'expo-linear-gradient';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { useMap } from '@/hooks/useMap';
 import { useCouple } from '@/hooks/useCouple';
@@ -28,7 +29,7 @@ const DEFAULT_CENTER: [number, number] = [2.3522, 48.8566]; // [lng, lat]
 const DEFAULT_ZOOM = 2;
 
 export default function MapScreen() {
-  const { pins } = useMap();
+  const { pins, loading } = useMap();
   const { isPremium } = useCouple();
   const { items: bucketItems } = useBucketList();
   const wishlistPins = bucketItems.filter(
@@ -37,9 +38,13 @@ export default function MapScreen() {
 
   const [selected, setSelected] = useState<MapPin | null>(null);
   const [sheet, setSheet] = useState<'addPin' | 'editPin' | 'paywall' | null>(null);
-  const [view, setView] = useState<'map' | 'list'>('list');
+  const [view, setView] = useState<'map' | 'list'>('map');
+  const [filter, setFilter] = useState<string>('all');
   const [pendingCoords, setPendingCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const atCap = !isPremium && pins.length >= FREE_LIMITS.MAP_PINS;
+
+  // Category filter (§13.15) — applied to both map markers and the list.
+  const visiblePins = filter === 'all' ? pins : pins.filter((p) => p.category === filter);
 
   function handleAddPress() {
     if (atCap) { setSheet('paywall'); return; }
@@ -80,7 +85,7 @@ export default function MapScreen() {
         <UserLocation visible />
 
         {/* Visited pins */}
-        {pins.map((pin) => {
+        {visiblePins.map((pin) => {
           const c = catColor(pin.category);
           const isSelected = selected?.id === pin.id;
           return (
@@ -164,26 +169,22 @@ export default function MapScreen() {
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: LK.parchment }} />
       )}
 
-      {/* ── Map-view floating header ─────────────────────────────────────── */}
+      {/* ── Map-view floating overlay: back · controls · filter chips ─────── */}
       {view === 'map' && (
-        <View style={{
-          position: 'absolute', top: 0, left: 0, right: 0,
-          paddingTop: 56, paddingHorizontal: 20,
-          flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0 }} pointerEvents="box-none">
+          {/* Parchment gradient keeps chips legible over any map tile */}
+          <LinearGradient
+            colors={[rgba(LK.parchment, 0.9), 'transparent']}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 170 }}
+            pointerEvents="none"
+          />
+          <View style={{ paddingTop: 56, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ backgroundColor: rgba('#ffffff', 0.92), borderRadius: 22, ...theme.shadow.sm }}>
               <RoundIcon onPress={() => router.back()}><Icon name="chevL" size={20} color={LK.espresso} /></RoundIcon>
             </View>
-            <View style={{
-              backgroundColor: rgba('#ffffff', 0.92), borderRadius: 18,
-              paddingHorizontal: 16, paddingVertical: 10, ...theme.shadow.sm,
-            }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', color: LK.ink70 }}>Our</Text>
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 26, letterSpacing: -1, color: LK.espresso, lineHeight: 28 }}>Map</Text>
-            </View>
+            <MapControls view={view} setView={setView} onAdd={handleAddPress} atCap={atCap} floating />
           </View>
-          <MapControls view={view} setView={setView} onAdd={handleAddPress} floating />
+          <FilterChips filter={filter} setFilter={setFilter} style={{ marginTop: 12 }} />
         </View>
       )}
 
@@ -194,13 +195,20 @@ export default function MapScreen() {
             eyebrow="Our"
             title="Map"
             onBack={() => router.back()}
-            right={<MapControls view={view} setView={setView} onAdd={handleAddPress} />}
+            right={<MapControls view={view} setView={setView} onAdd={handleAddPress} atCap={atCap} />}
           />
+          <FilterChips filter={filter} setFilter={setFilter} style={{ marginTop: 6, marginBottom: 4 }} />
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingTop: 14, paddingBottom: 120, gap: 10 }}
+            contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingTop: 8, paddingBottom: 120, gap: 10 }}
           >
-            {pins.length === 0 ? (
+            {loading ? (
+              <View style={{ paddingTop: 20, gap: 10 }}>
+                {[1, 2, 3].map((i) => (
+                  <View key={i} style={{ height: 74, backgroundColor: LK.ivory, borderRadius: theme.radii.sm, opacity: 1 - i * 0.15, boxShadow: '0 2px 8px rgba(42,33,26,0.07)' } as any} />
+                ))}
+              </View>
+            ) : pins.length === 0 ? (
               <View style={{ alignItems: 'center', paddingTop: 60, gap: 12 }}>
                 <IconChip color={LK.lilac} size={64}>
                   <Icon name="mapPin" size={30} color={shade(LK.lilac, 0.5)} />
@@ -212,7 +220,11 @@ export default function MapScreen() {
                   Switch to the map and tap ＋ to drop your first pin.
                 </Text>
               </View>
-            ) : pins.map((pin) => {
+            ) : visiblePins.length === 0 ? (
+              <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.sepia, textAlign: 'center', paddingTop: 48 }}>
+                No pins in this filter yet.
+              </Text>
+            ) : visiblePins.map((pin) => {
               const cc = catColor(pin.category);
               return (
                 <TouchableOpacity
@@ -425,11 +437,52 @@ function StatCell({ n, label }: { n: string; label: string }) {
   );
 }
 
+// ─── Filter chips (§13.15) ──────────────────────────────────────────────────
+function FilterChips({ filter, setFilter, style }: {
+  filter: string;
+  setFilter: (id: string) => void;
+  style?: any;
+}) {
+  const chips = [{ id: 'all', label: 'All' }, ...PIN_CATEGORIES];
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+      style={style}
+    >
+      {chips.map((c) => {
+        const active = filter === c.id;
+        return (
+          <TouchableOpacity
+            key={c.id}
+            onPress={() => setFilter(c.id)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            style={{
+              height: 36, paddingHorizontal: 16, borderRadius: 99,
+              alignItems: 'center', justifyContent: 'center',
+              backgroundColor: active ? LK.coral : rgba(LK.vellum, 0.85),
+              borderWidth: active ? 0 : 1.5, borderColor: LK.hairline,
+              ...theme.shadow.sm,
+            }}
+          >
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: active ? '700' : '500', fontSize: 13, color: active ? LK.vellum : LK.espresso }}>
+              {c.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 // ─── Map Controls ─────────────────────────────────────────────────────────────
-function MapControls({ view, setView, onAdd, floating = false }: {
+function MapControls({ view, setView, onAdd, atCap = false, floating = false }: {
   view: 'map' | 'list';
   setView: (v: 'map' | 'list') => void;
   onAdd: () => void;
+  atCap?: boolean;
   floating?: boolean;
 }) {
   const toggleBg = floating ? rgba('#ffffff', 0.92) : 'rgba(42,33,26,0.06)';
@@ -454,9 +507,14 @@ function MapControls({ view, setView, onAdd, floating = false }: {
       <TouchableOpacity
         onPress={onAdd}
         accessibilityLabel="Add pin"
-        style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center', ...theme.shadow.card }}
+        style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: LK.coral, alignItems: 'center', justifyContent: 'center', ...theme.shadow.card }}
       >
         <Icon name="plus" size={26} color="#fff" />
+        {atCap && (
+          <View style={{ position: 'absolute', top: -2, right: -2, width: 20, height: 20, borderRadius: 10, backgroundColor: LK.gold, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: LK.vellum }}>
+            <Icon name="lock" size={10} color="#fff" strokeWidth={2.5} />
+          </View>
+        )}
       </TouchableOpacity>
     </View>
   );

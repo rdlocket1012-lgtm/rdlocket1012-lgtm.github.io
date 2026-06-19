@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { requestPermissions, scheduleOnThisDay } from '@/lib/notifications';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Switch, Alert, Linking, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Switch, Alert, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { IconChip, RoundIcon } from '@/components/ui';
+import { IconChip, RoundIcon, Avatar } from '@/components/ui';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useCouple } from '@/hooks/useCouple';
@@ -18,7 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 
 export default function SettingsScreen() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
   const { couple, isPremium, fetchCouple } = useCouple();
   const { partner, partnerJoined } = usePartner();
   const [sheet, setSheet] = useState<'paywall' | null>(null);
@@ -150,10 +152,28 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <ScreenHeader eyebrow="You & the app" title="Settings" onBack={() => router.back()} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 60 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 80 }}>
+        {/* Profile card (§13.28) — tap to edit your profile */}
+        <TouchableOpacity
+          onPress={() => router.push('/profile/edit')}
+          activeOpacity={0.9}
+          style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.md, borderCurve: 'continuous', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 10, ...theme.shadow.card }}
+        >
+          <Avatar initial={((profile?.display_name || 'Y').charAt(0) || 'Y').toUpperCase()} imageUrl={profile?.avatar_url} color={LK.coral} size={56} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text numberOfLines={1} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 17, color: LK.espresso }}>
+              {profile?.display_name ?? 'You'}
+            </Text>
+            {user?.email ? (
+              <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.sepia, marginTop: 1 }}>{user.email}</Text>
+            ) : null}
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.coral, marginTop: 4 }}>Edit profile →</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Relationship banner */}
         <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 4, ...theme.shadow.card }}>
           <View style={{ flexDirection: 'row' }}>

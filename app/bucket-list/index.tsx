@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, KeyboardAvoidingView, Alert, ActivityIndicator, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip, RoundIcon } from '@/components/ui';
@@ -17,11 +18,13 @@ import { dateIdeasForDay } from '@/constants/date-ideas';
 const SCRATCH_COLORS = [LK.coral, LK.marigold, LK.lilac, LK.success, LK.blush, LK.sky];
 
 export default function BucketListScreen() {
+  const { category: initCategory } = useLocalSearchParams<{ category?: string }>();
   const { items, addItem, toggleItem, deleteItem, updateItem } = useBucketList();
   const [scratchMode, setScratchMode] = useState(false);
   const dateIdeas = dateIdeasForDay(new Date(), 4);
   const { isPremium, couple } = useCouple();
   const [filter, setFilter] = useState<'todo' | 'done'>('todo');
+  const [catFilter, setCatFilter] = useState<string>(initCategory ?? 'all');
   const [sheet, setSheet] = useState<'add' | 'paywall' | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newCat, setNewCat] = useState('travel');
@@ -52,8 +55,9 @@ export default function BucketListScreen() {
     setNewLocation('');
   }
 
-  const todo = items.filter((i) => !i.is_done);
-  const done = items.filter((i) => i.is_done);
+  const filteredByCat = catFilter === 'all' ? items : items.filter((i) => i.category === catFilter);
+  const todo = filteredByCat.filter((i) => !i.is_done);
+  const done = filteredByCat.filter((i) => i.is_done);
   const atCap = !isPremium && items.length >= FREE_LIMITS.BUCKET_LIST_ITEMS;
   const list = filter === 'todo' ? todo : done;
 
@@ -107,7 +111,7 @@ export default function BucketListScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
         {/* Header */}
         <ScreenHeader
@@ -122,6 +126,28 @@ export default function BucketListScreen() {
               <Icon name={atCap ? 'lock' : 'plus'} size={atCap ? 19 : 22} color={atCap ? shade(LK.marigold, 0.5) : '#fff'} />
             </TouchableOpacity>
           }
+        />
+
+        {/* Category filter chips */}
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={[{ id: 'all', label: 'All', icon: 'star', color: LK.espresso }, ...BUCKET_CATEGORIES]}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 8 }}
+          renderItem={({ item: cat }) => {
+            const on = catFilter === cat.id;
+            const col = cat.id === 'all' ? LK.espresso : cat.color;
+            return (
+              <TouchableOpacity
+                onPress={() => setCatFilter(cat.id)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: on ? col : tint(col, 0.7), borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 9 }}
+              >
+                <Icon name={cat.icon} size={13} color={on ? '#fff' : shade(col, 0.55)} />
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: on ? '#fff' : shade(col, 0.55) }}>{cat.label}</Text>
+              </TouchableOpacity>
+            );
+          }}
         />
 
         {/* Scratch-Off mode toggle */}
@@ -225,14 +251,16 @@ export default function BucketListScreen() {
               <View key={it.id} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 15, flexDirection: 'row', gap: 13, ...theme.shadow.card, opacity: it.is_done ? 0.92 : 1 }}>
                 <TouchableOpacity
                   onPress={() => toggleItem(it.id, !it.is_done)}
-                  style={{
-                    width: 30, height: 30, borderRadius: 15, marginTop: 1, flexShrink: 0,
+                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -7 }}
+                >
+                  <View style={{
+                    width: 30, height: 30, borderRadius: 15,
                     backgroundColor: it.is_done ? color : 'transparent',
                     borderWidth: it.is_done ? 0 : 2.5, borderColor: 'rgba(42,33,26,0.22)',
                     alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  {it.is_done && <Icon name="check" size={18} color={shade(color, 0.55)} />}
+                  }}>
+                    {it.is_done && <Icon name="check" size={18} color={shade(color, 0.55)} />}
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity activeOpacity={0.7} onPress={() => openEdit({ ...it })} style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{
@@ -272,7 +300,7 @@ export default function BucketListScreen() {
       {/* Add item modal */}
       {sheet === 'add' && (
         <Modal animationType="slide" transparent>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <KeyboardAvoidingView behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
           <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={closeSheet} activeOpacity={1} />
           <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30 }}>
             <View style={{ paddingTop: 14, alignItems: 'center' }}>

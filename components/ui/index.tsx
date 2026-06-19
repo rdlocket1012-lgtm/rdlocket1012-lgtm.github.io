@@ -1,43 +1,14 @@
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, Image,
+  View, Text, TouchableOpacity, ViewStyle, TextStyle,
 } from 'react-native';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from './Icon';
 
-// ---------- Avatar ----------
-type AvatarProps = { initial: string; color: string; size?: number; style?: ViewStyle; imageUrl?: string | null };
-export function Avatar({ initial, color, size = 40, style, imageUrl }: AvatarProps) {
-  if (imageUrl) {
-    return <Image source={{ uri: imageUrl }} style={[{ width: size, height: size, borderRadius: size / 2 }, style as any]} />;
-  }
-  return (
-    <View style={[{
-      width: size, height: size, borderRadius: size / 2,
-      backgroundColor: tint(color, 0.3),
-      alignItems: 'center', justifyContent: 'center',
-    }, style]}>
-      <Text style={{ color: '#fff', fontWeight: '700', fontSize: size * 0.42, fontFamily: theme.fonts.heading }}>
-        {initial}
-      </Text>
-    </View>
-  );
-}
-
-// ---------- IconChip ----------
-type IconChipProps = { children: React.ReactNode; color?: string; size?: number; soft?: string; style?: ViewStyle };
-export function IconChip({ children, color = LK.marigold, size = 44, soft, style }: IconChipProps) {
-  return (
-    <View style={[{
-      width: size, height: size,
-      borderRadius: size * 0.44,
-      backgroundColor: soft ?? tint(color, 0.62),
-      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }, style]}>
-      {children}
-    </View>
-  );
-}
+// Re-export extracted components so existing imports keep working.
+export { Avatar } from './avatar';
+export { IconChip } from './icon-chip';
+export { RoundIcon } from './round-icon';
 
 // ---------- Btn ----------
 type BtnKind = 'primary' | 'accent' | 'soft' | 'ghost' | 'outline';
@@ -88,34 +59,6 @@ export function Btn({ children, onPress, kind = 'primary', color, full, style, t
       {typeof children === 'string'
         ? <Text style={[{ color: fg, fontWeight: '700', fontSize: 16, fontFamily: theme.fonts.body, letterSpacing: 0.1 }, textStyle]}>{children}</Text>
         : children}
-    </TouchableOpacity>
-  );
-}
-
-// ---------- RoundIcon button ----------
-type RoundIconProps = { children: React.ReactNode; onPress?: () => void; badge?: boolean; style?: ViewStyle };
-export function RoundIcon({ children, onPress, badge, style }: RoundIconProps) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      style={[{
-        width: 44, height: 44, borderRadius: 22,
-        backgroundColor: LK.ivory,
-        alignItems: 'center', justifyContent: 'center',
-        ...theme.shadow.sm,
-      }, style]}
-    >
-      {children}
-      {badge && (
-        <View style={{
-          position: 'absolute', top: 8, right: 9,
-          width: 8, height: 8, borderRadius: 4,
-          backgroundColor: LK.coral,
-          borderWidth: 1.5, borderColor: LK.ivory,
-        }} />
-      )}
     </TouchableOpacity>
   );
 }
