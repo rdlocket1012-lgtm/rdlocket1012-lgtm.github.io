@@ -39,6 +39,11 @@ export const useLettersStore = create<LettersState>((set, get) => ({
 
   fetchLetters: async (coupleId) => {
     set({ loading: true });
+    // Safety net: RN fetch has no timeout, so a stalled connection or a wedged
+    // auth session could otherwise leave the screen stuck on its skeleton
+    // forever. Cap the loading state; any data that arrives late still populates
+    // (and realtime refetches on the next change).
+    const safety = setTimeout(() => set({ loading: false }), 12000);
     try {
       const { data, error } = await supabase
         .from('letters')
@@ -56,6 +61,7 @@ export const useLettersStore = create<LettersState>((set, get) => ({
     } catch (e: any) {
       console.warn('[letters] fetch threw:', e?.message ?? e);
     } finally {
+      clearTimeout(safety);
       set({ loading: false });
     }
   },
