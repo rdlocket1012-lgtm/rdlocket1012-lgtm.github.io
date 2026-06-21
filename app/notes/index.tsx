@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -49,6 +49,7 @@ export default function NotesScreen() {
           headerStyle: { backgroundColor: LK.parchment },
           headerTintColor: LK.espresso,
           headerBackTitle: '',
+          headerBackButtonDisplayMode: 'minimal',
           headerRight: () => (
             <TouchableOpacity
               onPress={() => router.push('/notes/compose')}
@@ -86,7 +87,7 @@ export default function NotesScreen() {
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
           renderItem={({ item: note, index }) => (
-            <Animated.View entering={index < 10 ? FadeInUp.duration(280).delay(index * 30) : undefined}>
+            <Animated.View entering={index < 10 ? FadeInUp.duration(280).delay(index * 30).reduceMotion(ReduceMotion.Never) : undefined}>
               <NoteCard
                 note={note}
                 onEdit={() => router.push({ pathname: '/notes/compose', params: { id: note.id } })}

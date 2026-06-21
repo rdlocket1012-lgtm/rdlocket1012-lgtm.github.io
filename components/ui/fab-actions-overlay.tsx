@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Pressable, View, Text } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  FadeIn,
-  FadeOut,
-  ZoomIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withDelay,
+  withTiming,
   useReducedMotion,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,12 +24,12 @@ const FAB_BOTTOM = TRAY_HEIGHT - 26; // pops ~28px above the tray top
 
 /**
  * Full-screen quick-actions overlay opened by the center FAB (§8.11).
- * NOT a route / formSheet — a dimmed in-app overlay. The FAB stays visible
- * underneath (rendered by the tab bar); here we render the backdrop + the
- * stack of action cards above it.
+ * NOT a route / formSheet — a dimmed in-app overlay over a transparent Modal.
  *
- * Backdrop is Parchment ~92% (blur deferred until a native rebuild adds
- * expo-blur — see §8.11). Cards stagger up; reduced-motion cross-fades.
+ * Animations are driven by Reanimated *shared values* (not entering/exiting
+ * layout animations) because layout animations silently no-op inside a RN
+ * <Modal>. The Modal's native "fade" handles the backdrop in/out; cards spring
+ * up with a stagger and the ✕ FAB scales in.
  */
 
 type Action = {
@@ -64,15 +66,11 @@ export function FabActionsOverlay({ visible, onClose }: { visible: boolean; onCl
       visible={visible}
       transparent
       statusBarTranslucent
-      animationType="none"
+      animationType="fade"
       onRequestClose={onClose}
     >
       {/* Backdrop — tap anywhere to dismiss */}
-      <Animated.View
-        entering={FadeIn.duration(150)}
-        exiting={FadeOut.duration(120)}
-        style={{ flex: 1, backgroundColor: rgba(LK.parchment, 0.92) }}
-      >
+      <View style={{ flex: 1, backgroundColor: rgba(LK.parchment, 0.92) }}>
         <Pressable
           style={{ flex: 1 }}
           accessibilityLabel="Close"
@@ -89,90 +87,136 @@ export function FabActionsOverlay({ visible, onClose }: { visible: boolean; onCl
               gap: 12,
             }}
           >
-            {ACTIONS.map((a, i) => {
-              const enter = reduced
-                ? FadeIn.duration(150)
-                : FadeIn.springify().damping(theme.spring.warm.damping).stiffness(theme.spring.warm.stiffness).delay(i * 40);
-              return (
-                <Animated.View key={a.key} entering={enter} exiting={FadeOut.duration(120)}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={a.label}
-                    onPress={() => pick(a)}
-                    style={({ pressed }) => ({
-                      backgroundColor: LK.vellum,
-                      borderRadius: theme.radii.md,
-                      borderCurve: 'continuous',
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 14,
-                      transform: [{ scale: pressed ? 0.97 : 1 }],
-                      ...theme.shadow.card,
-                    })}
-                  >
-                    <View
-                      style={{
-                        width: 46,
-                        height: 46,
-                        borderRadius: 23,
-                        backgroundColor: a.color,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Icon name={a.icon} size={24} color={shade(a.color, 0.55)} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 17, color: LK.espresso, lineHeight: 21 }}>
-                        {a.label}
-                      </Text>
-                      <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 1 }}>
-                        {a.hint}
-                      </Text>
-                    </View>
-                  </Pressable>
-                </Animated.View>
-              );
-            })}
+            {ACTIONS.map((a, i) => (
+              <ActionCard key={a.key} action={a} index={i} reduced={reduced} onPick={pick} />
+            ))}
           </View>
 
           {/* The FAB stays put and shows ✕ while open (§8.11). Tapping it closes. */}
-          <Animated.View
-            entering={reduced ? FadeIn.duration(120) : ZoomIn.springify().damping(theme.spring.snappy.damping).stiffness(theme.spring.snappy.stiffness)}
-            exiting={FadeOut.duration(120)}
-            style={{
-              position: 'absolute',
-              alignSelf: 'center',
-              bottom: insets.bottom + TRAY_BOTTOM_GAP + FAB_BOTTOM,
-            }}
-          >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={onClose}
-              style={{ borderRadius: FAB_SIZE / 2 }}
-            >
-              <LinearGradient
-                colors={[LK.coral, '#FF9A6B']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: FAB_SIZE,
-                  height: FAB_SIZE,
-                  borderRadius: FAB_SIZE / 2,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: `0 4px 16px ${rgba(LK.coral, 0.4)}`,
-                }}
-              >
-                <Icon name="x" size={24} color="#fff" strokeWidth={2.4} />
-              </LinearGradient>
-            </Pressable>
-          </Animated.View>
+          <FabClose insets={insets} reduced={reduced} onClose={onClose} />
         </Pressable>
-      </Animated.View>
+      </View>
     </Modal>
+  );
+}
+
+function ActionCard({ action, index, reduced, onPick }: {
+  action: Action;
+  index: number;
+  reduced: boolean;
+  onPick: (a: Action) => void;
+}) {
+  const v = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduced) {
+      v.value = withDelay(index * 30, withTiming(1, { duration: 120 }));
+      return;
+    }
+    v.value = withDelay(index * 45, withSpring(1, { damping: theme.spring.warm.damping, stiffness: theme.spring.warm.stiffness }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: v.value,
+    transform: [{ translateY: (1 - v.value) * 18 }],
+  }));
+
+  return (
+    <Animated.View style={style}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={action.label}
+        onPress={() => onPick(action)}
+        style={({ pressed }) => ({
+          backgroundColor: LK.vellum,
+          borderRadius: theme.radii.md,
+          borderCurve: 'continuous',
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
+          ...theme.shadow.card,
+        })}
+      >
+        <View
+          style={{
+            width: 46,
+            height: 46,
+            borderRadius: 23,
+            backgroundColor: action.color,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name={action.icon} size={24} color={shade(action.color, 0.55)} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 17, color: LK.espresso, lineHeight: 21 }}>
+            {action.label}
+          </Text>
+          <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 1 }}>
+            {action.hint}
+          </Text>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function FabClose({ insets, reduced, onClose }: {
+  insets: { bottom: number };
+  reduced: boolean;
+  onClose: () => void;
+}) {
+  const v = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduced) { v.value = withTiming(1, { duration: 120 }); return; }
+    v.value = withSpring(1, { damping: theme.spring.snappy.damping, stiffness: theme.spring.snappy.stiffness });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: v.value,
+    transform: [{ scale: 0.6 + v.value * 0.4 }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          alignSelf: 'center',
+          bottom: insets.bottom + TRAY_BOTTOM_GAP + FAB_BOTTOM,
+        },
+        style,
+      ]}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+        onPress={onClose}
+        style={{ borderRadius: FAB_SIZE / 2 }}
+      >
+        <LinearGradient
+          colors={[LK.coral, '#FF9A6B']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            width: FAB_SIZE,
+            height: FAB_SIZE,
+            borderRadius: FAB_SIZE / 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: `0 4px 16px ${rgba(LK.coral, 0.4)}`,
+          }}
+        >
+          <Icon name="x" size={24} color="#fff" strokeWidth={2.4} />
+        </LinearGradient>
+      </Pressable>
+    </Animated.View>
   );
 }

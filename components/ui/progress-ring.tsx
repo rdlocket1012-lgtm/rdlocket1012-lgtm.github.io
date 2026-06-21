@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, type ViewStyle, type StyleProp } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import Animated, { useSharedValue, useAnimatedProps, withSpring, useReducedMotion } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedProps, withSpring, withTiming, useReducedMotion } from 'react-native-reanimated';
 import { theme } from '@/constants/theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -32,7 +32,7 @@ export function ProgressRing({
 }) {
   const reduced = useReducedMotion();
   const target = clamp01(progress);
-  const p = useSharedValue(reduced ? target : 0);
+  const p = useSharedValue(0);
 
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
@@ -40,8 +40,9 @@ export function ProgressRing({
   const cy = size / 2;
 
   useEffect(() => {
-    if (reduced) p.value = target;
-    else p.value = withSpring(target, theme.spring.gentle);
+    p.value = reduced
+      ? withTiming(target, { duration: 200 })
+      : withSpring(target, theme.spring.gentle);
   }, [target, reduced]);
 
   const animatedProps = useAnimatedProps(() => ({

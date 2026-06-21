@@ -16,6 +16,7 @@ import Animated, {
   withTiming,
   ZoomIn,
   Easing,
+  ReduceMotion,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { LK, theme } from '@/constants/theme';
@@ -27,6 +28,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { usePartner } from '@/hooks/usePartner';
 import { useDrawSession, type DrawGameEvent } from '@/hooks/useDrawSession';
 import { getWordOptions } from '@/constants/draw-words';
+import { notifyPartner } from '@/lib/push';
 
 const ROUND_DURATION = 90_000;
 const ERASER_COLOR = LK.parchment;
@@ -266,7 +268,40 @@ export default function DrawAndGuessScreen() {
     [myId, role],
   );
 
-  const { send } = useDrawSession(coupleId, myId, onDrawEvent);
+  const { send, partnerOnline } = useDrawSession(coupleId, myId, onDrawEvent);
+
+  // ── Invite / join flow ───────────────────────────────────────────────
+  const [justInvited, setJustInvited] = useState(false);
+  const invitedRef = useRef(false);
+  const prevOnlineRef = useRef(false);
+
+  const sendInvite = useCallback(() => {
+    const first = (myName || 'Your partner').split(' ')[0];
+    notifyPartner('draw_invite', `🎨 ${first} wants to draw!`, 'Tap to join a game of Draw & Guess');
+  }, [myName]);
+
+  // Auto-ping the partner once when we're waiting in the lobby and they're not
+  // here yet. Reset when they join so a fresh invite can be sent if they leave.
+  useEffect(() => {
+    if (phase === 'lobby' && coupleId && !partnerOnline && !invitedRef.current) {
+      invitedRef.current = true;
+      sendInvite();
+    }
+    if (partnerOnline) invitedRef.current = false;
+  }, [phase, coupleId, partnerOnline, sendInvite]);
+
+  // Celebrate the moment the partner joins the lobby.
+  useEffect(() => {
+    if (partnerOnline && !prevOnlineRef.current) haptic('success');
+    prevOnlineRef.current = partnerOnline;
+  }, [partnerOnline]);
+
+  function inviteAgain() {
+    haptic();
+    sendInvite();
+    setJustInvited(true);
+    setTimeout(() => setJustInvited(false), 2500);
+  }
 
   function startRound() {
     haptic();
@@ -418,7 +453,40 @@ export default function DrawAndGuessScreen() {
           </Text>
         )}
 
-        {coupleId && (
+        {/* 2-player gate: only allow starting once the partner is also in the game. */}
+        {coupleId && !partnerOnline && (
+          <View style={{ alignItems: 'center', gap: 14 }}>
+            <PulsingDots />
+            <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.sepia, textAlign: 'center', maxWidth: 260, lineHeight: 21 }}>
+              Waiting for {partnerName} to join…
+            </Text>
+            <Text style={{ fontFamily: theme.fonts.hand, fontSize: 15, color: LK.faded, textAlign: 'center' }}>
+              we’ve sent them a nudge to hop in
+            </Text>
+            <TouchableOpacity
+              onPress={inviteAgain}
+              disabled={justInvited}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: justInvited ? 'rgba(42,33,26,0.06)' : LK.coral,
+                borderRadius: 9999,
+                paddingHorizontal: 28,
+                paddingVertical: 14,
+                marginTop: 4,
+              }}
+              accessibilityLabel={`Invite ${partnerName}`}
+            >
+              <Icon name={justInvited ? 'check' : 'bell'} size={16} color={justInvited ? LK.sepia : '#fff'} strokeWidth={2} />
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: justInvited ? LK.sepia : '#fff' }}>
+                {justInvited ? 'Invite sent' : `Invite ${partnerName}`}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {coupleId && partnerOnline && (
           <TouchableOpacity
             onPress={startRound}
             style={{
@@ -482,7 +550,7 @@ export default function DrawAndGuessScreen() {
                     {wordOptions[i]}
                   </Text>
                 </View>
-                <Icon name="chevron.right" size={18} color={LK.faded} />
+                <Icon name="chevR" size={18} color={LK.faded} />
               </TouchableOpacity>
             ))}
           </View>
@@ -527,10 +595,8 @@ export default function DrawAndGuessScreen() {
               {chosenWord}
             </Text>
           </View>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.sepia, marginTop: 4 }}>
-            {partnerName} is watching
-            {partnerDrawing ? ' · ' : ''}
-            {partnerDrawing && <PulsingDots />}
+          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: partnerOnline ? LK.sepia : LK.danger, marginTop: 4 }}>
+            {partnerOnline ? `${partnerName} is watching` : `${partnerName} left — waiting…`}
           </Text>
         </View>
 
@@ -652,7 +718,7 @@ export default function DrawAndGuessScreen() {
             }}
             accessibilityLabel="Submit guess"
           >
-            <Icon name="paperplane.fill" size={18} color="#fff" />
+            <Icon name="plane" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -665,7 +731,7 @@ export default function DrawAndGuessScreen() {
         <ConfettiShower active />
         <MascotAnimation name="quiz-matched" size={140} />
         <Animated.Text
-          entering={ZoomIn.springify().damping(theme.spring.bounce.damping).stiffness(theme.spring.bounce.stiffness)}
+          entering={ZoomIn.springify().damping(theme.spring.bounce.damping).stiffness(theme.spring.bounce.stiffness).reduceMotion(ReduceMotion.Never)}
           style={{
             fontFamily: theme.fonts.heading,
             fontWeight: '800',
@@ -782,7 +848,7 @@ export default function DrawAndGuessScreen() {
             }}
             accessibilityLabel="Leave game"
           >
-            <Icon name="xmark" size={15} color={LK.sepia} />
+            <Icon name="x" size={15} color={LK.sepia} />
           </TouchableOpacity>
           <Text
             style={{
@@ -824,7 +890,7 @@ export default function DrawAndGuessScreen() {
             }}
             style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(42,33,26,0.08)', alignItems: 'center', justifyContent: 'center' }}
           >
-            <Icon name="xmark" size={14} color={LK.sepia} />
+            <Icon name="x" size={14} color={LK.sepia} />
           </TouchableOpacity>
           <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 13, color: LK.sepia, textAlign: 'center' }}>
             Round {roundNum}

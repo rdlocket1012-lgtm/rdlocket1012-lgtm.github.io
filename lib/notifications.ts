@@ -1,8 +1,25 @@
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
+import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { notifyPartner } from '@/lib/push';
+
+/**
+ * Routes a tapped notification to the right place based on its payload `type`
+ * (the `notify` Edge Function attaches `data: { type }`). Game invites deep-link
+ * straight into the game so accepting is one tap.
+ */
+function routeFromNotificationData(data: unknown): void {
+  const type = (data as { type?: string } | null)?.type;
+  try {
+    if (type === 'live_invite') router.navigate('/(tabs)');           // Home — LiveLayer shows the invite
+    else if (type === 'draw_invite') router.navigate('/games/draw-and-guess');
+    else if (type === 'letter') router.navigate('/letters');
+  } catch {
+    // navigation not ready — best effort
+  }
+}
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -42,12 +59,19 @@ let nudgeResponseSub: { remove: () => void } | null = null;
 export function setupNudgeResponseHandler(): () => void {
   nudgeResponseSub?.remove();
   nudgeResponseSub = Notifications.addNotificationResponseReceivedListener(async (response) => {
-    if (response.actionIdentifier !== 'BITE_BACK') return;
-    try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
-    // Ensure the persisted session is loaded before invoking the secure function.
-    await supabase.auth.getSession();
-    await notifyPartner('bite', 'Ouch! 🦷', 'Bitten back! 🦷 Open to keep the war going…', 'bite');
+    if (response.actionIdentifier === 'BITE_BACK') {
+      try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {}
+      // Ensure the persisted session is loaded before invoking the secure function.
+      await supabase.auth.getSession();
+      await notifyPartner('bite', 'Ouch! 🦷', 'Bitten back! 🦷 Open to keep the war going…', 'bite');
+      return;
+    }
+    // Default tap → deep-link to the relevant screen (game invites, letters…).
+    // The listener also receives the tap that cold-launched the app because it's
+    // registered early in the root layout.
+    routeFromNotificationData(response.notification.request.content.data);
   });
+
   return () => { nudgeResponseSub?.remove(); nudgeResponseSub = null; };
 }
 

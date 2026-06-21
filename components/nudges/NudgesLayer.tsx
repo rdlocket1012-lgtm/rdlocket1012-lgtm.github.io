@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, Modal, Animated,
   Easing, Pressable, StyleSheet,
 } from 'react-native';
+import Reanimated, { FadeIn, FadeOut, ZoomIn, useReducedMotion, ReduceMotion } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -13,7 +14,8 @@ import { useNudgeChannel, NudgeKind } from '@/hooks/useNudgeChannel';
 import { notifyPartner } from '@/lib/push';
 import { useBiteFx } from '@/stores/bite-fx.store';
 import { useAuthStore } from '@/stores/auth.store';
-import MascotAnimation from '@/components/ui/mascot-animation';
+import MascotAnimation, { type MascotAnimationName } from '@/components/ui/mascot-animation';
+import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
 
 /** Whether incoming nudge buzzing is allowed for me (default on). */
 const myHapticsOn = () => useAuthStore.getState().profile?.nudge_haptics !== false;
@@ -90,6 +92,8 @@ export function NudgesLayer({
   const [catchItOpen, setCatchItOpen] = useState(false);
   // Confirmation overlay — shown on sender's side when kiss is accepted
   const [caughtOpen, setCaughtOpen] = useState(false);
+  // Send peak (§10.5) — full-screen mascot WebP played to the sender on kiss/hug/bite
+  const [sendPeak, setSendPeak] = useState<{ name: MascotAnimationName; message: string } | null>(null);
 
   const { sendNudge, setHolding, partnerHolding } = useNudgeChannel(
     coupleId,
@@ -128,9 +132,9 @@ export function NudgesLayer({
           break;
 
         case 'bite':
-          setBiteTrigger((n) => n + 1);
+          // No bite-receive asset yet — play the bite-send mascot for the receiver too.
+          setSendPeak({ name: 'bite-send', message: `${partner} nibbled you 😈` });
           if (buzz) biteHaptic();
-          useBiteFx.getState().flash();
           break;
 
         case 'thumb_kiss_invite':
@@ -159,22 +163,24 @@ export function NudgesLayer({
     sendNudge('hug');
     notifyPartner('nudge_hug', '🤗 A warm hug!', 'Your partner sent you a hug.');
     onClose();
+    setSendPeak({ name: 'hug-send', message: 'Hug sent 🤗' });
   }
 
   function doKissRequest() {
     sendNudge('kiss_request');
     notifyPartner('nudge_kiss_request', '💋 Kiss incoming!', 'Tap to catch it before it lands…');
     onClose();
-    // Show the sender a "waiting" state (non-blocking — they can navigate away)
+    // Sender peak — the kiss floats off; partner still has to "Catch It!" to land it.
+    setSendPeak({ name: 'kiss-send', message: 'Kiss on its way 💋' });
   }
 
   function doBite() {
-    setBiteTrigger((n) => n + 1);
     biteHaptic();
-    useBiteFx.getState().flash();
     sendNudge('bite');
     notifyPartner('bite', 'Ouch! 🦷', 'Your partner just playfully bit you over-the-air. Open to bite back!', 'bite');
     onClose();
+    // The bite-send mascot is the whole animation now — no emoji burst / feisty banner.
+    setSendPeak({ name: 'bite-send', message: 'Nibble sent 😈' });
   }
 
   function doThumbKiss() {
@@ -244,6 +250,16 @@ export function NudgesLayer({
       {caughtOpen && (
         <CaughtConfirmation partnerName={partner} onClose={() => setCaughtOpen(false)} />
       )}
+
+      {/* Send peak (§10.5) — mascot WebP plays full-screen to the sender */}
+      {sendPeak && (
+        <SendMomentOverlay
+          visible
+          name={sendPeak.name}
+          message={sendPeak.message}
+          onDismiss={() => setSendPeak(null)}
+        />
+      )}
     </>
   );
 }
@@ -251,11 +267,11 @@ export function NudgesLayer({
 // ── Send menu ──────────────────────────────────────────────────────────────
 
 const ACTIONS = [
-  { key: 'sparkles',  label: 'Sparkles',   icon: 'sparkle', emoji: null,  color: LK.marigold },
-  { key: 'hug',       label: 'Hug',        icon: 'heart',   emoji: null,  color: LK.coral },
-  { key: 'kiss',      label: 'Kiss',       icon: 'flower',  emoji: null,  color: LK.blush },
-  { key: 'bite',      label: 'Bite',       icon: null,      emoji: '😈',  color: LK.lilac },
-  { key: 'thumbkiss', label: 'Thumb-Kiss', icon: null,      emoji: '👍',  color: LK.sky },
+  { key: 'sparkles',  label: 'Sparkles',   icon: 'sparkle', color: LK.marigold },
+  { key: 'hug',       label: 'Hug',        icon: 'heart',   color: LK.coral },
+  { key: 'kiss',      label: 'Kiss',       icon: 'flower',  color: LK.blush },
+  { key: 'bite',      label: 'Bite',       icon: 'mouth',   color: LK.lilac },
+  { key: 'thumbkiss', label: 'Thumb-Kiss', icon: 'hand',    color: LK.sky },
 ] as const;
 
 function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, onSparkles, onHug, onKiss, onBite, onThumbKiss }: {
@@ -270,34 +286,28 @@ function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, 
   onBite: () => void;
   onThumbKiss: () => void;
 }) {
-  const anim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(anim, {
-      toValue: open ? 1 : 0, duration: 220,
-      easing: Easing.out(Easing.back(1.6)),
-      useNativeDriver: true,
-    }).start();
-  }, [open]);
+  const reduced = useReducedMotion();
 
   if (!open) return null;
 
   const handlers = { sparkles: onSparkles, hug: onHug, kiss: onKiss, bite: onBite, thumbkiss: onThumbKiss };
+  const cardEnter = reduced
+    ? FadeIn.duration(160).reduceMotion(ReduceMotion.Never)
+    : ZoomIn.springify().damping(theme.spring.warm.damping).stiffness(theme.spring.warm.stiffness).reduceMotion(ReduceMotion.Never);
 
   return (
-    <Modal visible={open} transparent animationType="fade">
-      <Pressable
-        style={[StyleSheet.absoluteFill, {
-          backgroundColor: 'rgba(20,15,10,0.45)',
-          alignItems: 'center', justifyContent: 'center', padding: 28,
-        }]}
-        onPress={onClose}
+    <Modal visible={open} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
+      <Reanimated.View
+        entering={FadeIn.duration(160).reduceMotion(ReduceMotion.Never)}
+        exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.Never)}
+        style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20,15,10,0.45)' }]}
       >
-        <Animated.View style={{
-          width: '100%', maxWidth: 360,
-          opacity: anim,
-          transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }],
-        }}>
-          <Pressable style={{ backgroundColor: LK.vellum, borderRadius: 28, padding: 22, ...theme.shadow.card }}>
+        <Pressable
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 }}
+          onPress={onClose}
+        >
+          <Reanimated.View entering={cardEnter} exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.Never)} style={{ width: '100%', maxWidth: 360 }}>
+            <Pressable style={{ backgroundColor: LK.vellum, borderRadius: 28, padding: 22, ...theme.shadow.card }}>
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>
               Send a little love 💛
             </Text>
@@ -313,9 +323,7 @@ function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, 
                     alignItems: 'center', justifyContent: 'center',
                     ...theme.shadow.sm,
                   }}>
-                    {a.emoji
-                      ? <Text style={{ fontSize: 32 }}>{a.emoji}</Text>
-                      : <Icon name={a.icon as string} size={32} color={shade(a.color, 0.5)} />}
+                    <Icon name={a.icon} size={32} color={shade(a.color, 0.5)} />
                   </View>
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: LK.ink70, textAlign: 'center' }}>
                     {a.label}
@@ -346,8 +354,9 @@ function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, 
               💋 They'll need to tap "Catch It!" before the kiss lands
             </Text>
           </Pressable>
-        </Animated.View>
-      </Pressable>
+          </Reanimated.View>
+        </Pressable>
+      </Reanimated.View>
     </Modal>
   );
 }

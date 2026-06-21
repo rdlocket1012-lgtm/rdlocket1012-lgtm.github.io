@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
-  FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing,
+  FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing, ReduceMotion,
 } from 'react-native-reanimated';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -52,11 +52,11 @@ export default function WelcomeScreen() {
         paddingHorizontal: theme.layout.screenX,
       }}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Animated.View entering={FadeInDown.delay(60).springify().damping(18)}>
+          <Animated.View entering={FadeInDown.delay(60).springify().damping(18).reduceMotion(ReduceMotion.Never)}>
             <HeartbeatOrb />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(190).springify().damping(18)} style={{ alignItems: 'center' }}>
+          <Animated.View entering={FadeInDown.delay(190).springify().damping(18).reduceMotion(ReduceMotion.Never)} style={{ alignItems: 'center' }}>
             <Text style={{
               fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 54,
               color: LK.espresso, letterSpacing: -2, marginTop: 20,
@@ -75,7 +75,7 @@ export default function WelcomeScreen() {
           </Animated.View>
         </View>
 
-        <Animated.View entering={FadeInDown.delay(330).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.delay(330).springify().damping(18).reduceMotion(ReduceMotion.Never)}>
           <PrimaryCta label="Begin your story" onPress={() => router.push('/(auth)/sign-up')} />
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
             <PressableScale haptic="soft" onPress={() => router.push('/(auth)/sign-in')} style={{ padding: 12 }}>

@@ -7,7 +7,7 @@
         "projectId": "34c35f43-76e1-4efc-8a85-8a8596485ba0"
       }
     },
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

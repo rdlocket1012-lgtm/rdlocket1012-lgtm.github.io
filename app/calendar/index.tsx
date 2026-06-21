@@ -12,7 +12,7 @@ import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useAuthStore } from '@/stores/auth.store';
 import { addEventToPhoneCalendar, addAllToPhoneCalendar } from '@/lib/calendar-sync';
 
-const EVENT_EMOJIS = ['ðŸŽ‚', 'ðŸŽ‰', 'ðŸŽ', 'ðŸ’', 'âœˆï¸', 'ðŸ ', 'ðŸ¾', 'â­', 'â¤ï¸', 'ðŸŒ¹', 'ðŸ°', 'ðŸ“…'];
+const EVENT_EMOJIS = ['🎂', '🎉', '🎁', '💍', '✈️', '🏠', '🍾', '⭐', '❤️', '🌹', '🍰', '📅'];
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -32,7 +32,7 @@ export default function CalendarScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [evTitle, setEvTitle] = useState('');
   const [evKind, setEvKind] = useState<'birthday' | 'custom'>('birthday');
-  const [evEmoji, setEvEmoji] = useState('ðŸŽ‚');
+  const [evEmoji, setEvEmoji] = useState('🎂');
   const [evDate, setEvDate] = useState(ymd(today.getFullYear(), today.getMonth(), today.getDate()));
   const [evYearly, setEvYearly] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,7 +40,7 @@ export default function CalendarScreen() {
   function openAdd(forDay?: string) {
     setEvTitle('');
     setEvKind('birthday');
-    setEvEmoji('ðŸŽ‚');
+    setEvEmoji('🎂');
     setEvDate(forDay ?? selectedDay ?? ymd(today.getFullYear(), today.getMonth(), today.getDate()));
     setEvYearly(true);
     setAddOpen(true);

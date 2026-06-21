@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 import { useCouple } from '@/hooks/useCouple';
 import { ComposeLetterModal } from '@/components/letter/ComposeLetterModal';
+import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
 import { success } from '@/lib/haptics';
 
 // No lookalike characters (0/O, 1/I/L) — this code gets read aloud.
@@ -25,6 +26,7 @@ export default function InvitePartnerScreen() {
   const [code, setCode] = useState<string | null>(null);
   const [shared, setShared] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
+  const [onboardingPeak, setOnboardingPeak] = useState(false);
 
   const first = (profile?.display_name ?? '').trim().split(' ')[0];
   const DEFAULT_MESSAGE = `I made us a little home for our memories — it's already waiting for you. 💛${first ? `\n— ${first}` : ''}`;
@@ -52,6 +54,7 @@ export default function InvitePartnerScreen() {
       message: `Join me on Locket 💛 ${link}\n\nOr open Locket and enter our code: ${code}`,
     });
     setShared(true);
+    setOnboardingPeak(true);
   }
 
   async function saveWelcomeMessage() {
@@ -183,6 +186,12 @@ export default function InvitePartnerScreen() {
           onPaywall={() => setShowCompose(false)}
         />
       )}
+      <SendMomentOverlay
+        visible={onboardingPeak}
+        name="onboarding-complete"
+        message="Your story starts now 💛"
+        onDismiss={() => setOnboardingPeak(false)}
+      />
     </Shell>
   );
 }

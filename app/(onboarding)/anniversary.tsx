@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
 import { LK, shade, theme } from '@/constants/theme';
 import { Shell, PrimaryCta } from '@/components/onboarding/Shell';
 import { WheelPicker, WHEEL_ITEM_H } from '@/components/onboarding/WheelPicker';
@@ -92,7 +92,7 @@ export default function AnniversaryScreen() {
         </View>
 
         {/* Inline micro-reveal — the answer rewards you on the same screen */}
-        <Animated.View entering={FadeIn.delay(250)} style={{ alignItems: 'center', marginTop: 26, minHeight: 64 }}>
+        <Animated.View entering={FadeIn.delay(250).reduceMotion(ReduceMotion.Never)} style={{ alignItems: 'center', marginTop: 26, minHeight: 64 }}>
           {!isFuture ? (
             <>
               <CountUp

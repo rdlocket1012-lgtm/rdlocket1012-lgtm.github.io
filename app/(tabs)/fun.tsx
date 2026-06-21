@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, Pressable, ScrollView, Alert, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, Alert, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import { LK, shade, theme } from '@/constants/theme';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { LIVE_CATEGORIES } from '@/constants/live-games';
@@ -147,16 +148,16 @@ function FunBlock({
   index: number; width: number; color: string; accentBar: 'top' | 'bottom';
   onPress: () => void; children: React.ReactNode;
 }) {
-  const entering = index < 8 ? FadeInUp.duration(300).delay(index * 30) : undefined;
+  const entering = index < 8 ? FadeInUp.duration(300).delay(index * 30).reduceMotion(ReduceMotion.Never) : undefined;
   return (
     <Animated.View entering={entering} style={{ width }}>
-      <Pressable onPress={onPress} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.96 : 1 }] })}>
+      <ScalePressable scaleTo={0.96} onPress={onPress}>
         <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: CARD_BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
           {accentBar === 'top' && <View style={{ height: 4, backgroundColor: color }} />}
           <View>{children}</View>
           {accentBar === 'bottom' && <View style={{ height: 4, backgroundColor: color }} />}
         </View>
-      </Pressable>
+      </ScalePressable>
     </Animated.View>
   );
 }
@@ -177,11 +178,12 @@ function CreativeBlock({
   name: string;
   route?: string;
 }) {
-  const entering = FadeInUp.duration(300).delay(index * 30);
+  const entering = FadeInUp.duration(300).delay(index * 30).reduceMotion(ReduceMotion.Never);
   const live = !!route;
   return (
     <Animated.View entering={entering} style={{ width }}>
-      <Pressable
+      <ScalePressable
+        scaleTo={0.96}
         onPress={() => {
           if (route) {
             lightHaptic();
@@ -190,7 +192,6 @@ function CreativeBlock({
             Alert.alert('Coming soon', `${name} is on the way — drawing together lands in a future update.`);
           }
         }}
-        style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.96 : 1 }] })}
       >
         <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: CARD_BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
           <View style={{ height: 4, backgroundColor: color }} />
@@ -206,7 +207,7 @@ function CreativeBlock({
           </View>
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso, textAlign: 'center', marginTop: 10, marginBottom: 16 }}>{name}</Text>
         </View>
-      </Pressable>
+      </ScalePressable>
     </Animated.View>
   );
 }

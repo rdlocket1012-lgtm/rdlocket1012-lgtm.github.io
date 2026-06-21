@@ -39,14 +39,25 @@ export const useLettersStore = create<LettersState>((set, get) => ({
 
   fetchLetters: async (coupleId) => {
     set({ loading: true });
-    const { data } = await supabase
-      .from('letters')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .is('deleted_at', null)
-      .eq('is_draft', false)
-      .order('created_at', { ascending: false });
-    set({ letters: (data as Letter[]) ?? [], loading: false });
+    try {
+      const { data, error } = await supabase
+        .from('letters')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .is('deleted_at', null)
+        .eq('is_draft', false)
+        .order('created_at', { ascending: false });
+      if (error) {
+        // Surface the real reason instead of silently showing an empty state.
+        console.warn('[letters] fetch failed for couple', coupleId, '→', error.message, error.details ?? '');
+      } else {
+        set({ letters: (data as Letter[]) ?? [] });
+      }
+    } catch (e: any) {
+      console.warn('[letters] fetch threw:', e?.message ?? e);
+    } finally {
+      set({ loading: false });
+    }
   },
 
   sendLetter: async (data) => {

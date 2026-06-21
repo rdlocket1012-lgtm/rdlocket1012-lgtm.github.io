@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,12 +11,16 @@ import { useQuiz } from '@/hooks/useQuiz';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
 import { usePartner } from '@/hooks/usePartner';
 import { resolveQuiz, resolveComments } from '@/stores/quiz.store';
+import type { MascotAnimationName } from '@/components/ui/mascot-animation';
 import { QUIZ_QUESTIONS, LETTERS } from '@/constants/quiz-questions';
 
 const OPTION_COLORS = [LK.coral, LK.marigold, LK.lilac, LK.success];
 const CATEGORY_LABEL: Record<string, string> = { casual: 'Just for fun', romantic: 'Cozy & sweet', deep: 'Know them deeper' };
 
-export function DailyQuizCard({ hideStreak = false }: { hideStreak?: boolean }) {
+export function DailyQuizCard({ hideStreak = false, onReveal }: {
+  hideStreak?: boolean;
+  onReveal?: (name: MascotAnimationName, message: string) => void;
+}) {
   const { today, submit, comment } = useQuiz();
   const streak = useQuizStreak();
   const { partner } = usePartner();
@@ -41,6 +45,52 @@ export function DailyQuizCard({ hideStreak = false }: { hideStreak?: boolean }) 
     setShowIntro(false);
     AsyncStorage.setItem('quiz_intro_seen_v1', '1').catch(() => {});
   }
+
+  // ── Animation hooks (must precede any early return) ───────────────────────
+  // justCompletedRef: set true in pickGuess so the reveal only fires when the
+  // user actually submits in this session, not on every remount.
+  const justCompletedRef = useRef(false);
+  const hasRevealedRef = useRef(false);
+  const safeRRef = useRef<ReturnType<typeof resolveQuiz> | null>(null);
+  const safeR = today ? resolveQuiz(today) : null;
+  safeRRef.current = safeR;
+  const bothSubmitted = safeR?.bothSubmitted ?? false;
+
+  useEffect(() => {
+    if (!bothSubmitted || !justCompletedRef.current || hasRevealedRef.current) return;
+    hasRevealedRef.current = true;
+    justCompletedRef.current = false;
+    const r = safeRRef.current;
+    if (!r) return;
+    const sameAnswer = r.mySelf === r.partnerSelf;
+    const name: MascotAnimationName = sameAnswer
+      ? 'quiz-matched'
+      : r.iGuessedRight || r.partnerGuessedRight
+        ? 'quiz-correct'
+        : 'quiz-wrong';
+    const message = sameAnswer
+      ? 'Same answer! 💛'
+      : r.iGuessedRight && r.partnerGuessedRight
+        ? 'You really know each other! 💛'
+        : r.iGuessedRight || r.partnerGuessedRight
+          ? 'Nice guess! ✨'
+          : 'Different instincts 😄';
+    onReveal?.(name, message);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bothSubmitted]);
+
+  const STREAK_MILESTONES = [7, 14, 21, 30, 60, 100, 200, 365];
+  const prevStreakRef = useRef(-1); // -1 = "first load, don't animate"
+  useEffect(() => {
+    if (streak.loading) return;
+    if (prevStreakRef.current === -1) { prevStreakRef.current = streak.current; return; }
+    const prev = prevStreakRef.current;
+    prevStreakRef.current = streak.current;
+    if (streak.current > prev && STREAK_MILESTONES.includes(streak.current)) {
+      onReveal?.('streak-milestone', `${streak.current}-day streak! 🔥`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streak.current, streak.loading]);
 
   if (!today) return null;
   const q = QUIZ_QUESTIONS[today.question_id % QUIZ_QUESTIONS.length];
@@ -72,6 +122,7 @@ export function DailyQuizCard({ hideStreak = false }: { hideStreak?: boolean }) 
     setSubmitting(true);
     try {
       await submit(selfPick, letter);
+      justCompletedRef.current = true;
     } catch (e: any) {
       setGuessPick(null);
       Alert.alert('Could not save', e?.message ?? 'Try again.');

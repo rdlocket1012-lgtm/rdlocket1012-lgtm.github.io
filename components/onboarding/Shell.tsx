@@ -3,7 +3,7 @@ import { View, Text, KeyboardAvoidingView, Platform, ActivityIndicator, TextStyl
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Animated, {
-  FadeInDown, useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, withDelay, Easing,
+  FadeInDown, useSharedValue, useAnimatedStyle, withSpring, withRepeat, withTiming, withDelay, Easing, ReduceMotion,
 } from 'react-native-reanimated';
 import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -156,7 +156,7 @@ export function Shell({ step, total, title, why, children, footer, showBack = tr
       </View>
 
       <Animated.View
-        entering={FadeInDown.delay(70).springify().damping(19)}
+        entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.Never)}
         style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 34 }}
       >
         <Text style={T.title}>{title}</Text>
@@ -164,7 +164,7 @@ export function Shell({ step, total, title, why, children, footer, showBack = tr
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.delay(170).springify().damping(19)}
+        entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.Never)}
         style={{ flex: 1, paddingHorizontal: theme.layout.screenX }}
       >
         {children}
@@ -172,7 +172,7 @@ export function Shell({ step, total, title, why, children, footer, showBack = tr
 
       {!!footer && (
         <Animated.View
-          entering={FadeInDown.delay(270).springify().damping(19)}
+          entering={FadeInDown.delay(270).springify().damping(19).reduceMotion(ReduceMotion.Never)}
           style={{ paddingHorizontal: theme.layout.screenX, gap: 6 }}
         >
           {footer}

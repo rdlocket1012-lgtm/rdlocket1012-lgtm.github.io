@@ -146,21 +146,6 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
     }
   }
 
-  if (sent) {
-    // The send peak moment (§10.5) — full-screen mascot overlay, self-dismissing → close.
-    return (
-      <Modal animationType="none" transparent>
-        <SendMomentOverlay
-          visible
-          name="letter-send"
-          message={sealedDate ? `Sealed for ${partnerFirstName}` : `On its way to ${partnerFirstName}`}
-          subMessage={sealedDate ? 'They’ll open it when the day comes' : 'They’ll feel it the moment they open the app'}
-          onDismiss={onClose}
-        />
-      </Modal>
-    );
-  }
-
   return (
     <Modal animationType="slide" transparent={false}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: LK.ivory }}>
@@ -205,7 +190,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
           {([
             { id: 'text', icon: 'feather', label: 'Write' },
             { id: 'voice', icon: 'mic', label: 'Voice' },
-            { id: 'card', icon: 'heart.fill', label: 'Love Card' },
+            { id: 'card', icon: 'heart', label: 'Love Card' },
           ] as const).map((m) => (
             <TouchableOpacity
               key={m.id}
@@ -315,6 +300,18 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* Send peak (§10.5) — overlays the editor in-place; no Modal prop swap
+          (changing `transparent` on a live Modal blanks the screen on iOS). */}
+      {sent && (
+        <SendMomentOverlay
+          visible
+          name="letter-send"
+          message={sealedDate ? `Sealed for ${partnerFirstName}` : `On its way to ${partnerFirstName}`}
+          subMessage={sealedDate ? 'They’ll open it when the day comes' : 'They’ll feel it the moment they open the app'}
+          onDismiss={onClose}
+        />
+      )}
     </Modal>
   );
 }
@@ -325,7 +322,7 @@ function VoiceRecorderPanel({ recorder, partnerFirstName }: {
   recorder: ReturnType<typeof useVoiceRecorder>;
   partnerFirstName: string;
 }) {
-  const { state, seconds, transcript, error, maxSeconds, start, stop, reset } = recorder;
+  const { state, seconds, transcript, error, maxSeconds, available, start, stop, reset } = recorder;
   const pulse = React.useRef(new Animated.Value(1)).current;
 
   React.useEffect(() => {
@@ -341,6 +338,24 @@ function VoiceRecorderPanel({ recorder, partnerFirstName }: {
       pulse.setValue(1);
     }
   }, [state]);
+
+  // Native speech module not in this build — degrade gracefully so the rest of
+  // the composer still works (text + Love Card). Available again after a rebuild.
+  if (!available) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 14 }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="mic" size={32} color={LK.ink70} />
+        </View>
+        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 20, color: LK.espresso, textAlign: 'center' }}>
+          Voice letters need an update
+        </Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', lineHeight: 21, maxWidth: 280 }}>
+          This version of the app doesn't include voice recording yet. You can still write a letter or send a Love Card.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30, paddingVertical: 20 }}>

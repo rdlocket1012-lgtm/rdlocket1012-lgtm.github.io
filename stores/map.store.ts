@@ -38,13 +38,17 @@ export const useMapStore = create<MapState>((set, get) => ({
 
   fetchPins: async (coupleId) => {
     set({ loading: true });
-    const { data } = await supabase
-      .from('map_pins')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    set({ pins: (data as MapPin[]) ?? [], loading: false });
+    try {
+      const { data, error } = await supabase
+        .from('map_pins')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      if (!error) set({ pins: (data as MapPin[]) ?? [] });
+    } catch { /* network/auth error — keep cached pins */ } finally {
+      set({ loading: false });
+    }
   },
 
   addPin: async (data) => {

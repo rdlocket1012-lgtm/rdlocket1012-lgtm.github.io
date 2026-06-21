@@ -15,8 +15,15 @@ const ROUNDS = 8;
 
 type Mode = 'idle' | 'inviting' | 'invited' | 'playing' | 'summary';
 
-function shuffledOrder(categoryId?: string | null): number[] {
-  const idx = categoryIndices(categoryId);
+/** After Dark spice tiers, shown in the picker before an After Dark game starts. */
+const SPICE: Record<1 | 2 | 3, { name: string; blurb: string }> = {
+  1: { name: 'Flirty', blurb: 'Sweet, teasing, warm' },
+  2: { name: 'Steamy', blurb: 'Sensual & bold' },
+  3: { name: 'Explicit', blurb: 'No holding back' },
+};
+
+function shuffledOrder(categoryId?: string | null, level?: 1 | 2 | 3 | null): number[] {
+  const idx = categoryIndices(categoryId, level);
   for (let i = idx.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [idx[i], idx[j]] = [idx[j], idx[i]];
@@ -65,6 +72,8 @@ export const LiveLayer = forwardRef<LiveHandle, {
   const [round, setRound] = useState(0);
   const [myChoice, setMyChoice] = useState<'a' | 'b' | null>(null);
   const [partnerChoice, setPartnerChoice] = useState<'a' | 'b' | null>(null);
+  // When set, the After Dark spice picker is showing (holds the category id).
+  const [spiceFor, setSpiceFor] = useState<string | null>(null);
   const results = useRef<Record<number, boolean>>({});
 
   // Keep refs so the memoized broadcast handler always sees the latest values
@@ -122,7 +131,18 @@ export const LiveLayer = forwardRef<LiveHandle, {
   // Allow the home screen to launch an invite from a dedicated button (works
   // even if the partner is offline — they get a push and the invite re-sends
   // once they come online).
-  useImperativeHandle(ref, () => ({ start: (categoryId?: string) => { if (modeRef.current === 'idle') invite(categoryId); } }), []);
+  useImperativeHandle(ref, () => ({ start: (categoryId?: string) => {
+    if (modeRef.current !== 'idle') return;
+    // After Dark first asks how spicy; every other deck starts straight away.
+    if (categoryId === 'after-dark') { setSpiceFor(categoryId); tap(); return; }
+    invite(categoryId);
+  } }), []);
+
+  function pickSpice(level: 1 | 2 | 3) {
+    const id = spiceFor ?? 'after-dark';
+    setSpiceFor(null);
+    invite(id, level);
+  }
 
   function resetToIdle() {
     setMode('idle');
@@ -148,8 +168,8 @@ export const LiveLayer = forwardRef<LiveHandle, {
   }
 
   // ── Initiate ───────────────────────────────────────────────────────────
-  function invite(categoryId?: string) {
-    const ord = shuffledOrder(categoryId);
+  function invite(categoryId?: string, level?: 1 | 2 | 3) {
+    const ord = shuffledOrder(categoryId, level);
     setOrder(ord);
     setMode('inviting');
     tap();
@@ -257,6 +277,33 @@ export const LiveLayer = forwardRef<LiveHandle, {
           </View>
         </View>
       )}
+
+      {/* After Dark spice picker (inviter chooses the exact tier) */}
+      <CenterModal visible={!!spiceFor}>
+        <Text style={styles.h}>How spicy tonight? 🌶️</Text>
+        <Text style={styles.p}>Pick a level — you'll both get questions at exactly that heat.</Text>
+        <View style={{ gap: 10, marginTop: 16 }}>
+          {([1, 2, 3] as const).map((lvl) => (
+            <TouchableOpacity
+              key={lvl}
+              onPress={() => pickSpice(lvl)}
+              activeOpacity={0.85}
+              accessibilityLabel={`${SPICE[lvl].name} — level ${lvl}`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: tint(LK.coral, lvl === 1 ? 0.6 : lvl === 2 ? 0.42 : 0.26), borderRadius: 16, padding: 14 }}
+            >
+              <Text style={{ fontSize: 18 }}>{'🌶️'.repeat(lvl)}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 16, color: LK.espresso }}>{SPICE[lvl].name}</Text>
+                <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>{SPICE[lvl].blurb}</Text>
+              </View>
+              <Icon name="chevR" size={18} color={shade(LK.coral, 0.5)} />
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={{ marginTop: 14 }}>
+          <GhostBtn label="Cancel" onPress={() => setSpiceFor(null)} />
+        </View>
+      </CenterModal>
 
       {/* Inviting (waiting) */}
       <CenterModal visible={mode === 'inviting'}>

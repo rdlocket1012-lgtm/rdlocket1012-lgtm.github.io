@@ -91,14 +91,17 @@ export const useUnseenStore = create<UnseenState>((set, get) => ({
   },
 
   subscribe: (coupleId) => {
-    const channels = FEATURES.map((f) =>
-      supabase
-        .channel(`unseen:${f}:${coupleId}:${Math.random().toString(36).slice(2)}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: f, filter: `couple_id=eq.${coupleId}` }, () => {
-          get().fetch(coupleId);
-        })
-        .subscribe()
-    );
-    return () => { channels.forEach((c) => void supabase.removeChannel(c)); };
+    // One channel with a postgres_changes binding per feature table, instead of
+    // a separate realtime channel per feature. Fewer channels per client keeps
+    // us under Supabase's per-client realtime rate limit (the join/presence
+    // burst from too many channels was destabilising the live-game channel).
+    const channel = supabase.channel(`unseen:${coupleId}:${Math.random().toString(36).slice(2)}`);
+    for (const f of FEATURES) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: f, filter: `couple_id=eq.${coupleId}` }, () => {
+        get().fetch(coupleId);
+      });
+    }
+    channel.subscribe();
+    return () => { void supabase.removeChannel(channel); };
   },
 }));

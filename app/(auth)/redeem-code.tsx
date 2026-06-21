@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { LK, theme } from '@/constants/theme';
 import { Canvas, BackOrb, PrimaryCta, T } from '@/components/onboarding/Shell';
 
@@ -31,12 +31,12 @@ export default function RedeemCodeScreen() {
         }}>
           <BackOrb />
 
-          <Animated.View entering={FadeInDown.delay(70).springify().damping(19)} style={{ paddingTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ paddingTop: 30 }}>
             <Text style={T.title}>Join your person</Text>
             <Text style={T.why}>Enter the code from their invite — or just tap the link they sent.</Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(180).springify().damping(19)} style={{ marginTop: 34 }}>
+          <Animated.View entering={FadeInDown.delay(180).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 34 }}>
             <TextInput
               value={code}
               onChangeText={setCode}
@@ -64,7 +64,7 @@ export default function RedeemCodeScreen() {
 
           <View style={{ flex: 1 }} />
 
-          <Animated.View entering={FadeInDown.delay(260).springify().damping(19)}>
+          <Animated.View entering={FadeInDown.delay(260).springify().damping(19).reduceMotion(ReduceMotion.Never)}>
             <PrimaryCta label="Join" onPress={submit} disabled={!valid} />
           </Animated.View>
         </View>

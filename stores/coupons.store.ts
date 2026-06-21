@@ -44,13 +44,17 @@ export const useCouponsStore = create<CouponsState>((set, get) => ({
 
   fetchCoupons: async (coupleId) => {
     set({ loading: true });
-    const { data } = await supabase
-      .from('coupons')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    set({ coupons: (data as Coupon[]) ?? [], loading: false });
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      if (!error) set({ coupons: (data as Coupon[]) ?? [] });
+    } catch { /* network/auth error — keep cached coupons */ } finally {
+      set({ loading: false });
+    }
   },
 
   addCoupon: async ({ couple_id, title, description, icon, color }) => {

@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 
 /**
- * Cross-screen launch signal for the nudge composer. The center-FAB overlay
- * (§8.11) lives in the tab bar, but the NudgesLayer composer lives on Home.
- * "Send a Nudge" sets `pending` here and routes to Home, where an effect
- * consumes it and opens the composer. Mirrors `useLiveLaunch` (live.store).
+ * Cross-screen launch signal for the nudge composer. Both the center-FAB
+ * overlay (§8.11) and the iOS widget deep-link (locket://nudge) call
+ * `request()`. The tabs layout watches `pending` and opens NudgesLayer.
+ * Mirrors `useLiveLaunch` (live.store).
  */
 type NudgeLaunchState = {
   pending: boolean;

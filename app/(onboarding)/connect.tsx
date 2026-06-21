@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { Shell, PrimaryCta } from '@/components/onboarding/Shell';
@@ -71,7 +71,7 @@ export default function ConnectScreen() {
       </View>
 
       {!!reward && (
-        <Animated.View key={selected} entering={FadeInDown.springify().damping(18)} style={{ marginTop: 20 }}>
+        <Animated.View key={selected} entering={FadeInDown.springify().damping(18).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 20 }}>
           <Text style={{
             fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 16.5,
             color: shade(LK.marigold, 0.4), textAlign: 'center', lineHeight: 24,

@@ -32,45 +32,75 @@ export function useLiveSession(
   useEffect(() => {
     if (!coupleId || !userId) return;
     const topic = `live:${coupleId}`;
-    for (const c of supabase.getChannels()) {
-      if (c.topic === `realtime:${topic}`) void supabase.removeChannel(c);
-    }
-    const channel = supabase.channel(topic, {
-      config: { broadcast: { self: false }, presence: { key: userId } },
-    });
 
-    channel.on('broadcast', { event: 'live' }, ({ payload }) => {
-      const e = payload as LiveEvent;
-      if (e?.kind) onEventRef.current(e);
-    });
+    // Under realtime load the join/presence can be rate-limited and the channel
+    // lands in CHANNEL_ERROR/TIMED_OUT, where it would otherwise stay dead and
+    // the game silently never connects. We rejoin on failure with exponential
+    // backoff + jitter (which also relieves the rate limit instead of hammering
+    // it), and ignore callbacks from superseded channels.
+    let cancelled = false;
+    let retries = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const recomputePresence = () => {
-      const state = channel.presenceState<{ online?: boolean }>();
-      let online = false;
-      for (const key of Object.keys(state)) {
-        if (key !== userId && state[key]?.length) online = true;
+    const join = () => {
+      if (cancelled) return;
+      // Drop any stale channel on this topic before re-creating.
+      for (const c of supabase.getChannels()) {
+        if (c.topic === `realtime:${topic}`) void supabase.removeChannel(c);
       }
-      setPartnerOnline(online);
-    };
-    channel.on('presence', { event: 'sync' }, recomputePresence);
-    channel.on('presence', { event: 'join' }, recomputePresence);
-    channel.on('presence', { event: 'leave' }, recomputePresence);
+      const channel = supabase.channel(topic, {
+        config: { broadcast: { self: false }, presence: { key: userId } },
+      });
+      channelRef.current = channel;
 
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') channel.track({ online: true });
-    });
+      channel.on('broadcast', { event: 'live' }, ({ payload }) => {
+        const e = payload as LiveEvent;
+        if (e?.kind) onEventRef.current(e);
+      });
+
+      const recomputePresence = () => {
+        const state = channel.presenceState<{ online?: boolean }>();
+        let online = false;
+        for (const key of Object.keys(state)) {
+          if (key !== userId && state[key]?.length) online = true;
+        }
+        setPartnerOnline(online);
+      };
+      channel.on('presence', { event: 'sync' }, recomputePresence);
+      channel.on('presence', { event: 'join' }, recomputePresence);
+      channel.on('presence', { event: 'leave' }, recomputePresence);
+
+      channel.subscribe((status) => {
+        // Ignore late callbacks from a channel we've already replaced.
+        if (cancelled || channelRef.current !== channel) return;
+        if (status === 'SUBSCRIBED') {
+          retries = 0;
+          void channel.track({ online: true });
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          // Throttled or dropped — back off and rejoin so the game recovers.
+          setPartnerOnline(false);
+          const delay = Math.min(1000 * 2 ** retries, 15000) + Math.floor(Math.random() * 500);
+          retries += 1;
+          if (retryTimer) clearTimeout(retryTimer);
+          retryTimer = setTimeout(join, delay);
+        }
+      });
+    };
+
+    join();
 
     // Leave/rejoin presence as the app is backgrounded/foregrounded so the
     // partner sees an accurate "online" state.
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') void channel.track({ online: true });
-      else void channel.untrack();
+      if (s === 'active') void channelRef.current?.track({ online: true });
+      else void channelRef.current?.untrack();
     });
 
-    channelRef.current = channel;
     return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
       sub.remove();
-      void supabase.removeChannel(channel);
+      if (channelRef.current) void supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     };
   }, [coupleId, userId]);

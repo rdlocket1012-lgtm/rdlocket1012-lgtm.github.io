@@ -197,8 +197,9 @@ export default function MapScreen() {
             onBack={() => router.back()}
             right={<MapControls view={view} setView={setView} onAdd={handleAddPress} atCap={atCap} />}
           />
-          <FilterChips filter={filter} setFilter={setFilter} style={{ marginTop: 6, marginBottom: 4 }} />
+          <FilterChips filter={filter} setFilter={setFilter} style={{ marginTop: 6, marginBottom: 4, flexGrow: 0, flexShrink: 0 }} />
           <ScrollView
+            style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingTop: 8, paddingBottom: 120, gap: 10 }}
           >

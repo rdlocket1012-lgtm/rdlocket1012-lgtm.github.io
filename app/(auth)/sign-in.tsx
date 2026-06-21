@@ -7,7 +7,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import { routeAfterAuth } from '@/lib/post-auth';
 import { LK, theme } from '@/constants/theme';
@@ -75,12 +75,12 @@ export default function SignInScreen() {
         >
           <BackOrb />
 
-          <Animated.View entering={FadeInDown.delay(70).springify().damping(19)} style={{ paddingTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ paddingTop: 30 }}>
             <Text style={T.title}>Welcome back</Text>
             <Text style={T.why}>Pick up right where you two left off.</Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(170).springify().damping(19)} style={{ marginTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 30 }}>
             <AppleAuthentication.AppleAuthenticationButton
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
@@ -90,7 +90,7 @@ export default function SignInScreen() {
             />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(240).springify().damping(19)}>
+          <Animated.View entering={FadeInDown.delay(240).springify().damping(19).reduceMotion(ReduceMotion.Never)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 18 }}>
               <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70 }}>or email</Text>
@@ -143,7 +143,7 @@ export default function SignInScreen() {
 
           <View style={{ flex: 1 }} />
 
-          <Animated.View entering={FadeInDown.delay(310).springify().damping(19)}>
+          <Animated.View entering={FadeInDown.delay(310).springify().damping(19).reduceMotion(ReduceMotion.Never)}>
             <PressableScale haptic="soft" onPress={() => router.push('/(auth)/forgot-password')} style={{ alignItems: 'center', paddingVertical: 10 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70 }}>Forgot password?</Text>
             </PressableScale>

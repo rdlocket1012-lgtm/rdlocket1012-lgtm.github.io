@@ -249,7 +249,7 @@ function LoveCardsGrid({
     return (
       <View style={{ alignItems: 'center', paddingTop: 56, paddingHorizontal: theme.layout.screenX, gap: 16 }}>
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: tint(LK.blush, 0.7), alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="heart.fill" size={32} color={shade(LK.blush, 0.4)} />
+          <Icon name="heart" size={32} color={shade(LK.blush, 0.4)} />
         </View>
         <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>No love cards yet</Text>
         <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, textAlign: 'center', lineHeight: 24, maxWidth: 260 }}>

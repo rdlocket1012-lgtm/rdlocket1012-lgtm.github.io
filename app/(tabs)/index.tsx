@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Pressable, FlatList, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -16,7 +16,6 @@ import { TYPE_ICON } from '@/constants/milestone-types';
 import { DailyQuizCard } from '@/components/quiz/DailyQuizCard';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 import { StatusBubble } from '@/components/home/StatusBubble';
-import { NudgesLayer } from '@/components/nudges/NudgesLayer';
 import { usePartner } from '@/hooks/usePartner';
 import { usePartnerTime } from '@/hooks/usePartnerTime';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
@@ -27,11 +26,10 @@ import { parseLocalDate } from '@/utils/date';
 import { useBiteFx } from '@/stores/bite-fx.store';
 import { BiteAvatarFx } from '@/components/nudges/BiteAvatarFx';
 import { CountUp } from '@/components/onboarding/CountUp';
-import { LiveLayer, type LiveHandle } from '@/components/live/LiveLayer';
-import { useLiveLaunch } from '@/stores/live.store';
-import { useNudgeLaunch } from '@/stores/nudge-launch.store';
 import { useUnseenStore } from '@/stores/unseen.store';
 import MascotAnimation from '@/components/ui/mascot-animation';
+import type { MascotAnimationName } from '@/components/ui/mascot-animation';
+import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
 // NOTE: WatchTogether is intentionally NOT imported here yet — it pulls in the
 // native react-native-webview module which only exists in build #19 (v1.0.1).
 // Importing it would crash build #18 over OTA. Re-wire when cutting build #19.
@@ -46,16 +44,12 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [nudgeOpen, setNudgeOpen] = useState(false);
+  const [peakMoment, setPeakMoment] = useState<{ name: MascotAnimationName; message: string } | null>(null);
+  const handleReveal = useCallback((name: MascotAnimationName, message: string) => {
+    setPeakMoment({ name, message });
+  }, []);
   const [widgetCtaVisible, setWidgetCtaVisible] = useState(false);
   const { partner, partnerJoined } = usePartner();
-  const liveRef = useRef<LiveHandle>(null);
-  const pendingCategory = useLiveLaunch((s) => s.pendingCategory);
-  const launchNonce = useLiveLaunch((s) => s.nonce);
-  const consumeLaunch = useLiveLaunch((s) => s.consume);
-  const nudgePending = useNudgeLaunch((s) => s.pending);
-  const nudgeNonce = useNudgeLaunch((s) => s.nonce);
-  const consumeNudge = useNudgeLaunch((s) => s.consume);
   const partnerTime = usePartnerTime();
   const streak = useQuizStreak();
   const counts = useUnseenStore((s) => s.counts);
@@ -87,24 +81,6 @@ export default function HomeScreen() {
     setWidgetCtaVisible(false);
     AsyncStorage.setItem(WIDGET_CTA_KEY, '1').catch(() => {});
   }
-
-  // The Fun hub drops a chosen "This or That" deck here and pops back; launch it
-  // on the LiveLayer that lives on this screen. The nonce lets the same category
-  // be picked twice in a row and still re-trigger.
-  useEffect(() => {
-    if (pendingCategory) {
-      liveRef.current?.start(pendingCategory);
-      consumeLaunch();
-    }
-  }, [pendingCategory, launchNonce]);
-
-  // The center-FAB overlay's "Send a Nudge" routes here and opens the composer.
-  useEffect(() => {
-    if (nudgePending) {
-      setNudgeOpen(true);
-      consumeNudge();
-    }
-  }, [nudgePending, nudgeNonce]);
 
   // ── Contextual data ──────────────────────────────────────────────────────
   const today = new Date();
@@ -198,9 +174,9 @@ export default function HomeScreen() {
               )}
             </View>
           </TouchableOpacity>
-          {/* Right: bell → activity (Us hub). Coral dot when unread. */}
+          {/* Right: bell → activity feed (recent letters + upcoming dates). Coral dot when unread. */}
           <View style={{ flexShrink: 0 }}>
-            <RoundIcon onPress={() => router.push('/(tabs)/us')}>
+            <RoundIcon onPress={() => router.push('/notifications')}>
               <Icon name="bell" size={22} color={LK.espresso} strokeWidth={1.7} />
             </RoundIcon>
             {hasUnread && (
@@ -271,7 +247,7 @@ export default function HomeScreen() {
 
         {/* ── Zone B: Daily quiz ───────────────────────────────────────────── */}
         <FadeSlideIn delay={120}>
-          <DailyQuizCard hideStreak />
+          <DailyQuizCard hideStreak onReveal={handleReveal} />
         </FadeSlideIn>
 
         {/* ── Zone C: Streak row (slim) — forgiven state only ──────────────── */}
@@ -452,23 +428,11 @@ export default function HomeScreen() {
       </ScrollView>
 
       {paywallOpen && <PaywallModal onClose={() => setPaywallOpen(false)} />}
-
-      <NudgesLayer
-        open={nudgeOpen}
-        onClose={() => setNudgeOpen(false)}
-        coupleId={profile?.couple_id ?? null}
-        userId={profile?.id ?? null}
-        partnerName={partner?.display_name ?? null}
-        partnerAsleep={!!partnerTime?.asleep}
-        partnerSilent={partner?.nudge_haptics === false}
-      />
-
-      <LiveLayer
-        ref={liveRef}
-        coupleId={profile?.couple_id ?? null}
-        userId={profile?.id ?? null}
-        partnerName={partner?.display_name ?? null}
-        myName={profile?.display_name ?? null}
+      <SendMomentOverlay
+        visible={!!peakMoment}
+        name={peakMoment?.name ?? 'quiz-correct'}
+        message={peakMoment?.message ?? ''}
+        onDismiss={() => setPeakMoment(null)}
       />
     </SafeAreaView>
   );

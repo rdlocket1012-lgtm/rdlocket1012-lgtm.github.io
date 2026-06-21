@@ -111,33 +111,37 @@ export const useQuizStore = create<QuizState>((set, get) => ({
 
   fetchToday: async (coupleId) => {
     set({ loading: true });
-    const date = todayISO();
-    const { data } = await supabase
-      .from('daily_quiz')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .eq('quiz_date', date)
-      .maybeSingle();
+    try {
+      const date = todayISO();
+      const { data } = await supabase
+        .from('daily_quiz')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .eq('quiz_date', date)
+        .maybeSingle();
 
-    if (data) {
-      set({ today: data as QuizRow, loading: false });
-      return;
+      if (data) {
+        set({ today: data as QuizRow });
+        return;
+      }
+
+      // No row yet — this user creates it and becomes the "creator".
+      const myId = useAuthStore.getState().profile?.id;
+      const { data: created } = await supabase
+        .from('daily_quiz')
+        .insert({
+          couple_id: coupleId,
+          quiz_date: date,
+          question_id: questionIndexForDate(new Date()),
+          created_by: myId ?? null,
+        })
+        .select()
+        .single();
+
+      set({ today: (created as QuizRow) ?? null });
+    } catch { /* network/auth error — leave today as null */ } finally {
+      set({ loading: false });
     }
-
-    // No row yet — this user creates it and becomes the "creator".
-    const myId = useAuthStore.getState().profile?.id;
-    const { data: created } = await supabase
-      .from('daily_quiz')
-      .insert({
-        couple_id: coupleId,
-        quiz_date: date,
-        question_id: questionIndexForDate(new Date()),
-        created_by: myId ?? null,
-      })
-      .select()
-      .single();
-
-    set({ today: (created as QuizRow) ?? null, loading: false });
   },
 
   submit: async (self, guess) => {

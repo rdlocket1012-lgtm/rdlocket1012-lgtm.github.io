@@ -157,10 +157,26 @@ export function useConnectionCalendar() {
     return map;
   }, [events]);
 
-  /** Upcoming events from today forward. */
+  /**
+   * Upcoming events from today forward. Recurring events are expanded across
+   * several years for the calendar grid, so here we collapse each series to its
+   * single next occurrence — otherwise a yearly birthday/anniversary would show
+   * once per year in the "Coming up" list.
+   */
   const upcoming = useMemo(() => {
     const today = ymd(new Date());
-    return events.filter((e) => e.date >= today).slice(0, 30);
+    const seen = new Set<string>();
+    const out: CalEvent[] = [];
+    for (const e of events) { // events are sorted ascending by date
+      if (e.date < today) continue;
+      const seriesKey = e.recurring
+        ? (e.kind === 'anniversary' ? 'anniv' : `series-${e.sourceId ?? e.title}`)
+        : e.id;
+      if (seen.has(seriesKey)) continue;
+      seen.add(seriesKey);
+      out.push(e);
+    }
+    return out.slice(0, 30);
   }, [events]);
 
   return { events, eventsOnDay, eventsByDay, upcoming };

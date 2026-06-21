@@ -41,13 +41,17 @@ export const useCalendarEventsStore = create<CalendarEventsState>((set, get) => 
 
   fetchEvents: async (coupleId) => {
     set({ loading: true });
-    const { data } = await supabase
-      .from('calendar_events')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .is('deleted_at', null)
-      .order('event_date', { ascending: true });
-    set({ events: (data as CalendarEvent[]) ?? [], loading: false });
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .is('deleted_at', null)
+        .order('event_date', { ascending: true });
+      if (!error) set({ events: (data as CalendarEvent[]) ?? [] });
+    } catch { /* network/auth error — keep cached events */ } finally {
+      set({ loading: false });
+    }
   },
 
   addEvent: async ({ couple_id, title, event_date, recurring, emoji, kind }) => {

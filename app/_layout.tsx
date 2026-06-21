@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { registerForPush } from '@/lib/push';
 import { registerNudgeCategories, setupNudgeResponseHandler } from '@/lib/notifications';
 import { routeAfterAuth } from '@/lib/post-auth';
+import { useNudgeLaunch } from '@/stores/nudge-launch.store';
 
 /** Extracts key=value pairs from both the query string AND hash of a URL. */
 function parseAllParams(url: string): Record<string, string> {
@@ -54,6 +55,14 @@ export default function RootLayout() {
   }, [url]);
 
   async function handleDeepLink(url: string) {
+    // Widget nudge shortcut: locket://nudge opens the nudge composer immediately.
+    // On iOS 17+ the widget fires the AppIntent directly (no app launch).
+    // On iOS 16 it falls back to this deep link.
+    if (url.startsWith('locket://nudge')) {
+      useNudgeLaunch.getState().request();
+      return;
+    }
+
     const params = parseAllParams(url);
 
     if (params.code) {
@@ -150,6 +159,7 @@ export default function RootLayout() {
         <Stack.Screen name="notes/compose" options={{ presentation: 'formSheet', sheetGrabberVisible: true }} />
         <Stack.Screen name="profile/about" />
         <Stack.Screen name="profile/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="notifications/index" />
       </Stack>
     </GestureHandlerRootView>
   );

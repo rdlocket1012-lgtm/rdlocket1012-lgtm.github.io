@@ -30,11 +30,15 @@ export const useDetailsStore = create<DetailsState>((set, get) => ({
 
   fetchDetails: async (coupleId) => {
     set({ loading: true });
-    const { data } = await supabase
-      .from('profile_details')
-      .select('*')
-      .eq('couple_id', coupleId);
-    set({ details: (data as Detail[]) ?? [], loading: false });
+    try {
+      const { data, error } = await supabase
+        .from('profile_details')
+        .select('*')
+        .eq('couple_id', coupleId);
+      if (!error) set({ details: (data as Detail[]) ?? [] });
+    } catch { /* network/auth error — keep cached details */ } finally {
+      set({ loading: false });
+    }
   },
 
   upsertDetail: async ({ coupleId, person, key, label, value, is_question = false }) => {

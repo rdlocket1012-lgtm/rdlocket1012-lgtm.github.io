@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Platform, KeyboardAvoidingView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Platform, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { MILESTONE_TYPES, TYPE_ICON, MilestoneTypeId } from '@/constants/milestone-types';
@@ -8,25 +9,53 @@ import { useCouple } from '@/hooks/useCouple';
 import { useAuthStore } from '@/stores/auth.store';
 import { DateField } from '@/components/ui/DateField';
 import { notifyPartner } from '@/lib/push';
+import { pickAndUploadMilestonePhoto } from '@/lib/milestone-photo';
 import type { Milestone } from '@/stores/milestones.store';
+
+const MAX_PHOTOS = 5;
 
 interface Props {
   onClose: () => void;
   isPremium: boolean;
   onPaywall: () => void;
   editing?: Milestone;
+  onSaved?: () => void;
 }
 
-export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Props) {
+export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSaved }: Props) {
   const { addMilestone, updateMilestone } = useMilestones();
   const { couple } = useCouple();
   const [type, setType] = useState<MilestoneTypeId>((editing?.type as MilestoneTypeId) ?? 'trip');
   const [title, setTitle] = useState(editing?.title ?? '');
   const [note, setNote] = useState(editing?.note ?? '');
   const [date, setDate] = useState(editing?.milestone_date ?? new Date().toISOString().split('T')[0]);
+  const [photos, setPhotos] = useState<string[]>(editing?.photos ?? []);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const c = catColor(type);
+
+  async function addPhoto() {
+    if (photoBusy || photos.length >= MAX_PHOTOS) return;
+    const coupleId = couple?.id ?? useAuthStore.getState().profile?.couple_id;
+    if (!coupleId) {
+      Alert.alert('Setting up', 'Your shared space is still loading. Try again in a moment.');
+      return;
+    }
+    try {
+      setPhotoBusy(true);
+      const url = await pickAndUploadMilestonePhoto(coupleId);
+      if (url) setPhotos((p) => [...p, url]);
+    } catch (e: any) {
+      Alert.alert('Could not add photo', e?.message ?? 'Please try again.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  function removePhoto(uri: string) {
+    setPhotos((p) => p.filter((x) => x !== uri));
+  }
 
   async function handleSave() {
     if (!title.trim()) return;
@@ -43,6 +72,7 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Pr
           title: title.trim(),
           note: note.trim() || null,
           milestone_date: date,
+          photos,
         });
       } else {
         const myId = useAuthStore.getState().profile?.id ?? null;
@@ -54,10 +84,12 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Pr
           note: note.trim() || null,
           note_rich_html: null,
           milestone_date: date,
+          photos,
           deleted_at: null,
         });
         const name = (useAuthStore.getState().profile?.display_name || 'Your partner').split(' ')[0];
         notifyPartner('milestone', 'A new memory ✨', `${name} added "${title.trim()}" to your timeline`);
+        onSaved?.();
       }
       onClose();
     } catch (e: any) {
@@ -164,6 +196,39 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing }: Pr
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: shade(LK.marigold, 0.5) }}>Rich notes are Premium</Text>
               </TouchableOpacity>
             )}
+          </View>
+
+          {/* Photos (§9.5 — up to 5 per milestone) */}
+          <View style={{ marginTop: 18 }}>
+            <FieldLabel>Photos</FieldLabel>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {photos.map((uri) => (
+                <View key={uri} style={{ width: 76, height: 76 }}>
+                  <Image source={{ uri }} style={{ width: 76, height: 76, borderRadius: 14, backgroundColor: rgba(LK.espresso, 0.05) }} contentFit="cover" transition={150} />
+                  <TouchableOpacity
+                    onPress={() => removePhoto(uri)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityLabel="Remove photo"
+                    style={{ position: 'absolute', top: -6, right: -6, width: 24, height: 24, borderRadius: 12, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: LK.parchment }}
+                  >
+                    <Icon name="x" size={12} color="#fff" strokeWidth={2.6} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {photos.length < MAX_PHOTOS && (
+                <TouchableOpacity
+                  onPress={addPhoto}
+                  disabled={photoBusy}
+                  accessibilityLabel="Add a photo"
+                  style={{ width: 76, height: 76, borderRadius: 14, backgroundColor: LK.ivory, borderWidth: 1.5, borderColor: 'rgba(42,33,26,0.15)', alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
+                >
+                  {photoBusy ? <ActivityIndicator size="small" color={LK.sepia} /> : <Icon name="camera" size={22} color={LK.sepia} />}
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70, marginTop: 8 }}>
+              {photos.length}/{MAX_PHOTOS} · tap a photo's ✕ to remove
+            </Text>
           </View>
         </ScrollView>
       </View>

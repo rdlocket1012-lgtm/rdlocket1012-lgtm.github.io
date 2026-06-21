@@ -7,7 +7,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import { routeAfterAuth } from '@/lib/post-auth';
 import { LK, theme } from '@/constants/theme';
@@ -95,12 +95,12 @@ export default function SignUpScreen() {
         >
           <BackOrb />
 
-          <Animated.View entering={FadeInDown.delay(70).springify().damping(19)} style={{ paddingTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ paddingTop: 30 }}>
             <Text style={T.title}>Create your Locket</Text>
             <Text style={T.why}>One account. One private space for the two of you.</Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(170).springify().damping(19)} style={{ marginTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 30 }}>
             <AppleAuthentication.AppleAuthenticationButton
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
@@ -117,7 +117,7 @@ export default function SignUpScreen() {
             </Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(250).springify().damping(19)} style={{ marginTop: 18 }}>
+          <Animated.View entering={FadeInDown.delay(250).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 18 }}>
             {!emailOpen ? (
               <PressableScale haptic="soft" onPress={() => setEmailOpen(true)} style={{ alignItems: 'center', paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: LK.ink70 }}>
@@ -126,7 +126,7 @@ export default function SignUpScreen() {
                 <Icon name="chevD" size={15} color={LK.ink70} />
               </PressableScale>
             ) : (
-              <Animated.View entering={FadeInDown.springify().damping(19)} style={{ gap: 12 }}>
+              <Animated.View entering={FadeInDown.springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ gap: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 2 }}>
                   <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
                   <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70 }}>with email</Text>
@@ -164,7 +164,7 @@ export default function SignUpScreen() {
 
           <View style={{ flex: 1 }} />
 
-          <Animated.View entering={FadeInDown.delay(330).springify().damping(19)}>
+          <Animated.View entering={FadeInDown.delay(330).springify().damping(19).reduceMotion(ReduceMotion.Never)}>
             <PressableScale haptic="soft" onPress={() => router.push('/(auth)/sign-in')} style={{ alignItems: 'center', paddingVertical: 12 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70 }}>
                 Already have an account?{' '}

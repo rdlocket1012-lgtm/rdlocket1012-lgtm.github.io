@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Stroke } from '@/components/draw/DrawCanvas';
 
@@ -25,6 +25,10 @@ export function useDrawSession(
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
 
+  // Whether the partner is also present in the draw channel (both on the
+  // Draw & Guess screen). Drives the 2-player connection gate.
+  const [partnerOnline, setPartnerOnline] = useState(false);
+
   useEffect(() => {
     if (!coupleId || !myId) return;
 
@@ -34,7 +38,7 @@ export function useDrawSession(
     }
 
     const channel = supabase.channel(topic, {
-      config: { broadcast: { self: false } },
+      config: { broadcast: { self: false }, presence: { key: myId } },
     });
 
     channel.on('broadcast', { event: 'draw' }, ({ payload }) => {
@@ -42,10 +46,20 @@ export function useDrawSession(
       if (e?.type) onEventRef.current(e);
     });
 
-    channel.subscribe();
+    // Presence: anyone tracked under a key other than mine is the partner.
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      setPartnerOnline(Object.keys(state).some((k) => k !== myId));
+    });
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        void channel.track({ userId: myId, at: Date.now() });
+      }
+    });
     channelRef.current = channel;
 
-    return () => { void supabase.removeChannel(channel); };
+    return () => { setPartnerOnline(false); void supabase.removeChannel(channel); };
   }, [coupleId, myId]);
 
   const send = useCallback((event: DrawGameEvent) => {
@@ -56,5 +70,5 @@ export function useDrawSession(
     });
   }, []);
 
-  return { send };
+  return { send, partnerOnline };
 }

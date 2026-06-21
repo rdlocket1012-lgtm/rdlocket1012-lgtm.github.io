@@ -202,36 +202,48 @@ export default function LocketTabBar({ state, navigation }: BottomTabBarProps) {
         </View>
 
         {/* Center FAB — pops above the tray */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Quick actions"
-          onPress={openFab}
-          style={{
-            position: 'absolute',
-            alignSelf: 'center',
-            bottom: FAB_BOTTOM,
-            borderRadius: FAB_SIZE / 2,
-          }}
-        >
-          <LinearGradient
-            colors={[LK.coral, '#FF9A6B']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              width: FAB_SIZE,
-              height: FAB_SIZE,
-              borderRadius: FAB_SIZE / 2,
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 4px 16px ${rgba(LK.coral, 0.4)}`,
-            }}
-          >
-            <Icon name="plus" size={24} color="#fff" strokeWidth={2.4} />
-          </LinearGradient>
-        </Pressable>
+        <FabButton onPress={openFab} />
       </View>
 
       <FabActionsOverlay visible={fabOpen} onClose={() => setFabOpen(false)} />
     </>
+  );
+}
+
+function FabButton({ onPress }: { onPress: () => void }) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Quick actions"
+      onPress={onPress}
+      onPressIn={() => { scale.value = withSpring(0.92, { damping: 20, stiffness: 500 }); }}
+      onPressOut={() => { scale.value = withSpring(1, { damping: 14, stiffness: 320 }); }}
+      style={{
+        position: 'absolute',
+        alignSelf: 'center',
+        bottom: FAB_BOTTOM,
+        borderRadius: FAB_SIZE / 2,
+      }}
+    >
+      <Animated.View style={animStyle}>
+        <LinearGradient
+          colors={[LK.coral, '#FF9A6B']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            width: FAB_SIZE,
+            height: FAB_SIZE,
+            borderRadius: FAB_SIZE / 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: `0 4px 16px ${rgba(LK.coral, 0.4)}`,
+          }}
+        >
+          <Icon name="plus" size={24} color="#fff" strokeWidth={2.4} />
+        </LinearGradient>
+      </Animated.View>
+    </Pressable>
   );
 }

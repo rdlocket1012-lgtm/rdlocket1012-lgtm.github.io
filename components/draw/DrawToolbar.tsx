@@ -109,7 +109,7 @@ export function DrawToolbar({
             >
               {active && (
                 <Icon
-                  name="checkmark"
+                  name="check"
                   size={11}
                   color={c === LK.espresso ? LK.vellum : LK.espresso}
                 />
@@ -134,7 +134,7 @@ export function DrawToolbar({
         }}
         accessibilityLabel="Eraser"
       >
-        <Icon name="eraser" size={16} color={erasing ? LK.vellum : LK.sepia} />
+        <Icon name="eraser" size={17} color={erasing ? LK.vellum : LK.sepia} />
       </TouchableOpacity>
 
       {/* Undo */}
@@ -152,7 +152,7 @@ export function DrawToolbar({
         }}
         accessibilityLabel="Undo last stroke"
       >
-        <Icon name="arrow.uturn.backward" size={15} color={LK.sepia} />
+        <Icon name="undo" size={16} color={LK.sepia} />
       </TouchableOpacity>
 
       {/* Clear */}

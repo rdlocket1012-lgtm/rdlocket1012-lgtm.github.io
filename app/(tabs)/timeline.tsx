@@ -3,7 +3,7 @@ import { View, Text, Pressable, FlatList, SectionList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { LK, shade, catColor, theme, rgba } from '@/constants/theme';
 import { useMilestones } from '@/hooks/useMilestones';
@@ -11,9 +11,11 @@ import { useCouple } from '@/hooks/useCouple';
 import { FREE_LIMITS } from '@/constants/free-limits';
 import { TYPE_ICON, MILESTONE_FILTERS, typeGroup, type MilestoneFilterId } from '@/constants/milestone-types';
 import { RoundIcon, IconChip } from '@/components/ui';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { AddMilestoneModal } from '@/components/milestone/AddMilestoneModal';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
+import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
 import type { Milestone } from '@/stores/milestones.store';
 import { parseLocalDate } from '@/utils/date';
 
@@ -24,6 +26,7 @@ export default function TimelineScreen() {
   const { isPremium } = useCouple();
   const [filter, setFilter] = useState<MilestoneFilterId>('all');
   const [sheet, setSheet] = useState<'add' | 'paywall' | null>(null);
+  const [momentPeak, setMomentPeak] = useState(false);
 
   const atCap = !isPremium && milestones.length >= FREE_LIMITS.MILESTONES;
   const nearCap = !isPremium && milestones.length >= 25;
@@ -152,9 +155,9 @@ export default function TimelineScreen() {
               <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, textAlign: 'center', lineHeight: 24, maxWidth: 260 }}>
                 Add your first milestone — the moment your story began.
               </Text>
-              <Pressable onPress={handleAdd} style={({ pressed }) => ({ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+              <ScalePressable scaleTo={0.97} onPress={handleAdd} style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Add your first memory</Text>
-              </Pressable>
+              </ScalePressable>
             </View>
           ) : (
             <View style={{ alignItems: 'center', paddingTop: 56, paddingHorizontal: 30, gap: 8 }}>
@@ -166,7 +169,13 @@ export default function TimelineScreen() {
         }
       />
 
-      {sheet === 'add' && <AddMilestoneModal onClose={() => setSheet(null)} isPremium={isPremium} onPaywall={() => setSheet('paywall')} />}
+      {sheet === 'add' && <AddMilestoneModal onClose={() => setSheet(null)} isPremium={isPremium} onPaywall={() => setSheet('paywall')} onSaved={() => setMomentPeak(true)} />}
+      <SendMomentOverlay
+        visible={momentPeak}
+        name="moment-send"
+        message="Added to your story ✨"
+        onDismiss={() => setMomentPeak(false)}
+      />
       {sheet === 'paywall' && <PaywallModal onClose={() => setSheet(null)} />}
     </SafeAreaView>
   );
@@ -175,14 +184,14 @@ export default function TimelineScreen() {
 function MilestoneCard({ milestone: m, animIndex }: { milestone: Milestone; animIndex: number }) {
   const c = catColor(m.type);
   const photos = m.photos ?? [];
-  const entering = animIndex < 5 ? FadeInUp.duration(320).delay(animIndex * 40) : undefined;
+  const entering = animIndex < 5 ? FadeInUp.duration(320).delay(animIndex * 40).reduceMotion(ReduceMotion.Never) : undefined;
 
   return (
     <Animated.View entering={entering} style={{ paddingHorizontal: theme.layout.screenX, paddingBottom: 12 }}>
-      <Pressable
+      <ScalePressable
+        scaleTo={0.98}
         onPress={() => router.push(`/milestone/${m.id}`)}
         accessibilityLabel={m.title}
-        style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.98 : 1 }] })}
       >
         <View style={{ flexDirection: 'row', backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', borderWidth: 1.5, borderColor: BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
           {/* 4px category accent bar */}
@@ -206,7 +215,7 @@ function MilestoneCard({ milestone: m, animIndex }: { milestone: Milestone; anim
             {photos.length > 0 && <PhotoStrip photos={photos} />}
           </View>
         </View>
-      </Pressable>
+      </ScalePressable>
     </Animated.View>
   );
 }
@@ -224,7 +233,7 @@ function PhotoStrip({ photos }: { photos: string[] }) {
       {visible.map((uri, i) => {
         const isLastVisible = i === visible.length - 1 && overflow > 0;
         return (
-          <Pressable key={`${i}-${uri}`} onPress={() => open(i)} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.96 : 1 }] })}>
+          <ScalePressable key={`${i}-${uri}`} scaleTo={0.96} onPress={() => open(i)}>
             <View style={{ width: 56, height: 56, borderRadius: 10, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: rgba(LK.espresso, 0.05) }}>
               <Image source={{ uri }} style={{ width: 56, height: 56 }} contentFit="cover" transition={150} />
               {isLastVisible && (
@@ -233,7 +242,7 @@ function PhotoStrip({ photos }: { photos: string[] }) {
                 </View>
               )}
             </View>
-          </Pressable>
+          </ScalePressable>
         );
       })}
     </View>
