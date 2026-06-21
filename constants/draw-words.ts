@@ -74,10 +74,20 @@ function pick(pool: WordEntry[]): string {
   return pool[Math.floor(Math.random() * pool.length)].word;
 }
 
-/** Returns [easy, medium, hard] — one option per difficulty tier. */
+/** Pick n distinct words from a pool (falls back gracefully if pool is small). */
+function pickDistinct(pool: WordEntry[], n: number): string[] {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n).map((w) => w.word);
+}
+
+/**
+ * Returns 3 options biased toward draw-able words: two easy + one medium, no
+ * hard tier. Drawing abstract "hard" words (cozy, in love, anniversary…) was
+ * too punishing, so they're kept in the list for variety but never offered.
+ */
 export function getWordOptions(): [string, string, string] {
   const easy = WORDS.filter((w) => w.difficulty === 'easy');
   const medium = WORDS.filter((w) => w.difficulty === 'medium');
-  const hard = WORDS.filter((w) => w.difficulty === 'hard');
-  return [pick(easy), pick(medium), pick(hard)];
+  const [e1, e2] = pickDistinct(easy, 2);
+  return [e1, e2, pick(medium)];
 }
