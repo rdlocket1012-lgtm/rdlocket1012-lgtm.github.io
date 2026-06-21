@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, SafeAreaView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -181,11 +181,14 @@ export default function QuizHistoryScreen() {
           </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {rows.map((row) => (
-            <HistoryCard key={row.id} row={row} partnerName={partnerName} />
-          ))}
-        </ScrollView>
+        <FlatList
+          data={rows}
+          keyExtractor={(row) => row.id}
+          renderItem={({ item }) => <HistoryCard row={item} partnerName={partnerName} />}
+          contentInsetAdjustmentBehavior="automatic"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 40 }}
+        />
       )}
     </SafeAreaView>
   );
