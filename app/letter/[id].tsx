@@ -15,6 +15,54 @@ import { VoiceLetterPlayer } from '@/components/letter/VoiceLetterPlayer';
 
 const REACTIONS = ['❤️', '🥹', '😍', '😘', '🔥', '😂'];
 
+const BASE_LETTER_STYLE = {
+  fontFamily: theme.fonts.serif,
+  fontStyle: 'italic' as const,
+  fontSize: 20.5,
+  color: LK.espresso,
+  lineHeight: 34,
+};
+
+function parseInlineHtml(html: string, paraIdx: number): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  const regex = /<strong>([\s\S]*?)<\/strong>|<em>([\s\S]*?)<\/em>|([^<]+)/g;
+  let match: RegExpExecArray | null;
+  let i = 0;
+  while ((match = regex.exec(html)) !== null) {
+    const key = `${paraIdx}-${i++}`;
+    if (match[3] !== undefined) {
+      nodes.push(match[3]);
+    } else if (match[1] !== undefined) {
+      nodes.push(<Text key={key} style={{ fontWeight: '800' }}>{match[1]}</Text>);
+    } else if (match[2] !== undefined) {
+      nodes.push(<Text key={key} style={{ fontStyle: 'italic' }}>{match[2]}</Text>);
+    }
+  }
+  return nodes;
+}
+
+function LetterBody({ html }: { html: string }) {
+  const paras = html
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<p>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .split('\n')
+    .map(p => p.trim());
+
+  const nonEmpty = paras.filter(p => p.length > 0);
+
+  return (
+    <Text style={BASE_LETTER_STYLE} selectable>
+      {nonEmpty.map((para, idx) => (
+        <React.Fragment key={idx}>
+          {idx > 0 ? '\n\n' : ''}
+          {parseInlineHtml(para, idx)}
+        </React.Fragment>
+      ))}
+    </Text>
+  );
+}
+
 export default function LetterReaderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { letters, reactToLetter, deleteLetter } = useLetters();
@@ -24,7 +72,7 @@ export default function LetterReaderScreen() {
   const letter = letters.find((l) => l.id === id);
   if (!letter) return null;
 
-  const bodyText = letter.body_rich_html.replace(/<[^>]+>/g, '');
+  const bodyText = letter.body_rich_html.replace(/<[^>]+>/g, ''); // for share/copy
   const isMine = !!letter.sender_id && letter.sender_id === profile?.id;
   const senderName = isMine
     ? (profile?.display_name?.trim().split(' ')[0] || 'You')
@@ -136,9 +184,7 @@ export default function LetterReaderScreen() {
 
         {/* Letter body / transcript */}
         {(!letter.audio_path || letter.transcript) && (
-          <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 20.5, color: LK.espresso, lineHeight: 34 }}>
-            {bodyText}
-          </Text>
+          <LetterBody html={letter.body_rich_html} />
         )}
 
         {/* Reactions */}

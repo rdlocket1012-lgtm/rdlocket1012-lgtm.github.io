@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Easing } from 'react-native';
 import { Image } from 'expo-image';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
@@ -40,6 +40,13 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
   const partnerFirstName = partner?.display_name?.split(' ')[0] || 'my love';
   const [text, setText] = useState('');
   const [draftSaved, setDraftSaved] = useState(false);
+  const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  function wrapSelection(open: string, close: string) {
+    const { start, end } = selectionRef.current;
+    if (start === end) return;
+    setText((t) => t.slice(0, start) + open + t.slice(start, end) + close + t.slice(end));
+  }
   const [sealedOpen, setSealedOpen] = useState(false);
   const [sealedDate, setSealedDate] = useState<string | null>(null);
   const [sealedLabel, setSealedLabel] = useState<string | null>(null);
@@ -65,7 +72,10 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
         couple_id: couple.id,
         sender_id: profile.id,
         recipient_id: null,
-        body_rich_html: `<p>${text.replace(/\n/g, '</p><p>')}</p>`,
+        body_rich_html: text
+          .replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/_([\s\S]*?)_/g, '<em>$1</em>')
+          .split('\n').map(l => `<p>${l}</p>`).join(''),
         is_draft: false,
         is_sealed_until: sealedDate !== null,
         reveal_at: sealedDate,
@@ -209,14 +219,22 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
           ))}
         </View>
 
-        {/* Toolbar */}
+        {/* Toolbar — only shown in text mode */}
         <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center' }}>
-          <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+          <TouchableOpacity
+            onPress={() => wrapSelection('**', '**')}
+            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityLabel="Bold"
+          >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 18, color: LK.espresso }}>B</Text>
-          </View>
-          <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => wrapSelection('_', '_')}
+            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityLabel="Italic"
+          >
             <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.espresso }}>i</Text>
-          </View>
+          </TouchableOpacity>
           <View style={{ flex: 1 }} />
           <TouchableOpacity
             onPress={() => isPremium ? setSealedOpen(true) : onPaywall()}
@@ -241,6 +259,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
             multiline
             value={text}
             onChangeText={setText}
+            onSelectionChange={(e) => { selectionRef.current = e.nativeEvent.selection; }}
             placeholder={`Dear ${partnerFirstName},\n\nWrite something they'll keep forever…`}
             placeholderTextColor="rgba(58,46,34,0.4)"
             style={{
