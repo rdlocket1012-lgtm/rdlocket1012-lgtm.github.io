@@ -38,7 +38,10 @@ export const useLettersStore = create<LettersState>((set, get) => ({
   loading: false,
 
   fetchLetters: async (coupleId) => {
-    set({ loading: true });
+    // Only show the skeleton on the first (empty) load. Re-fetches — re-opening
+    // the screen, opening the compose sheet, realtime refresh — keep the cached
+    // letters on screen instead of flashing the skeleton over them.
+    if (get().letters.length === 0) set({ loading: true });
     // Safety net: RN fetch has no timeout, so a stalled connection or a wedged
     // auth session could otherwise leave the screen stuck on its skeleton
     // forever. Cap the loading state; any data that arrives late still populates
