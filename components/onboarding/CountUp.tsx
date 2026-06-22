@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { TextInput, TextStyle, StyleProp } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedProps, withDelay, withTiming, Easing,
+  useSharedValue, useAnimatedProps, withDelay, withTiming, Easing, ReduceMotion,
 } from 'react-native-reanimated';
 
 Animated.addWhitelistedNativeProps({ text: true });
@@ -32,7 +32,7 @@ export function CountUp({ value, duration = 1300, delay = 200, style }: {
 }) {
   const sv = useSharedValue(0);
   useEffect(() => {
-    sv.value = withDelay(delay, withTiming(value, { duration, easing: Easing.out(Easing.cubic) }));
+    sv.value = withDelay(delay, withTiming(value, { duration, easing: Easing.out(Easing.cubic), reduceMotion: ReduceMotion.Never }));
   }, [value]);
 
   const animatedProps = useAnimatedProps(() => ({ text: fmt(sv.value) } as any));

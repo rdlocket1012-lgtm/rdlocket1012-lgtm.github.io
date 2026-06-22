@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, type PressableProps, type ViewStyle, type StyleProp } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, ReduceMotion } from 'react-native-reanimated';
 
 type Props = Omit<PressableProps, 'style' | 'children'> & {
   children: React.ReactNode;
@@ -21,11 +21,11 @@ export function ScalePressable({ scaleTo = 0.96, children, style, onPressIn, onP
     <Pressable
       {...rest}
       onPressIn={(e) => {
-        scale.value = withSpring(scaleTo, { damping: 22, stiffness: 400 });
+        scale.value = withSpring(scaleTo, { damping: 22, stiffness: 400, reduceMotion: ReduceMotion.Never });
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
-        scale.value = withSpring(1, { damping: 16, stiffness: 280 });
+        scale.value = withSpring(1, { damping: 16, stiffness: 280, reduceMotion: ReduceMotion.Never });
         onPressOut?.(e);
       }}
     >

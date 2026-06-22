@@ -8,8 +8,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withDelay,
-  withTiming,
-  useReducedMotion,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LK, theme, rgba, shade } from '@/constants/theme';
@@ -51,7 +49,6 @@ const ACTIONS: Action[] = [
 
 export function FabActionsOverlay({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
-  const reduced = useReducedMotion();
 
   function pick(action: Action) {
     if (process.env.EXPO_OS === 'ios') {
@@ -89,32 +86,27 @@ export function FabActionsOverlay({ visible, onClose }: { visible: boolean; onCl
             }}
           >
             {ACTIONS.map((a, i) => (
-              <ActionCard key={a.key} action={a} index={i} reduced={reduced} onPick={pick} />
+              <ActionCard key={a.key} action={a} index={i} onPick={pick} />
             ))}
           </View>
 
           {/* The FAB stays put and shows ✕ while open (§8.11). Tapping it closes. */}
-          <FabClose insets={insets} reduced={reduced} onClose={onClose} />
+          <FabClose insets={insets} onClose={onClose} />
         </Pressable>
       </View>
     </Modal>
   );
 }
 
-function ActionCard({ action, index, reduced, onPick }: {
+function ActionCard({ action, index, onPick }: {
   action: Action;
   index: number;
-  reduced: boolean;
   onPick: (a: Action) => void;
 }) {
   const v = useSharedValue(0);
 
   useEffect(() => {
-    if (reduced) {
-      v.value = withDelay(index * 30, withTiming(1, { duration: 120 }));
-      return;
-    }
-    v.value = withDelay(index * 45, withSpring(1, { damping: theme.spring.warm.damping, stiffness: theme.spring.warm.stiffness }));
+    v.value = withDelay(index * 45, withSpring(1, theme.spring.warm));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -167,16 +159,14 @@ function ActionCard({ action, index, reduced, onPick }: {
   );
 }
 
-function FabClose({ insets, reduced, onClose }: {
+function FabClose({ insets, onClose }: {
   insets: { bottom: number };
-  reduced: boolean;
   onClose: () => void;
 }) {
   const v = useSharedValue(0);
 
   useEffect(() => {
-    if (reduced) { v.value = withTiming(1, { duration: 120 }); return; }
-    v.value = withSpring(1, { damping: theme.spring.snappy.damping, stiffness: theme.spring.snappy.stiffness });
+    v.value = withSpring(1, theme.spring.snappy);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
