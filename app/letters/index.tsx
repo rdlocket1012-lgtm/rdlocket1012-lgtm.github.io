@@ -320,7 +320,7 @@ function LoveCardsGrid({
                 {fromMe ? `You → ${partnerName}` : `${partnerName} → You`}
               </Text>
             </View>
-          </Pressable>
+          </ScalePressable>
         );
       })}
     </ScrollView>
