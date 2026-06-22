@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { RoundIcon } from '@/components/ui';
+import { RoundIcon } from '@/components/ui/round-icon';
 
 /** Standardised screen header: back button row, then eyebrow + big title. */
 export function ScreenHeader({ eyebrow, title, onBack, right }: {

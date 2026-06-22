@@ -13,6 +13,7 @@ import { useUnseenStore } from '@/stores/unseen.store';
 import { Avatar } from '@/components/ui/avatar';
 import { RoundIcon } from '@/components/ui/round-icon';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { pickAndUploadCoverPhoto } from '@/lib/cover-photo';
 
 const COVER_FALLBACK = require('../../assets/illustrations/mascot/holding-hands.png');
@@ -130,11 +131,12 @@ function FeatureCard({ feature, width }: { feature: Feature; width: number }) {
   }
 
   return (
-    <Pressable
+    <ScalePressable
+      scaleTo={0.96}
       onPress={press}
       accessibilityRole="button"
       accessibilityLabel={feature.title}
-      style={({ pressed }) => ({ width, aspectRatio: 1 / 1.15, transform: [{ scale: pressed ? 0.96 : 1 }] })}
+      style={{ width, aspectRatio: 1 / 1.15 }}
     >
       <View style={{ flex: 1, backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', borderWidth: 1.5, borderColor: BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
         {/* Illustration zone (top 60%) */}
@@ -154,6 +156,6 @@ function FeatureCard({ feature, width }: { feature: Feature; width: number }) {
           <View style={{ position: 'absolute', top: 12, right: 12, width: 12, height: 12, borderRadius: 6, backgroundColor: LK.coral, borderWidth: 1.5, borderColor: LK.ivory }} />
         )}
       </View>
-    </Pressable>
+    </ScalePressable>
   );
 }

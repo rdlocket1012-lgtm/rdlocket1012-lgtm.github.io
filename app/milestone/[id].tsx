@@ -7,6 +7,7 @@ import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { TYPE_ICON, MILESTONE_TYPES } from '@/constants/milestone-types';
 import { useMilestones } from '@/hooks/useMilestones';
 import { useCouple } from '@/hooks/useCouple';
@@ -91,7 +92,7 @@ export default function MilestoneDetailScreen() {
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {photos.map((uri, i) => (
-                <Pressable key={`${i}-${uri}`} onPress={() => openPhotos(i)} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.96 : 1 }] })}>
+                <ScalePressable scaleTo={0.96} key={`${i}-${uri}`} onPress={() => openPhotos(i)}>
                   <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: rgba(LK.espresso, 0.05) }} contentFit="cover" transition={150} />
                 </Pressable>
               ))}

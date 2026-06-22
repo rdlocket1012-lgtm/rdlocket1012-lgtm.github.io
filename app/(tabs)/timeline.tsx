@@ -10,7 +10,8 @@ import { useMilestones } from '@/hooks/useMilestones';
 import { useCouple } from '@/hooks/useCouple';
 import { FREE_LIMITS } from '@/constants/free-limits';
 import { TYPE_ICON, MILESTONE_FILTERS, typeGroup, type MilestoneFilterId } from '@/constants/milestone-types';
-import { RoundIcon, IconChip } from '@/components/ui';
+import { RoundIcon } from '@/components/ui/round-icon';
+import { IconChip } from '@/components/ui/icon-chip';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { AddMilestoneModal } from '@/components/milestone/AddMilestoneModal';
@@ -89,11 +90,12 @@ export default function TimelineScreen() {
         renderItem={({ item }) => {
           const active = filter === item.id;
           return (
-            <Pressable
+            <ScalePressable
+              scaleTo={0.96}
               onPress={() => setFilter(item.id)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              style={({ pressed }) => ({
+              style={{
                 paddingHorizontal: 16,
                 height: 36,
                 borderRadius: 99,
@@ -102,14 +104,13 @@ export default function TimelineScreen() {
                 backgroundColor: active ? LK.coral : LK.ivory,
                 borderWidth: active ? 0 : 1.5,
                 borderColor: BORDER,
-                transform: [{ scale: pressed ? 0.96 : 1 }],
                 ...(active ? theme.shadow.sm : null),
-              })}
+              }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: active ? '700' : '500', fontSize: 13, color: active ? LK.vellum : LK.espresso }}>
                 {item.label}
               </Text>
-            </Pressable>
+            </ScalePressable>
           );
         }}
       />

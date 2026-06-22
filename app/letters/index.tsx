@@ -10,8 +10,9 @@ import { usePartner } from '@/hooks/usePartner';
 import { useAuthStore } from '@/stores/auth.store';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { FREE_LIMITS } from '@/constants/free-limits';
-import { RoundIcon } from '@/components/ui';
+import { RoundIcon } from '@/components/ui/round-icon';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ComposeLetterModal } from '@/components/letter/ComposeLetterModal';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
@@ -170,7 +171,7 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
   const preview = l.body_rich_html.replace(/<[^>]+>/g, '').trim();
 
   return (
-    <Pressable onPress={onPress} accessibilityLabel={`Letter from ${senderName}`} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.98 : 1 }] })}>
+    <ScalePressable scaleTo={0.98} onPress={onPress} accessibilityLabel={`Letter from ${senderName}`}>
       <View style={{ flexDirection: 'row', backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', overflow: 'hidden', ...theme.shadow.sm }}>
         <View style={{ width: 4, backgroundColor: LK.gold }} />
         <View style={{ flex: 1, padding: 16, flexDirection: 'row', gap: 13 }}>
@@ -209,11 +210,7 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
 
 function SealedCard({ l, premium, onPaywall }: { l: Letter; premium: boolean; onPaywall: () => void }) {
   return (
-    <Pressable
-      onPress={premium ? undefined : onPaywall}
-      accessibilityLabel="Sealed letter"
-      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.98 : 1 }] })}
-    >
+    <ScalePressable scaleTo={0.98} onPress={premium ? undefined : onPaywall} accessibilityLabel="Sealed letter">
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: tint(LK.marigold, 0.7), borderRadius: theme.radii.md, borderCurve: 'continuous', padding: 16, ...theme.shadow.sm }}>
         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: LK.marigold, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon name="lock" size={21} color={shade(LK.marigold, 0.6)} />
@@ -226,7 +223,7 @@ function SealedCard({ l, premium, onPaywall }: { l: Letter; premium: boolean; on
         </View>
         {!premium && <Icon name="crown" size={15} color={shade(LK.marigold, 0.5)} />}
       </View>
-    </Pressable>
+    </ScalePressable>
   );
 }
 
@@ -255,9 +252,9 @@ function LoveCardsGrid({
         <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, textAlign: 'center', lineHeight: 24, maxWidth: 260 }}>
           Send {partnerName} an illustrated card
         </Text>
-        <Pressable onPress={onCompose} style={({ pressed }) => ({ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+        <ScalePressable scaleTo={0.97} onPress={onCompose} style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8 }}>
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Send one first</Text>
-        </Pressable>
+        </ScalePressable>
       </View>
     );
   }
@@ -280,9 +277,10 @@ function LoveCardsGrid({
         const illus = getIllustration(payload.illus);
         const fromMe = card.sender_id === myId;
         return (
-          <Pressable
+          <ScalePressable
+            scaleTo={0.97}
             key={card.id}
-            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }], width: cardW })}
+            style={{ width: cardW }}
             accessibilityLabel={`Love card: ${payload.message}`}
           >
             <View
@@ -368,9 +366,9 @@ function EmptyState({ title, line, cta, onCta, illustration }: { title: string; 
       <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>{title}</Text>
       <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, textAlign: 'center', lineHeight: 24, maxWidth: 260 }}>{line}</Text>
       {cta && onCta && (
-        <Pressable onPress={onCta} style={({ pressed }) => ({ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+        <ScalePressable scaleTo={0.97} onPress={onCta} style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8 }}>
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>{cta}</Text>
-        </Pressable>
+        </ScalePressable>
       )}
     </View>
   );

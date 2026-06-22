@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Alert, Linking } from 'react-native';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { IconChip } from '@/components/ui';
+import { IconChip } from '@/components/ui/icon-chip';
 import { purchasePlan, restorePurchases, purchasesAvailable } from '@/lib/revenuecat';
 import { useCouple } from '@/hooks/useCouple';
 

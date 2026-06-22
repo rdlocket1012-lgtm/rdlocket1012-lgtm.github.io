@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, SafeAreaView, Animated
 import { router, useLocalSearchParams } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { IconChip } from '@/components/ui';
+import { IconChip } from '@/components/ui/icon-chip';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';

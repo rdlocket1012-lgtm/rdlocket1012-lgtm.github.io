@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { IconChip } from '@/components/ui';
+import { IconChip } from '@/components/ui/icon-chip';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { NewTag } from '@/components/ui/NewTag';
 import { useCoupons } from '@/hooks/useCoupons';

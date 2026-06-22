@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, SafeAreaView, Alert } from 're
 import { router } from 'expo-router';
 import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { RoundIcon } from '@/components/ui';
+import { RoundIcon } from '@/components/ui/round-icon';
 import { useAuth } from '@/hooks/useAuth';
 
 type Step = 'confirm' | 'type' | 'done';

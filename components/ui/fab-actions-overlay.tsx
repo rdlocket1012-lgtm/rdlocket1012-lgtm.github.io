@@ -14,6 +14,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LK, theme, rgba, shade } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { useNudgeLaunch } from '@/stores/nudge-launch.store';
 
 // Keep these in sync with the tab bar so the ✕ FAB lands exactly on the + FAB.
@@ -124,11 +125,12 @@ function ActionCard({ action, index, reduced, onPick }: {
 
   return (
     <Animated.View style={style}>
-      <Pressable
+      <ScalePressable
+        scaleTo={0.97}
         accessibilityRole="button"
         accessibilityLabel={action.label}
         onPress={() => onPick(action)}
-        style={({ pressed }) => ({
+        style={{
           backgroundColor: LK.vellum,
           borderRadius: theme.radii.md,
           borderCurve: 'continuous',
@@ -137,9 +139,8 @@ function ActionCard({ action, index, reduced, onPick }: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 14,
-          transform: [{ scale: pressed ? 0.97 : 1 }],
           ...theme.shadow.card,
-        })}
+        }}
       >
         <View
           style={{
@@ -161,7 +162,7 @@ function ActionCard({ action, index, reduced, onPick }: {
             {action.hint}
           </Text>
         </View>
-      </Pressable>
+      </ScalePressable>
     </Animated.View>
   );
 }

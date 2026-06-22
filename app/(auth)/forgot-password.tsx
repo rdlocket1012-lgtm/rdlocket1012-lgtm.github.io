@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/lib/supabase';
 import { LK, theme } from '@/constants/theme';
-import { Btn } from '@/components/ui';
+import { Btn } from '@/components/ui/btn';
 import { Icon } from '@/components/ui/Icon';
 
 const schema = z.object({

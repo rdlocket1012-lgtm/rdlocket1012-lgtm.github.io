@@ -10,7 +10,10 @@ import { useCouple } from '@/hooks/useCouple';
 import { useAuth } from '@/hooks/useAuth';
 import { useMilestones } from '@/hooks/useMilestones';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { Avatar, RoundIcon, IconChip } from '@/components/ui';
+import { Avatar } from '@/components/ui/avatar';
+import { RoundIcon } from '@/components/ui/round-icon';
+import { IconChip } from '@/components/ui/icon-chip';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { TYPE_ICON } from '@/constants/milestone-types';
 import { DailyQuizCard } from '@/components/quiz/DailyQuizCard';
@@ -372,9 +375,10 @@ export default function HomeScreen() {
                 renderItem={({ item }) => {
                   const c = catColor(item.type);
                   return (
-                    <Pressable
+                    <ScalePressable
+                      scaleTo={0.97}
                       onPress={() => router.push(`/milestone/${item.id}`)}
-                      style={({ pressed }) => ({ width: 160, height: 180, transform: [{ scale: pressed ? 0.97 : 1 }] })}
+                      style={{ width: 160, height: 180 }}
                     >
                       <View style={{ flex: 1, backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', overflow: 'hidden', ...theme.shadow.sm }}>
                         <View style={{ flex: 1, padding: 14, justifyContent: 'space-between' }}>
@@ -390,7 +394,7 @@ export default function HomeScreen() {
                         </View>
                         <View style={{ height: 4, backgroundColor: c.base }} />
                       </View>
-                    </Pressable>
+                    </ScalePressable>
                   );
                 }}
               />

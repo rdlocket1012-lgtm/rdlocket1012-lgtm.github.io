@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, KeyboardAvo
 import { Image } from 'expo-image';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { Chip } from '@/components/ui';
+import { Chip } from '@/components/ui/chip';
 import { useLetters } from '@/hooks/useLetters';
 import { useAuth } from '@/hooks/useAuth';
 import { useCouple } from '@/hooks/useCouple';

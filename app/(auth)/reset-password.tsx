@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { LK, theme } from '@/constants/theme';
-import { Btn } from '@/components/ui';
+import { Btn } from '@/components/ui/btn';
 
 const schema = z.object({
   password: z
