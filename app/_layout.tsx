@@ -13,6 +13,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ReducedMotionConfig, ReduceMotion } from 'react-native-reanimated';
 import { useAuth } from '@/hooks/useAuth';
 import { useSyncTimezone } from '@/hooks/useSyncTimezone';
 import { OfflineBanner } from '@/components/offline/OfflineBanner';
@@ -132,6 +133,10 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* Force-enable Reanimated animations even when the OS "Reduce Motion"
+          setting is on. Sets the global default for every withSpring/withTiming
+          in the app — no per-call-site override needed. */}
+      <ReducedMotionConfig mode={ReduceMotion.Never} />
       <StatusBar style="dark" />
       <OfflineBanner />
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
