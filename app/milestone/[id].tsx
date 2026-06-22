@@ -94,7 +94,7 @@ export default function MilestoneDetailScreen() {
               {photos.map((uri, i) => (
                 <ScalePressable scaleTo={0.96} key={`${i}-${uri}`} onPress={() => openPhotos(i)}>
                   <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: rgba(LK.espresso, 0.05) }} contentFit="cover" transition={150} />
-                </Pressable>
+                </ScalePressable>
               ))}
             </View>
           </View>
