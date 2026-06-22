@@ -204,7 +204,7 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
         </View>
         {unread && <View style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: LK.gold }} />}
       </View>
-    </Pressable>
+    </ScalePressable>
   );
 }
 
