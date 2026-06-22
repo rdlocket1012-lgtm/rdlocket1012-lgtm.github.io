@@ -7,7 +7,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  ReduceMotion,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LK, theme, rgba } from '@/constants/theme';
@@ -219,8 +218,8 @@ function FabButton({ onPress }: { onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel="Quick actions"
       onPress={onPress}
-      onPressIn={() => { scale.value = withSpring(0.92, { damping: 20, stiffness: 500, reduceMotion: ReduceMotion.Never }); }}
-      onPressOut={() => { scale.value = withSpring(1, { damping: 14, stiffness: 320, reduceMotion: ReduceMotion.Never }); }}
+      onPressIn={() => { scale.value = withSpring(0.92, { damping: 20, stiffness: 500 }); }}
+      onPressOut={() => { scale.value = withSpring(1, { damping: 14, stiffness: 320 }); }}
       style={{
         position: 'absolute',
         alignSelf: 'center',

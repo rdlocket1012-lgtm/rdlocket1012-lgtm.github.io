@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, interpolate, ReduceMotion } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, interpolate } from 'react-native-reanimated';
 import { Icon } from '@/components/ui/Icon';
 import { theme } from '@/constants/theme';
 
@@ -37,10 +37,10 @@ export default function PhotoViewer() {
     })
     .onEnd((e) => {
       if (e.translationY > 120 || e.velocityY > 800) {
-        translateY.value = withSpring(height, { damping: 30, stiffness: 240, reduceMotion: ReduceMotion.Never });
+        translateY.value = withSpring(height, { damping: 30, stiffness: 240 });
         runOnJS(dismiss)();
       } else {
-        translateY.value = withSpring(0, { damping: 20, stiffness: 260, reduceMotion: ReduceMotion.Never });
+        translateY.value = withSpring(0, { damping: 20, stiffness: 260 });
       }
     });
 

@@ -8,7 +8,7 @@ import Animated, {
   withDelay,
   withSpring,
   runOnJS,
-  ReduceMotion,
+  useReducedMotion,
 } from 'react-native-reanimated';
 import { LK, theme, rgba } from '@/constants/theme';
 import MascotAnimation, { MASCOT_DURATIONS_MS, type MascotAnimationName } from '@/components/ui/mascot-animation';
@@ -37,6 +37,7 @@ export function SendMomentOverlay({
   subMessage?: string;
   onDismiss: () => void;
 }) {
+  const reduced = useReducedMotion();
   const overlay = useSharedValue(0); // backdrop + everything fade
   const pop = useSharedValue(0.9);   // gentle mascot scale-in
   const copy = useSharedValue(0);    // warm line fade + rise
@@ -48,8 +49,8 @@ export function SendMomentOverlay({
     if (dismissingRef.current) return;
     dismissingRef.current = true;
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-    copy.value = withTiming(0, { duration: 160, reduceMotion: ReduceMotion.Never });
-    overlay.value = withTiming(0, { duration: 260, reduceMotion: ReduceMotion.Never }, (finished) => {
+    copy.value = withTiming(0, { duration: 160 });
+    overlay.value = withTiming(0, { duration: 260 }, (finished) => {
       'worklet';
       if (finished) runOnJS(onDismiss)();
     });
@@ -66,7 +67,7 @@ export function SendMomentOverlay({
     displayedRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
     const loop = MASCOT_DURATIONS_MS[name] ?? 5060;
-    timerRef.current = setTimeout(triggerDismiss, loop);
+    timerRef.current = setTimeout(triggerDismiss, reduced ? 1400 : loop);
   // reduced/name are stable for the overlay's lifetime
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, reduced, triggerDismiss]);
@@ -79,13 +80,15 @@ export function SendMomentOverlay({
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
     }
 
-    overlay.value = withTiming(1, { duration: 240, reduceMotion: ReduceMotion.Never });
-    pop.value = withDelay(40, withSpring(1, { damping: theme.spring.gentle.damping, stiffness: theme.spring.gentle.stiffness, reduceMotion: ReduceMotion.Never }));
-    copy.value = withDelay(320, withTiming(1, { duration: 280, reduceMotion: ReduceMotion.Never }));
+    overlay.value = withTiming(1, { duration: reduced ? 120 : 240 });
+    pop.value = reduced
+      ? 1
+      : withDelay(40, withSpring(1, { damping: theme.spring.gentle.damping, stiffness: theme.spring.gentle.stiffness }));
+    copy.value = withDelay(reduced ? 120 : 320, withTiming(1, { duration: 280 }));
 
     // Safety net: if onDisplay never fires (asset decode failure, etc.) dismiss
     // from mount after one loop + 600 ms grace so the overlay can't get stuck open.
-    timerRef.current = setTimeout(triggerDismiss, (MASCOT_DURATIONS_MS[name] ?? 5060) + 600);
+    timerRef.current = setTimeout(triggerDismiss, (reduced ? 1400 : (MASCOT_DURATIONS_MS[name] ?? 5060)) + 600);
     return () => {
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     };

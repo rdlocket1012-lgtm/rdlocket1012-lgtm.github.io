@@ -114,11 +114,10 @@ export const theme = {
   },
   // §10.2 Spring tokens — always reference by name; never hardcode damping/stiffness.
   spring: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    snappy:  { damping: 22, stiffness: 320, reduceMotion: 'never' as any }, // tab pill, icon taps, badges
-    warm:    { damping: 18, stiffness: 280, reduceMotion: 'never' as any }, // card entrances, sheet slides
-    gentle:  { damping: 14, stiffness: 220, reduceMotion: 'never' as any }, // hero card, day counter
-    bounce:  { damping: 12, stiffness: 260, reduceMotion: 'never' as any }, // FAB press, milestone pop (~8% overshoot)
+    snappy:  { damping: 22, stiffness: 320 }, // tab pill, icon taps, badges
+    warm:    { damping: 18, stiffness: 280 }, // card entrances, sheet slides
+    gentle:  { damping: 14, stiffness: 220 }, // hero card, day counter
+    bounce:  { damping: 12, stiffness: 260 }, // FAB press, milestone pop (~8% overshoot)
   },
   // §10.2 Timing tokens
   timing: {

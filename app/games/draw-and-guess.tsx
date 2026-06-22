@@ -69,9 +69,9 @@ function ConfettiPiece({
 
   useEffect(() => {
     const start = setTimeout(() => {
-      y.value = withTiming(700, { duration: 2200, easing: Easing.in(Easing.quad), reduceMotion: ReduceMotion.Never });
-      rot.value = withTiming(720 * (Math.random() > 0.5 ? 1 : -1), { duration: 2200, reduceMotion: ReduceMotion.Never });
-      opacity.value = withTiming(0, { duration: 2200, reduceMotion: ReduceMotion.Never });
+      y.value = withTiming(700, { duration: 2200, easing: Easing.in(Easing.quad) });
+      rot.value = withTiming(720 * (Math.random() > 0.5 ? 1 : -1), { duration: 2200 });
+      opacity.value = withTiming(0, { duration: 2200 });
     }, delay);
     return () => clearTimeout(start);
   }, []);
@@ -183,7 +183,7 @@ export default function DrawAndGuessScreen() {
 
   function startTimer() {
     timerProgress.value = 1;
-    timerProgress.value = withTiming(0, { duration: ROUND_DURATION, easing: Easing.linear, reduceMotion: ReduceMotion.Never });
+    timerProgress.value = withTiming(0, { duration: ROUND_DURATION, easing: Easing.linear });
     timerRef.current = setTimeout(() => {
       if (role === 'drawer') {
         send({ type: 'time_up', word: chosenWord });

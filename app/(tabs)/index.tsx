@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring, useReducedMotion } from 'react-native-reanimated';
 import { LK, tint, shade, rgba, theme, catColor } from '@/constants/theme';
 import { useCouple } from '@/hooks/useCouple';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,6 +45,7 @@ export default function HomeScreen() {
   const { milestones } = useMilestones();
   const { isOnline } = useNetworkStatus();
   const { width } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [peakMoment, setPeakMoment] = useState<{ name: MascotAnimationName; message: string } | null>(null);
   const handleReveal = useCallback((name: MascotAnimationName, message: string) => {
@@ -118,13 +119,13 @@ export default function HomeScreen() {
   // Anniversary pulse on the day number (once, on mount).
   const pulse = useSharedValue(1);
   useEffect(() => {
-    if (isAnniversary) {
+    if (isAnniversary && !reducedMotion) {
       pulse.value = withSequence(
         withSpring(1.12, theme.spring.bounce),
         withSpring(1, theme.spring.bounce),
       );
     }
-  }, [isAnniversary]);
+  }, [isAnniversary, reducedMotion]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   return (

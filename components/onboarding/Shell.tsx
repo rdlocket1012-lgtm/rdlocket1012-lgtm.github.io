@@ -40,7 +40,7 @@ function Blob({ color, size, top, left, drift = 26, duration = 9000, delay = 0 }
   const t = useSharedValue(0);
   useEffect(() => {
     t.value = withDelay(delay, withRepeat(
-      withTiming(1, { duration, easing: Easing.inOut(Easing.sin), reduceMotion: ReduceMotion.Never }), -1, true,
+      withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }), -1, true,
     ));
   }, []);
   const style = useAnimatedStyle(() => ({
@@ -77,7 +77,7 @@ export function ProgressBar({ step, total }: { step: number; total: number }) {
   // arrival visibly "earns" its progress.
   const w = useSharedValue(Math.max(0, step - 1) / total);
   useEffect(() => {
-    w.value = withSpring(step / total, { damping: 22, stiffness: 110, mass: 0.9, reduceMotion: ReduceMotion.Never });
+    w.value = withSpring(step / total, { damping: 22, stiffness: 110, mass: 0.9 });
   }, [step, total]);
   const fill = useAnimatedStyle(() => ({ width: `${w.value * 100}%` }));
   return (

@@ -56,8 +56,6 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{ headerShown: false }}
         tabBar={(props) => <LocketTabBar {...props} />}
-        sceneAnimationEnabled
-        sceneAnimationType="opacity"
       >
         <Tabs.Screen name="index" />
         <Tabs.Screen name="timeline" />

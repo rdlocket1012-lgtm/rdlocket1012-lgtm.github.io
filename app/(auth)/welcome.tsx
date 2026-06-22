@@ -15,11 +15,11 @@ function HeartbeatOrb() {
   const ring = useSharedValue(0);
   const beat = useSharedValue(1);
   useEffect(() => {
-    ring.value = withRepeat(withTiming(1, { duration: 2200, easing: Easing.out(Easing.quad), reduceMotion: ReduceMotion.Never }), -1, false);
+    ring.value = withRepeat(withTiming(1, { duration: 2200, easing: Easing.out(Easing.quad) }), -1, false);
     beat.value = withRepeat(withSequence(
-      withTiming(1.06, { duration: 180, easing: Easing.out(Easing.quad), reduceMotion: ReduceMotion.Never }),
-      withTiming(1, { duration: 340, easing: Easing.inOut(Easing.quad), reduceMotion: ReduceMotion.Never }),
-      withTiming(1, { duration: 1680, reduceMotion: ReduceMotion.Never }),
+      withTiming(1.06, { duration: 180, easing: Easing.out(Easing.quad) }),
+      withTiming(1, { duration: 340, easing: Easing.inOut(Easing.quad) }),
+      withTiming(1, { duration: 1680 }),
     ), -1, false);
   }, []);
   const ringStyle = useAnimatedStyle(() => ({

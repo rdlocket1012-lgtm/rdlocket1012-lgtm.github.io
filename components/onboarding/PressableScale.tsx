@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, ViewStyle, StyleProp } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, ReduceMotion } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { tap, soft } from '@/lib/haptics';
 
 type Props = {
@@ -31,14 +31,14 @@ export function PressableScale({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPressIn={() => {
-        scale.value = withSpring(scaleTo, { damping: 24, stiffness: 420, mass: 0.7, reduceMotion: ReduceMotion.Never });
+        scale.value = withSpring(scaleTo, { damping: 24, stiffness: 420, mass: 0.7 });
         if (!disabled) {
           if (haptic === 'tap') tap();
           else if (haptic === 'soft') soft();
         }
       }}
       onPressOut={() => {
-        scale.value = withSpring(1, { damping: 15, stiffness: 300, mass: 0.8, reduceMotion: ReduceMotion.Never });
+        scale.value = withSpring(1, { damping: 15, stiffness: 300, mass: 0.8 });
       }}
     >
       <Animated.View style={[animated, style]}>{children}</Animated.View>
