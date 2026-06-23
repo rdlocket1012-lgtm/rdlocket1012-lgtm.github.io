@@ -62,6 +62,22 @@ export async function syncWidget(data: WidgetData): Promise<void> {
   }
 }
 
+/**
+ * Writes the latest partner drawing URL to the App Group so the
+ * LocketDrawWidget can display it. No-op on Android. Best-effort.
+ */
+export async function syncDrawWidget(imageUrl: string, partnerName: string): Promise<void> {
+  const storage = getStorage();
+  if (!storage) return;
+  try {
+    storage.set('drawImageUrl', imageUrl);
+    storage.set('drawPartnerName', partnerName);
+    reloadWidget();
+  } catch {
+    // best-effort
+  }
+}
+
 /** Reads the timestamp of the last nudge fired from the widget (for in-app confirmation). */
 export function getLastWidgetNudge(): string | null {
   const storage = getStorage();

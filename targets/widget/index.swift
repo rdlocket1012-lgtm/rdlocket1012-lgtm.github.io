@@ -7,14 +7,18 @@ let APP_GROUP = "group.com.siren96.locket"
 // Brand palette — explicit RGB so the widget never depends on an asset catalog.
 extension Color {
   static let lkCream  = Color(red: 251/255, green: 245/255, blue: 232/255)  // Ivory #FBF5E8
+  static let lkParch  = Color(red: 243/255, green: 233/255, blue: 210/255)  // Parchment #F3E9D2
   static let lkInk    = Color(red: 42/255,  green: 33/255,  blue: 26/255)   // Espresso
+  static let lkCoral  = Color(red: 255/255, green: 122/255, blue: 107/255)  // Coral #FF7A6B
   static let lkGold   = Color(red: 255/255, green: 201/255, blue: 77/255)   // Marigold
   static let lkBlush  = Color(red: 255/255, green: 158/255, blue: 196/255)  // Blush/nudge
   static let lkSepia  = Color(red: 110/255, green: 98/255,  blue: 83/255)   // Secondary text
   static let lkHair   = Color(red: 42/255,  green: 33/255,  blue: 26/255).opacity(0.10)
 }
 
-// MARK: - Shared data model
+// ─────────────────────────────────────────────────────────────
+// MARK: - Day Counter Widget
+// ─────────────────────────────────────────────────────────────
 
 struct LocketEntry: TimelineEntry {
   let date: Date
@@ -33,8 +37,6 @@ func readEntry() -> LocketEntry {
   return LocketEntry(date: Date(), dayCount: dayCount, nickname: nickname,
                      partnerEmoji: emoji, partnerName: partner)
 }
-
-// MARK: - Timeline provider
 
 struct Provider: TimelineProvider {
   func placeholder(in context: Context) -> LocketEntry {
@@ -63,8 +65,6 @@ struct SendNudgeIntent: AppIntent {
 }
 
 enum NudgeSender {
-  /// Reads the auth credentials from the App Group and POSTs to the `notify`
-  /// Edge Function so the partner gets a push — without launching the app.
   static func send() async {
     let d = UserDefaults(suiteName: APP_GROUP)
     guard
@@ -85,18 +85,11 @@ enum NudgeSender {
       "body":  "A little love from the home screen.",
     ])
 
-    // Record the timestamp so the in-app UI can show a confirmation toast.
     d?.set(ISO8601DateFormatter().string(from: Date()), forKey: "lastWidgetNudgeAt")
     _ = try? await URLSession.shared.data(for: req)
   }
 }
 
-// MARK: - Reusable nudge button
-
-/// The tappable nudge chip shared by small and medium views.
-/// iOS 17+: fires the intent in the background (no app launch).
-/// iOS 16:  opens the app at locket://nudge which the JS layer catches and
-///          immediately pops open the nudge composer without any extra taps.
 struct NudgeButton: View {
   var body: some View {
     Group {
@@ -104,9 +97,6 @@ struct NudgeButton: View {
         Button(intent: SendNudgeIntent()) { chip }
           .buttonStyle(.plain)
       } else {
-        // locket:// is the registered URL scheme in app.json.
-        // The root layout catches this URL and calls nudgeLaunch.request()
-        // so the nudge menu opens immediately.
         if let url = URL(string: "locket://nudge") {
           Link(destination: url) { chip }
         }
@@ -128,13 +118,10 @@ struct NudgeButton: View {
   }
 }
 
-// MARK: - Widget views
-
 struct LocketWidgetView: View {
   var entry: Provider.Entry
   @Environment(\.widgetFamily) var family
 
-  /// First name only, max 10 chars so it fits on narrow right columns.
   var partnerFirst: String {
     let first = entry.partnerName.components(separatedBy: " ").first ?? entry.partnerName
     return String(first.prefix(10))
@@ -147,8 +134,6 @@ struct LocketWidgetView: View {
     }
   }
 
-  // ── Small widget ────────────────────────────────────────────────────────────
-  // Clean counter with status emoji in the top-right corner.
   var smallView: some View {
     ZStack(alignment: .topTrailing) {
       VStack(alignment: .leading, spacing: 0) {
@@ -176,11 +161,9 @@ struct LocketWidgetView: View {
 
         Spacer()
 
-        // Bottom nudge button so both sizes let you nudge from the widget
         NudgeButton()
       }
 
-      // Status emoji floating top-right
       Text(entry.partnerEmoji)
         .font(.system(size: 22))
     }
@@ -188,12 +171,8 @@ struct LocketWidgetView: View {
     .containerBackground(Color.lkCream, for: .widget)
   }
 
-  // ── Medium widget ───────────────────────────────────────────────────────────
-  // Left: counter hero.  Hairline divider.  Right: partner presence + nudge.
   var mediumView: some View {
     HStack(spacing: 0) {
-
-      // ── LEFT: day counter ─────────────────────────────────
       VStack(alignment: .leading, spacing: 0) {
         Text(entry.nickname.uppercased())
           .font(.system(size: 10, weight: .heavy))
@@ -221,20 +200,16 @@ struct LocketWidgetView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
-      // Hairline divider
       Rectangle()
         .fill(Color.lkHair)
         .frame(width: 1)
         .padding(.vertical, 6)
         .padding(.horizontal, 14)
 
-      // ── RIGHT: partner presence + nudge ──────────────────
       VStack(spacing: 6) {
-        // Partner emoji — represents their presence / status
         Text(entry.partnerEmoji)
           .font(.system(size: 30))
 
-        // Partner first name
         Text(partnerFirst)
           .font(.system(size: 10, weight: .semibold))
           .foregroundColor(Color.lkSepia)
@@ -242,7 +217,6 @@ struct LocketWidgetView: View {
 
         Spacer(minLength: 6)
 
-        // Nudge button (interactive on iOS 17+, deep-links on iOS 16)
         NudgeButton()
       }
       .frame(width: 96)
@@ -252,8 +226,6 @@ struct LocketWidgetView: View {
     .containerBackground(Color.lkCream, for: .widget)
   }
 }
-
-// MARK: - Widget definition
 
 struct LocketWidget: Widget {
   let kind: String = "LocketWidget"
@@ -268,9 +240,174 @@ struct LocketWidget: Widget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// MARK: - Partner Draw Widget
+// ─────────────────────────────────────────────────────────────
+
+struct DrawWidgetEntry: TimelineEntry {
+  let date: Date
+  let imageUrl: String?
+  let partnerName: String
+}
+
+func readDrawEntry() -> DrawWidgetEntry {
+  let d = UserDefaults(suiteName: APP_GROUP)
+  return DrawWidgetEntry(
+    date: Date(),
+    imageUrl: d?.string(forKey: "drawImageUrl"),
+    partnerName: d?.string(forKey: "drawPartnerName") ?? "Partner"
+  )
+}
+
+struct DrawProvider: TimelineProvider {
+  func placeholder(in context: Context) -> DrawWidgetEntry {
+    DrawWidgetEntry(date: Date(), imageUrl: nil, partnerName: "Partner")
+  }
+  func getSnapshot(in context: Context, completion: @escaping (DrawWidgetEntry) -> Void) {
+    completion(readDrawEntry())
+  }
+  func getTimeline(in context: Context, completion: @escaping (Timeline<DrawWidgetEntry>) -> Void) {
+    let entry = readDrawEntry()
+    // Refresh every 30 min; push reloads the widget sooner via reloadTimelines
+    let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
+    completion(Timeline(entries: [entry], policy: .after(next)))
+  }
+}
+
+struct LocketDrawWidgetView: View {
+  var entry: DrawWidgetEntry
+  @Environment(\.widgetFamily) var family
+
+  var partnerFirst: String {
+    let first = entry.partnerName.components(separatedBy: " ").first ?? entry.partnerName
+    return String(first.prefix(10))
+  }
+
+  // Drawing or placeholder
+  @ViewBuilder
+  var canvasContent: some View {
+    if let urlStr = entry.imageUrl, let url = URL(string: urlStr) {
+      AsyncImage(url: url) { phase in
+        switch phase {
+        case .success(let image):
+          image.resizable().scaledToFit()
+        case .failure:
+          emptyCanvas
+        default:
+          // Loading shimmer
+          Color.lkParch.opacity(0.5)
+        }
+      }
+    } else {
+      emptyCanvas
+    }
+  }
+
+  var emptyCanvas: some View {
+    VStack(spacing: 6) {
+      Image(systemName: "pencil.and.outline")
+        .font(.system(size: 22))
+        .foregroundColor(Color.lkSepia.opacity(0.45))
+      Text("waiting for\na drawing…")
+        .font(.system(size: 10, weight: .medium, design: .serif))
+        .italic()
+        .multilineTextAlignment(.center)
+        .foregroundColor(Color.lkSepia.opacity(0.45))
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  var body: some View {
+    switch family {
+    case .systemSmall: smallView
+    default:           mediumView
+    }
+  }
+
+  // Small: drawing fills frame, partner name pill at bottom-leading
+  var smallView: some View {
+    ZStack(alignment: .bottomLeading) {
+      canvasContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+      if entry.imageUrl != nil {
+        Text(partnerFirst)
+          .font(.system(size: 11, weight: .bold))
+          .foregroundColor(Color.lkInk)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 4)
+          .background(Color.lkCream.opacity(0.88))
+          .clipShape(Capsule())
+          .padding(8)
+      }
+    }
+    .containerBackground(Color.lkParch, for: .widget)
+  }
+
+  // Medium: drawing left 2/3 · partner name + tagline + "see it →" right 1/3
+  var mediumView: some View {
+    HStack(spacing: 0) {
+      // Left: drawing
+      canvasContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+
+      // Hairline divider
+      Rectangle()
+        .fill(Color.lkHair)
+        .frame(width: 1)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+
+      // Right: info
+      VStack(alignment: .leading, spacing: 4) {
+        Text(partnerFirst)
+          .font(.system(size: 14, weight: .bold))
+          .foregroundColor(Color.lkInk)
+          .lineLimit(1)
+
+        Text("just for you")
+          .font(.system(size: 12, weight: .medium, design: .serif))
+          .italic()
+          .foregroundColor(Color.lkSepia)
+
+        Spacer()
+
+        if entry.imageUrl != nil, let url = URL(string: "locket://draw") {
+          Link(destination: url) {
+            Text("see it →")
+              .font(.system(size: 11, weight: .semibold))
+              .foregroundColor(Color.lkCoral)
+          }
+        }
+      }
+      .frame(width: 90)
+    }
+    .containerBackground(Color.lkParch, for: .widget)
+  }
+}
+
+struct LocketDrawWidget: Widget {
+  let kind: String = "PartnerDrawWidget"
+
+  var body: some WidgetConfiguration {
+    StaticConfiguration(kind: kind, provider: DrawProvider()) { entry in
+      LocketDrawWidgetView(entry: entry)
+    }
+    .configurationDisplayName("Partner Draw")
+    .description("See the latest drawing from your partner.")
+    .supportedFamilies([.systemSmall, .systemMedium])
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// MARK: - Bundle
+// ─────────────────────────────────────────────────────────────
+
 @main
 struct LocketWidgetBundle: WidgetBundle {
   var body: some Widget {
     LocketWidget()
+    LocketDrawWidget()
   }
 }

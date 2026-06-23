@@ -23,6 +23,15 @@ import { registerForPush } from '@/lib/push';
 import { registerNudgeCategories, setupNudgeResponseHandler } from '@/lib/notifications';
 import { routeAfterAuth } from '@/lib/post-auth';
 import { useNudgeLaunch } from '@/stores/nudge-launch.store';
+import { AppErrorBoundary } from '@/components/ui/error-boundary';
+import { initSentry, Sentry } from '@/lib/sentry';
+
+// Initialise crash reporting before anything renders (no-op without a DSN).
+initSentry();
+
+// Root error fallback — expo-router renders this when any screen throws during
+// render, instead of crashing the whole app to a white screen.
+export { AppErrorBoundary as ErrorBoundary };
 
 /** Extracts key=value pairs from both the query string AND hash of a URL. */
 function parseAllParams(url: string): Record<string, string> {
@@ -40,7 +49,7 @@ function parseAllParams(url: string): Record<string, string> {
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
   const { session, loading } = useAuth();
 
   // Keep our own timezone synced so the partner sees our correct local time.
@@ -61,6 +70,11 @@ export default function RootLayout() {
     // On iOS 16 it falls back to this deep link.
     if (url.startsWith('locket://nudge')) {
       useNudgeLaunch.getState().request();
+      return;
+    }
+
+    if (url.startsWith('locket://draw')) {
+      try { router.navigate('/draw'); } catch {}
       return;
     }
 
@@ -161,11 +175,17 @@ export default function RootLayout() {
         <Stack.Screen name="settings/danger-zone" options={{ presentation: 'modal' }} />
         <Stack.Screen name="quiz/history" options={{ presentation: 'modal' }} />
         <Stack.Screen name="notes/index" />
-        <Stack.Screen name="notes/compose" options={{ presentation: 'formSheet', sheetGrabberVisible: true }} />
+        <Stack.Screen name="notes/compose" options={{ presentation: 'formSheet', sheetGrabberVisible: true, sheetAllowedDetents: [1.0], sheetExpandsWhenScrolledToEdge: true }} />
         <Stack.Screen name="profile/about" />
         <Stack.Screen name="profile/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="notifications/index" />
+        <Stack.Screen name="draw/index" />
+        <Stack.Screen name="draw/compose" options={{ presentation: 'formSheet', sheetGrabberVisible: true, sheetAllowedDetents: [1.0], sheetExpandsWhenScrolledToEdge: true }} />
       </Stack>
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap enables native crash + JS error capture and touch/navigation
+// breadcrumbs for the whole tree. No-op behaviour is preserved when no DSN is set.
+export default Sentry.wrap(RootLayout);

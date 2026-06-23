@@ -43,7 +43,7 @@ export async function registerForPush(profileId: string): Promise<void> {
   }
 }
 
-export type PushType = 'letter' | 'coupon_gift' | 'coupon_redeem_request' | 'coupon_redeemed' | 'coupon_declined' | 'milestone' | 'quiz' | 'partner_joined' | 'nudge_hug' | 'nudge_kiss_request' | 'letter_reaction' | 'bite' | 'thumb_kiss' | 'live_invite' | 'draw_invite';
+export type PushType = 'letter' | 'coupon_gift' | 'coupon_redeem_request' | 'coupon_redeemed' | 'coupon_declined' | 'milestone' | 'quiz' | 'partner_joined' | 'nudge_hug' | 'nudge_kiss_request' | 'letter_reaction' | 'bite' | 'thumb_kiss' | 'live_invite' | 'draw_invite' | 'partner_draw';
 
 /**
  * Asks the secure `notify` Edge Function to push a message to the caller's

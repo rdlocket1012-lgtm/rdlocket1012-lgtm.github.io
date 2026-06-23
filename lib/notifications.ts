@@ -15,6 +15,7 @@ function routeFromNotificationData(data: unknown): void {
   try {
     if (type === 'live_invite') router.navigate('/(tabs)');           // Home — LiveLayer shows the invite
     else if (type === 'draw_invite') router.navigate('/games/draw-and-guess');
+    else if (type === 'partner_draw') router.navigate('/draw');
     else if (type === 'letter') router.navigate('/letters');
   } catch {
     // navigation not ready — best effort

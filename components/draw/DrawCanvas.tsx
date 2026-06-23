@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { View, ViewStyle } from 'react-native';
+import React, { forwardRef, useRef, useState } from 'react';
+import { View, type ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Path } from 'react-native-svg';
 import { LK } from '@/constants/theme';
@@ -32,14 +32,11 @@ function buildPath(points: Array<{ x: number; y: number }>): string {
   return d;
 }
 
-export function DrawCanvas({
-  mode,
-  strokes,
-  color = LK.espresso,
-  brushWidth = 5,
-  onStroke,
-  style,
-}: Props) {
+// forwardRef so compose screen can pass a ref for PNG capture via react-native-view-shot
+export const DrawCanvas = forwardRef<View, Props>(function DrawCanvas(
+  { mode, strokes, color = LK.espresso, brushWidth = 5, onStroke, style },
+  ref,
+) {
   const pts = useRef<Array<{ x: number; y: number }>>([]);
   const [liveStroke, setLiveStroke] = useState<Stroke | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -67,6 +64,7 @@ export function DrawCanvas({
   return (
     <GestureDetector gesture={pan}>
       <View
+        ref={ref}
         style={[{ backgroundColor: LK.parchment }, style]}
         onLayout={({ nativeEvent: { layout } }) =>
           setSize({ w: layout.width, h: layout.height })
@@ -94,4 +92,4 @@ export function DrawCanvas({
       </View>
     </GestureDetector>
   );
-}
+});
