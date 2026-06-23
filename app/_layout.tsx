@@ -174,6 +174,7 @@ function RootLayout() {
         <Stack.Screen name="settings/index" options={{ presentation: 'modal' }} />
         <Stack.Screen name="settings/danger-zone" options={{ presentation: 'modal' }} />
         <Stack.Screen name="quiz/history" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="streak/index" />
         <Stack.Screen name="notes/index" />
         <Stack.Screen name="notes/compose" options={{ presentation: 'formSheet', sheetGrabberVisible: true, sheetAllowedDetents: [1.0], sheetExpandsWhenScrolledToEdge: true }} />
         <Stack.Screen name="profile/about" />

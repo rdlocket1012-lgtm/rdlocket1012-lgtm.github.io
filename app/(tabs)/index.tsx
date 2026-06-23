@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Pressable, FlatList, useWindowDimensions } from 'react-native';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,6 +16,11 @@ import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { TYPE_ICON } from '@/constants/milestone-types';
 import { DailyQuizCard } from '@/components/quiz/DailyQuizCard';
+import { ChallengeCard } from '@/components/ui/ChallengeCard';
+import { AnimatedFlame } from '@/components/ui/AnimatedFlame';
+import { BadgeUnlockOverlay } from '@/components/ui/BadgeUnlockOverlay';
+import { useChallenges } from '@/hooks/useChallenges';
+import { useBadgeCelebration } from '@/hooks/useBadgeCelebration';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 import { StatusBubble } from '@/components/home/StatusBubble';
 import { usePartner } from '@/hooks/usePartner';
@@ -55,6 +59,8 @@ export default function HomeScreen() {
   const { partner, partnerJoined } = usePartner();
   const partnerTime = usePartnerTime();
   const streak = useQuizStreak();
+  const badge = useBadgeCelebration(streak.best, !streak.loading);
+  const challenge = useChallenges();
   const counts = useUnseenStore((s) => s.counts);
   const hasUnread = (counts.letters + counts.coupons) > 0;
   const partnerFirst = (partner?.display_name || 'Partner').split(' ')[0];
@@ -257,7 +263,10 @@ export default function HomeScreen() {
         {partnerJoined && !streak.loading && (
           <FadeSlideIn delay={160}>
             <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
-              <View
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => router.push('/streak')}
+                accessibilityLabel="View your streak and achievements"
                 style={{
                   backgroundColor: LK.ivory,
                   borderRadius: 20,
@@ -269,12 +278,7 @@ export default function HomeScreen() {
                   boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
                 } as any}
               >
-                <Image
-                  source={require('../../assets/doodles/flame.svg')}
-                  style={{ width: 24, height: 24 }}
-                  contentFit="contain"
-                  tintColor={streak.current > 0 ? LK.coral : LK.faded}
-                />
+                <AnimatedFlame size={22} color={streak.current > 0 ? LK.coral : LK.faded} active={streak.current > 0} />
                 <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: streak.current > 0 ? LK.coral : LK.espresso, letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>
                   {streak.current}
                 </Text>
@@ -286,7 +290,25 @@ export default function HomeScreen() {
                     best: {streak.best}
                   </Text>
                 )}
-              </View>
+                <Icon name="chevR" size={16} color={LK.faded} />
+              </TouchableOpacity>
+            </View>
+          </FadeSlideIn>
+        )}
+
+        {/* ── Zone C½: Weekly challenge ────────────────────────────────────── */}
+        {partnerJoined && !challenge.loading && challenge.def && (
+          <FadeSlideIn delay={185}>
+            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
+              <ChallengeCard
+                title={challenge.def.title}
+                icon={challenge.def.icon}
+                accent={challenge.def.accent}
+                progress={challenge.progress}
+                target={challenge.def.target}
+                daysLeft={challenge.daysLeft}
+                isComplete={challenge.isComplete}
+              />
             </View>
           </FadeSlideIn>
         )}
@@ -438,6 +460,9 @@ export default function HomeScreen() {
         message={peakMoment?.message ?? ''}
         onDismiss={() => setPeakMoment(null)}
       />
+      {/* Defer the badge celebration until any quiz-reveal moment has cleared,
+          so the two full-screen overlays never stack. */}
+      <BadgeUnlockOverlay badge={peakMoment ? null : badge.celebrating} onDismiss={badge.dismiss} />
     </SafeAreaView>
   );
 }

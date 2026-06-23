@@ -1,8 +1,9 @@
 /**
  * Forgiving shared-streak math for the Daily Match.
  *
- * A day "counts" when BOTH partners completed that day's quiz. The streak is
- * deliberately gentle (per couples-app research, guilt-driven streaks backfire):
+ * A day "counts" when BOTH partners completed that day's quiz, OR when it is
+ * covered by a streak-restore coupon override, OR when it falls within a
+ * completed weekly challenge period. The streak is deliberately gentle:
  *  - Today not being done yet never counts against you — the streak is measured
  *    up to yesterday until you complete today.
  *  - A single missed day is bridged by one automatic "freeze" so one slip does
@@ -32,10 +33,16 @@ function fmt(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-function addDays(dateStr: string, delta: number): string {
+/** Shift a YYYY-MM-DD string by `delta` days. Exported for streak-restore logic. */
+export function addDays(dateStr: string, delta: number): string {
   const d = parse(dateStr);
   d.setDate(d.getDate() + delta);
   return fmt(d);
+}
+
+/** Today as a YYYY-MM-DD string in local time. Exported for reuse. */
+export function todayISO(): string {
+  return fmt(new Date());
 }
 
 /** Longest strict consecutive run of completed days (used for the "best" stat). */
@@ -55,8 +62,28 @@ function longestRun(set: Set<string>): number {
   return best;
 }
 
-export function computeStreak(completedDates: string[], today: string): StreakInfo {
+export function computeStreak(
+  completedDates: string[],
+  today: string,
+  /** Dates restored by a streak-restore coupon (from quiz_streak_overrides). */
+  overrideDates?: string[],
+  /** Date ranges of completed weekly challenges — all days inside are treated as quiz-done. */
+  completedChallengePeriods?: Array<{ start: string; end: string }>,
+): StreakInfo {
   const set = new Set(completedDates);
+
+  // Merge override dates (coupon-restored missed days).
+  for (const d of overrideDates ?? []) set.add(d);
+
+  // Merge all days inside completed challenge windows.
+  for (const { start, end } of completedChallengePeriods ?? []) {
+    let cursor = start;
+    while (cursor <= end && cursor <= today) {
+      set.add(cursor);
+      cursor = addDays(cursor, 1);
+    }
+  }
+
   const todayDone = set.has(today);
 
   let current = 0;

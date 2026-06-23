@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   TextInput, Modal, Alert, KeyboardAvoidingView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -16,8 +17,9 @@ import { useCouple } from '@/hooks/useCouple';
 import { usePartner } from '@/hooks/usePartner';
 import { useAuthStore } from '@/stores/auth.store';
 import { useUnseenStore } from '@/stores/unseen.store';
+import { useStreakRestore } from '@/hooks/useStreakRestore';
 import { notifyPartner } from '@/lib/push';
-import { iGifted, type Coupon } from '@/stores/coupons.store';
+import { iGifted, useCouponsStore, type Coupon } from '@/stores/coupons.store';
 
 const firstName = () => (useAuthStore.getState().profile?.display_name || 'Your partner').split(' ')[0];
 
@@ -46,6 +48,10 @@ export default function CouponsScreen() {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [picked, setPicked] = useState<number | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  const streakRestore = useStreakRestore();
+  const addStreakRestoreCoupon = useCouponsStore((s) => s.addStreakRestoreCoupon);
 
   // Split: coupons gifted TO me (partner created) vs coupons I GAVE (I created)
   const forMe     = coupons.filter((c) => !iGifted(c) && !c.redeemed_at);
@@ -74,6 +80,36 @@ export default function CouponsScreen() {
     } catch (e: any) {
       Alert.alert('Could not create', e?.message ?? 'Try again.');
     }
+  }
+
+  async function handleStreakRestore() {
+    const coupleId = couple?.id ?? useAuthStore.getState().profile?.couple_id;
+    if (!coupleId || !streakRestore.canRestore) return;
+    Alert.alert(
+      'Save your streak?',
+      `This will rescue the ${streakRestore.missedDates.length} missed day${streakRestore.missedDates.length === 1 ? '' : 's'} and let your partner know you saved it.`,
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Save it',
+          onPress: async () => {
+            setRestoring(true);
+            try {
+              await addStreakRestoreCoupon({
+                coupleId,
+                missedDates: streakRestore.missedDates,
+                streakDaysLost: streakRestore.streakBeforeBreak,
+              });
+              try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
+            } catch (e: any) {
+              Alert.alert('Could not save', e?.message ?? 'Try again.');
+            } finally {
+              setRestoring(false);
+            }
+          },
+        },
+      ]
+    );
   }
 
   // Step 1 (recipient): ask to redeem — does NOT consume the coupon.
@@ -181,6 +217,42 @@ export default function CouponsScreen() {
           </TouchableOpacity>
         }
       />
+
+      {/* ── Streak rescue banner (only when streak is broken & within 48 h) ─── */}
+      {streakRestore.canRestore && (
+        <TouchableOpacity
+          onPress={handleStreakRestore}
+          disabled={restoring}
+          activeOpacity={0.88}
+          style={{
+            marginHorizontal: 20,
+            marginBottom: 14,
+            backgroundColor: tint(LK.coral, 0.85),
+            borderRadius: 18,
+            borderCurve: 'continuous',
+            borderWidth: 1.5,
+            borderColor: shade(LK.coral, 0.12),
+            padding: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 13,
+            ...theme.shadow.sm,
+          } as any}
+        >
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: LK.coral, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Image source="sf:flame.fill" style={{ width: 22, height: 22 }} tintColor="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 16, color: LK.espresso, lineHeight: 20 }}>
+              Save your streak
+            </Text>
+            <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: shade(LK.coral, 0.55), marginTop: 2 }}>
+              {streakRestore.hoursLeft}h left · tap to gift a streak rescue
+            </Text>
+          </View>
+          <Icon name="chevR" size={18} color={shade(LK.coral, 0.45)} />
+        </TouchableOpacity>
+      )}
 
       {/* Segmented tabs */}
       <View style={{ flexDirection: 'row', marginHorizontal: 20, marginBottom: 14, backgroundColor: 'rgba(42,33,26,0.06)', borderRadius: 9999, padding: 4 }}>
@@ -377,6 +449,50 @@ function CouponCard({
   onDelete?: () => void;
   isNew?: boolean;
 }) {
+  // Streak restore coupons get special gold treatment — auto-consumed, keepsake only.
+  if (c.type === 'streak_restore') {
+    return (
+      <View style={{
+        backgroundColor: LK.vellum,
+        borderRadius: 20,
+        borderCurve: 'continuous',
+        overflow: 'hidden',
+        flexDirection: 'row',
+        opacity: 0.78,
+        borderWidth: 1.5,
+        borderColor: shade(LK.gold, 0.25),
+        ...theme.shadow.sm,
+      }}>
+        <View style={{ width: 10, backgroundColor: tint(LK.gold, 0.55) }} />
+        <View style={{ flex: 1, padding: 15 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tint(LK.gold, 0.65), alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Image source="sf:flame.fill" style={{ width: 22, height: 22 }} tintColor={shade(LK.gold, 0.5)} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 16, color: LK.espresso, lineHeight: 20 }}>
+                {c.title}
+              </Text>
+              {c.description ? (
+                <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.sepia, marginTop: 1 }}>{c.description}</Text>
+              ) : null}
+            </View>
+            <View style={{ backgroundColor: tint(LK.gold, 0.65), borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 4 }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 10.5, color: shade(LK.gold, 0.5) }}>
+                Streak Saved ✦
+              </Text>
+            </View>
+          </View>
+          {c.redeemed_at && (
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, color: LK.sepia, marginTop: 8 }}>
+              Rescued on {new Date(c.redeemed_at).toLocaleDateString()}
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  }
+
   const col = couponColor(c.color);
   const isRedeemed = mode === 'redeemed';
   const isPending = !isRedeemed && !!c.redeem_requested_at;

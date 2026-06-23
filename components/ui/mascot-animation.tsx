@@ -44,14 +44,14 @@ export type MascotAnimationName = keyof typeof MASCOT_ANIMATIONS;
  *
  * Note: hug-send originally shipped with a corrupt 12 560 ms hold frame at
  * frame 49 (32% through) — an export artifact that froze the animation
- * mid-hug. That frame's delay was repaired to a 500 ms squeeze beat, giving a
- * clean 5 530 ms run (backup at assets/animations/_hug-send.gif.bak).
+ * mid-hug. That frame's delay was repaired to a normal beat, giving a clean
+ * 5 030 ms run (backup at assets/animations/_hug-send.gif.bak).
  */
 export const MASCOT_DURATIONS_MS: Record<MascotAnimationName, number> = {
   splash: 5060,
   'kiss-send': 5060,
   'kiss-receive': 4030,
-  'hug-send': 5530,
+  'hug-send': 5030,
   'hug-receive': 4060,
   'bite-send': 5030,
   'streak-milestone': 5030,

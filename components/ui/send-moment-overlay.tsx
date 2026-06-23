@@ -62,15 +62,20 @@ export function SendMomentOverlay({
   // infinitely and expo-image (SDK 54) gives no loop-count / end callback, so we
   // time the dismiss to land on the natural loop boundary (= the resting pose),
   // never mid-motion. Timed from onDisplay so GIF load lag doesn't eat the tail.
+  //
+  // NOTE: the mascot GIF is *content*, not vestibular motion — Reduce Motion must
+  // not truncate it. (It used to cut the hold to 1400 ms under Reduce Motion,
+  // which clipped the animation to "a split second.") We only tone down the
+  // scale-in pop below for Reduce Motion; the GIF always plays its full loop.
   const startHold = useCallback(() => {
     if (displayedRef.current || dismissingRef.current) return;
     displayedRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
     const loop = MASCOT_DURATIONS_MS[name] ?? 5060;
-    timerRef.current = setTimeout(triggerDismiss, reduced ? 1400 : loop);
-  // reduced/name are stable for the overlay's lifetime
+    timerRef.current = setTimeout(triggerDismiss, loop);
+  // name is stable for the overlay's lifetime
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, reduced, triggerDismiss]);
+  }, [name, triggerDismiss]);
 
   useEffect(() => {
     if (!visible) return;
@@ -88,7 +93,7 @@ export function SendMomentOverlay({
 
     // Safety net: if onDisplay never fires (asset decode failure, etc.) dismiss
     // from mount after one loop + 600 ms grace so the overlay can't get stuck open.
-    timerRef.current = setTimeout(triggerDismiss, (reduced ? 1400 : (MASCOT_DURATIONS_MS[name] ?? 5060)) + 600);
+    timerRef.current = setTimeout(triggerDismiss, (MASCOT_DURATIONS_MS[name] ?? 5060) + 600);
     return () => {
       if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     };
