@@ -49,11 +49,14 @@ export async function syncWidget(data: WidgetData): Promise<void> {
     storage.set('partnerStatusEmoji', data.partnerStatusEmoji || '💛');
 
     // Credentials the widget's App Intent needs to POST to the notify function.
+    // We store both access_token and refresh_token so the Swift NudgeSender can
+    // refresh before sending — access tokens expire after ~1 hour.
     const { data: s } = await supabase.auth.getSession();
     if (s.session) {
       storage.set('supabaseUrl', process.env.EXPO_PUBLIC_SUPABASE_URL ?? '');
       storage.set('anonKey', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '');
       storage.set('accessToken', s.session.access_token);
+      storage.set('refreshToken', s.session.refresh_token);
     }
 
     reloadWidget();

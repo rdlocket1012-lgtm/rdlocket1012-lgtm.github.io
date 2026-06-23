@@ -6,14 +6,47 @@ let APP_GROUP = "group.com.siren96.locket"
 
 // Brand palette — explicit RGB so the widget never depends on an asset catalog.
 extension Color {
-  static let lkCream  = Color(red: 251/255, green: 245/255, blue: 232/255)  // Ivory #FBF5E8
   static let lkParch  = Color(red: 243/255, green: 233/255, blue: 210/255)  // Parchment #F3E9D2
+  static let lkCream  = Color(red: 251/255, green: 245/255, blue: 232/255)  // Ivory #FBF5E8
   static let lkInk    = Color(red: 42/255,  green: 33/255,  blue: 26/255)   // Espresso
   static let lkCoral  = Color(red: 255/255, green: 122/255, blue: 107/255)  // Coral #FF7A6B
   static let lkGold   = Color(red: 255/255, green: 201/255, blue: 77/255)   // Marigold
-  static let lkBlush  = Color(red: 255/255, green: 158/255, blue: 196/255)  // Blush/nudge
-  static let lkSepia  = Color(red: 110/255, green: 98/255,  blue: 83/255)   // Secondary text
+  static let lkBlush  = Color(red: 255/255, green: 158/255, blue: 196/255)  // Blush
+  static let lkSepia  = Color(red: 110/255, green: 98/255,  blue: 83/255)   // Sepia
+  static let lkFaded  = Color(red: 154/255, green: 138/255, blue: 99/255)   // Faded #9A8A63
   static let lkHair   = Color(red: 42/255,  green: 33/255,  blue: 26/255).opacity(0.10)
+}
+
+// ─────────────────────────────────────────────────────────────
+// MARK: - Auth helpers
+// ─────────────────────────────────────────────────────────────
+
+/// Refreshes the Supabase access token using the stored refresh token.
+/// Persists the new token pair back to UserDefaults on success.
+/// Returns a fresh access token, or nil if the refresh failed.
+private func refreshAccessToken(
+  base: String,
+  anon: String,
+  refreshToken: String,
+  defaults: UserDefaults?
+) async -> String? {
+  guard let url = URL(string: "\(base)/auth/v1/token?grant_type=refresh_token") else { return nil }
+  var req = URLRequest(url: url)
+  req.httpMethod = "POST"
+  req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  req.setValue(anon, forHTTPHeaderField: "apikey")
+  req.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
+  guard
+    let (data, _) = try? await URLSession.shared.data(for: req),
+    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+    let access = json["access_token"] as? String
+  else { return nil }
+  // Persist updated tokens so the next intent call is also fresh.
+  defaults?.set(access, forKey: "accessToken")
+  if let newRefresh = json["refresh_token"] as? String {
+    defaults?.set(newRefresh, forKey: "refreshToken")
+  }
+  return access
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -30,10 +63,10 @@ struct LocketEntry: TimelineEntry {
 
 func readEntry() -> LocketEntry {
   let d = UserDefaults(suiteName: APP_GROUP)
-  let dayCount    = Int(d?.string(forKey: "dayCount") ?? "0") ?? 0
-  let nickname    = d?.string(forKey: "coupleNickname") ?? "Us"
-  let emoji       = d?.string(forKey: "partnerStatusEmoji") ?? "💛"
-  let partner     = d?.string(forKey: "partnerName") ?? "Partner"
+  let dayCount = Int(d?.string(forKey: "dayCount") ?? "0") ?? 0
+  let nickname = d?.string(forKey: "coupleNickname") ?? "Us"
+  let emoji    = d?.string(forKey: "partnerStatusEmoji") ?? "💛"
+  let partner  = d?.string(forKey: "partnerName") ?? "Partner"
   return LocketEntry(date: Date(), dayCount: dayCount, nickname: nickname,
                      partnerEmoji: emoji, partnerName: partner)
 }
@@ -52,7 +85,7 @@ struct Provider: TimelineProvider {
   }
 }
 
-// MARK: - Nudge App Intent (iOS 17+ — fires without launching the app)
+// MARK: - Nudge App Intent
 
 struct SendNudgeIntent: AppIntent {
   static var title: LocalizedStringResource = "Send a love nudge"
@@ -69,10 +102,19 @@ enum NudgeSender {
     let d = UserDefaults(suiteName: APP_GROUP)
     guard
       let base  = d?.string(forKey: "supabaseUrl"),
-      let anon  = d?.string(forKey: "anonKey"),
-      let token = d?.string(forKey: "accessToken"),
-      let url   = URL(string: "\(base)/functions/v1/notify")
+      let anon  = d?.string(forKey: "anonKey")
     else { return }
+
+    // Always try to refresh — access tokens expire after ~1 hour.
+    // Fall back to the stored access token if refresh fails (e.g. offline).
+    let freshToken: String?
+    if let refresh = d?.string(forKey: "refreshToken") {
+      freshToken = await refreshAccessToken(base: base, anon: anon, refreshToken: refresh, defaults: d)
+    } else {
+      freshToken = nil
+    }
+    let token = freshToken ?? d?.string(forKey: "accessToken") ?? ""
+    guard !token.isEmpty, let url = URL(string: "\(base)/functions/v1/notify") else { return }
 
     var req = URLRequest(url: url)
     req.httpMethod = "POST"
@@ -84,11 +126,12 @@ enum NudgeSender {
       "title": "💛 Thinking of you",
       "body":  "A little love from the home screen.",
     ])
-
     d?.set(ISO8601DateFormatter().string(from: Date()), forKey: "lastWidgetNudgeAt")
     _ = try? await URLSession.shared.data(for: req)
   }
 }
+
+// MARK: - Nudge button (shared)
 
 struct NudgeButton: View {
   var body: some View {
@@ -112,11 +155,13 @@ struct NudgeButton: View {
         .foregroundColor(Color.lkInk)
     }
     .padding(.horizontal, 12)
-    .padding(.vertical, 8)
+    .padding(.vertical, 7)
     .background(Color.lkBlush)
     .clipShape(Capsule())
   }
 }
+
+// MARK: - Widget views
 
 struct LocketWidgetView: View {
   var entry: Provider.Entry
@@ -124,7 +169,7 @@ struct LocketWidgetView: View {
 
   var partnerFirst: String {
     let first = entry.partnerName.components(separatedBy: " ").first ?? entry.partnerName
-    return String(first.prefix(10))
+    return String(first.prefix(12))
   }
 
   var body: some View {
@@ -134,20 +179,77 @@ struct LocketWidgetView: View {
     }
   }
 
+  // ── Small ──────────────────────────────────────────────────
   var smallView: some View {
-    ZStack(alignment: .topTrailing) {
-      VStack(alignment: .leading, spacing: 0) {
+    VStack(alignment: .leading, spacing: 0) {
+
+      // Top row: nickname + heart accent
+      HStack(alignment: .center) {
         Text(entry.nickname.uppercased())
           .font(.system(size: 9, weight: .heavy))
-          .tracking(1.5)
-          .foregroundColor(Color.lkInk.opacity(0.40))
+          .tracking(1.8)
+          .foregroundColor(Color.lkInk.opacity(0.35))
           .lineLimit(1)
-          .padding(.bottom, 2)
-
         Spacer()
+        Image(systemName: "heart.fill")
+          .font(.system(size: 9))
+          .foregroundColor(Color.lkCoral.opacity(0.70))
+      }
+
+      Spacer(minLength: 4)
+
+      // Status emoji — partner's current mood
+      Text(entry.partnerEmoji)
+        .font(.system(size: 20))
+
+      Spacer(minLength: 2)
+
+      // Day number — hero
+      Text("\(entry.dayCount)")
+        .font(.system(size: 46, weight: .heavy, design: .rounded))
+        .foregroundColor(Color.lkInk)
+        .minimumScaleFactor(0.5)
+        .lineLimit(1)
+
+      // "days together" warm line
+      Text("days together")
+        .font(.system(size: 12, weight: .medium, design: .serif))
+        .italic()
+        .foregroundColor(Color.lkGold)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .padding(.top, 1)
+
+      Spacer(minLength: 6)
+
+      NudgeButton()
+    }
+    .padding(14)
+    .containerBackground(Color.lkParch, for: .widget)
+  }
+
+  // ── Medium ─────────────────────────────────────────────────
+  var mediumView: some View {
+    HStack(spacing: 0) {
+
+      // LEFT: day counter
+      VStack(alignment: .leading, spacing: 0) {
+        HStack {
+          Text(entry.nickname.uppercased())
+            .font(.system(size: 10, weight: .heavy))
+            .tracking(1.8)
+            .foregroundColor(Color.lkInk.opacity(0.35))
+            .lineLimit(1)
+          Spacer()
+          Image(systemName: "heart.fill")
+            .font(.system(size: 9))
+            .foregroundColor(Color.lkCoral.opacity(0.70))
+        }
+
+        Spacer(minLength: 4)
 
         Text("\(entry.dayCount)")
-          .font(.system(size: 48, weight: .heavy, design: .rounded))
+          .font(.system(size: 52, weight: .heavy, design: .rounded))
           .foregroundColor(Color.lkInk)
           .minimumScaleFactor(0.5)
           .lineLimit(1)
@@ -158,64 +260,30 @@ struct LocketWidgetView: View {
           .foregroundColor(Color.lkGold)
           .lineLimit(1)
           .minimumScaleFactor(0.8)
-
-        Spacer()
-
-        NudgeButton()
-      }
-
-      Text(entry.partnerEmoji)
-        .font(.system(size: 22))
-    }
-    .padding(14)
-    .containerBackground(Color.lkCream, for: .widget)
-  }
-
-  var mediumView: some View {
-    HStack(spacing: 0) {
-      VStack(alignment: .leading, spacing: 0) {
-        Text(entry.nickname.uppercased())
-          .font(.system(size: 10, weight: .heavy))
-          .tracking(1.5)
-          .foregroundColor(Color.lkInk.opacity(0.40))
-          .lineLimit(1)
-
-        Spacer(minLength: 4)
-
-        Text("\(entry.dayCount)")
-          .font(.system(size: 54, weight: .heavy, design: .rounded))
-          .foregroundColor(Color.lkInk)
-          .minimumScaleFactor(0.5)
-          .lineLimit(1)
-
-        Text("days together")
-          .font(.system(size: 14, weight: .medium, design: .serif))
-          .italic()
-          .foregroundColor(Color.lkGold)
-          .lineLimit(1)
-          .minimumScaleFactor(0.8)
           .padding(.top, 1)
 
         Spacer(minLength: 4)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
+      // Hairline divider
       Rectangle()
         .fill(Color.lkHair)
         .frame(width: 1)
         .padding(.vertical, 6)
         .padding(.horizontal, 14)
 
-      VStack(spacing: 6) {
+      // RIGHT: partner presence + nudge
+      VStack(alignment: .center, spacing: 6) {
         Text(entry.partnerEmoji)
-          .font(.system(size: 30))
+          .font(.system(size: 28))
 
         Text(partnerFirst)
-          .font(.system(size: 10, weight: .semibold))
+          .font(.system(size: 11, weight: .semibold))
           .foregroundColor(Color.lkSepia)
           .lineLimit(1)
 
-        Spacer(minLength: 6)
+        Spacer(minLength: 4)
 
         NudgeButton()
       }
@@ -223,7 +291,7 @@ struct LocketWidgetView: View {
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 14)
-    .containerBackground(Color.lkCream, for: .widget)
+    .containerBackground(Color.lkParch, for: .widget)
   }
 }
 
@@ -268,7 +336,6 @@ struct DrawProvider: TimelineProvider {
   }
   func getTimeline(in context: Context, completion: @escaping (Timeline<DrawWidgetEntry>) -> Void) {
     let entry = readDrawEntry()
-    // Refresh every 30 min; push reloads the widget sooner via reloadTimelines
     let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
     completion(Timeline(entries: [entry], policy: .after(next)))
   }
@@ -283,19 +350,14 @@ struct LocketDrawWidgetView: View {
     return String(first.prefix(10))
   }
 
-  // Drawing or placeholder
   @ViewBuilder
   var canvasContent: some View {
     if let urlStr = entry.imageUrl, let url = URL(string: urlStr) {
       AsyncImage(url: url) { phase in
         switch phase {
-        case .success(let image):
-          image.resizable().scaledToFit()
-        case .failure:
-          emptyCanvas
-        default:
-          // Loading shimmer
-          Color.lkParch.opacity(0.5)
+        case .success(let image): image.resizable().scaledToFit()
+        case .failure:            emptyCanvas
+        default:                  Color.lkParch.opacity(0.5)
         }
       }
     } else {
@@ -307,12 +369,12 @@ struct LocketDrawWidgetView: View {
     VStack(spacing: 6) {
       Image(systemName: "pencil.and.outline")
         .font(.system(size: 22))
-        .foregroundColor(Color.lkSepia.opacity(0.45))
+        .foregroundColor(Color.lkFaded.opacity(0.6))
       Text("waiting for\na drawing…")
         .font(.system(size: 10, weight: .medium, design: .serif))
         .italic()
         .multilineTextAlignment(.center)
-        .foregroundColor(Color.lkSepia.opacity(0.45))
+        .foregroundColor(Color.lkFaded.opacity(0.6))
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
@@ -324,19 +386,16 @@ struct LocketDrawWidgetView: View {
     }
   }
 
-  // Small: drawing fills frame, partner name pill at bottom-leading
   var smallView: some View {
     ZStack(alignment: .bottomLeading) {
-      canvasContent
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+      canvasContent.frame(maxWidth: .infinity, maxHeight: .infinity)
       if entry.imageUrl != nil {
         Text(partnerFirst)
           .font(.system(size: 11, weight: .bold))
           .foregroundColor(Color.lkInk)
           .padding(.horizontal, 8)
           .padding(.vertical, 4)
-          .background(Color.lkCream.opacity(0.88))
+          .background(Color.lkParch.opacity(0.88))
           .clipShape(Capsule())
           .padding(8)
       }
@@ -344,35 +403,26 @@ struct LocketDrawWidgetView: View {
     .containerBackground(Color.lkParch, for: .widget)
   }
 
-  // Medium: drawing left 2/3 · partner name + tagline + "see it →" right 1/3
   var mediumView: some View {
     HStack(spacing: 0) {
-      // Left: drawing
-      canvasContent
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
+      canvasContent.frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
 
-      // Hairline divider
       Rectangle()
         .fill(Color.lkHair)
         .frame(width: 1)
         .padding(.vertical, 8)
         .padding(.horizontal, 14)
 
-      // Right: info
       VStack(alignment: .leading, spacing: 4) {
         Text(partnerFirst)
           .font(.system(size: 14, weight: .bold))
           .foregroundColor(Color.lkInk)
           .lineLimit(1)
-
         Text("just for you")
           .font(.system(size: 12, weight: .medium, design: .serif))
           .italic()
           .foregroundColor(Color.lkSepia)
-
         Spacer()
-
         if entry.imageUrl != nil, let url = URL(string: "locket://draw") {
           Link(destination: url) {
             Text("see it →")
