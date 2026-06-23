@@ -100,7 +100,14 @@
         }
       ],
       "@bacons/apple-targets",
-      "expo-asset"
+      "expo-asset",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "SENTRY_ORG_PLACEHOLDER",
+          "project": "SENTRY_PROJECT_PLACEHOLDER"
+        }
+      ]
     ],
     "runtimeVersion": {
       "policy": "appVersion"
