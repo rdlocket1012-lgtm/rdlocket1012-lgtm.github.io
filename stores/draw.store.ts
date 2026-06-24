@@ -48,10 +48,16 @@ export const useDrawStore = create<DrawState>((set, get) => ({
         .order('created_at', { ascending: false });
       if (!error && data) {
         const rows = data as Drawing[];
+        const received = rows.filter((d) => d.sender_id !== userId);
         set({
-          received: rows.filter((d) => d.sender_id !== userId),
+          received,
           sent: rows.filter((d) => d.sender_id === userId),
         });
+        // Keep the home-screen draw widget in sync with the latest received
+        // drawing whenever the app loads them — not only on a live INSERT.
+        if (received[0]) {
+          syncDrawWidget(received[0].image_url, 'Partner').catch(() => {});
+        }
       }
     } catch {
       // best-effort — never block the UI

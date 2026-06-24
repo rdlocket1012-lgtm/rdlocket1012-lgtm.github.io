@@ -84,7 +84,7 @@ export default function FunScreen() {
         {/* ── Section 2: CREATIVE ───────────────────────────────────────── */}
         <SectionEyebrow label="Creative" />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: theme.layout.screenX, gap: 12 }}>
-          <CreativeBlock index={6} width={cardW} color={LK.marigold} icon="pen" name="Draw" />
+          <CreativeBlock index={6} width={cardW} color={LK.marigold} icon="pen" name="Draw" route="/draw" />
           <CreativeBlock index={7} width={cardW} color={LK.sky} icon="feather" name="Draw & Guess" route="/games/draw-and-guess" />
         </View>
 

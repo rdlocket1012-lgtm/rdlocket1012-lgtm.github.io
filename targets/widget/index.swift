@@ -59,6 +59,9 @@ struct LocketEntry: TimelineEntry {
   let nickname: String
   let partnerEmoji: String
   let partnerName: String
+  /// True for a few seconds right after a nudge fires, so the widget can flash
+  /// a "sent" confirmation — the only sender-side feedback a widget can give.
+  let justNudged: Bool
 }
 
 func readEntry() -> LocketEntry {
@@ -67,20 +70,31 @@ func readEntry() -> LocketEntry {
   let nickname = d?.string(forKey: "coupleNickname") ?? "Us"
   let emoji    = d?.string(forKey: "partnerStatusEmoji") ?? "💛"
   let partner  = d?.string(forKey: "partnerName") ?? "Partner"
+
+  // Show the "sent" state for 4s after the nudge intent stamped lastWidgetNudgeAt.
+  var justNudged = false
+  if let iso = d?.string(forKey: "lastWidgetNudgeAt"),
+     let when = ISO8601DateFormatter().date(from: iso) {
+    justNudged = Date().timeIntervalSince(when) < 4
+  }
   return LocketEntry(date: Date(), dayCount: dayCount, nickname: nickname,
-                     partnerEmoji: emoji, partnerName: partner)
+                     partnerEmoji: emoji, partnerName: partner, justNudged: justNudged)
 }
 
 struct Provider: TimelineProvider {
   func placeholder(in context: Context) -> LocketEntry {
-    LocketEntry(date: Date(), dayCount: 47, nickname: "Us", partnerEmoji: "💛", partnerName: "Partner")
+    LocketEntry(date: Date(), dayCount: 47, nickname: "Us", partnerEmoji: "💛", partnerName: "Partner", justNudged: false)
   }
   func getSnapshot(in context: Context, completion: @escaping (LocketEntry) -> Void) {
     completion(readEntry())
   }
   func getTimeline(in context: Context, completion: @escaping (Timeline<LocketEntry>) -> Void) {
     let entry = readEntry()
-    let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
+    // While the "sent" confirmation is showing, refresh again shortly so it
+    // clears back to the Nudge button; otherwise the usual 30-minute cadence.
+    let next = entry.justNudged
+      ? Date().addingTimeInterval(4)
+      : (Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800))
     completion(Timeline(entries: [entry], policy: .after(next)))
   }
 }
@@ -134,9 +148,14 @@ enum NudgeSender {
 // MARK: - Nudge button (shared)
 
 struct NudgeButton: View {
+  var sent: Bool = false
+
   var body: some View {
     Group {
-      if #available(iOS 17, *) {
+      if sent {
+        // Confirmation state — not tappable, auto-reverts on next refresh.
+        sentChip
+      } else if #available(iOS 17, *) {
         Button(intent: SendNudgeIntent()) { chip }
           .buttonStyle(.plain)
       } else {
@@ -157,6 +176,19 @@ struct NudgeButton: View {
     .padding(.horizontal, 12)
     .padding(.vertical, 7)
     .background(Color.lkBlush)
+    .clipShape(Capsule())
+  }
+
+  var sentChip: some View {
+    HStack(spacing: 5) {
+      Image(systemName: "heart.fill").font(.system(size: 11)).foregroundColor(Color.lkInk)
+      Text("Sent")
+        .font(.system(size: 12, weight: .bold))
+        .foregroundColor(Color.lkInk)
+    }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 7)
+    .background(Color.lkBlush.opacity(0.55))
     .clipShape(Capsule())
   }
 }
@@ -222,7 +254,7 @@ struct LocketWidgetView: View {
 
       Spacer(minLength: 6)
 
-      NudgeButton()
+      NudgeButton(sent: entry.justNudged)
     }
     .padding(14)
     .containerBackground(Color.lkParch, for: .widget)
@@ -285,7 +317,7 @@ struct LocketWidgetView: View {
 
         Spacer(minLength: 4)
 
-        NudgeButton()
+        NudgeButton(sent: entry.justNudged)
       }
       .frame(width: 96)
     }
