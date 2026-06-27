@@ -31,12 +31,12 @@ export default function RedeemCodeScreen() {
         }}>
           <BackOrb />
 
-          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ paddingTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.System)} style={{ paddingTop: 30 }}>
             <Text style={T.title}>Join your person</Text>
             <Text style={T.why}>Enter the code from their invite — or just tap the link they sent.</Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(180).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 34 }}>
+          <Animated.View entering={FadeInDown.delay(180).springify().damping(19).reduceMotion(ReduceMotion.System)} style={{ marginTop: 34 }}>
             <TextInput
               value={code}
               onChangeText={setCode}
@@ -64,7 +64,7 @@ export default function RedeemCodeScreen() {
 
           <View style={{ flex: 1 }} />
 
-          <Animated.View entering={FadeInDown.delay(260).springify().damping(19).reduceMotion(ReduceMotion.Never)}>
+          <Animated.View entering={FadeInDown.delay(260).springify().damping(19).reduceMotion(ReduceMotion.System)}>
             <PrimaryCta label="Join" onPress={submit} disabled={!valid} />
           </Animated.View>
         </View>

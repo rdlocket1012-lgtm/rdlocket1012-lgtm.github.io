@@ -3,6 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, ActionSheetIOS, Alert, Platfo
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
+import Transition from 'react-native-screen-transitions';
+import { EaseView } from 'react-native-ease';
 import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { RoundIcon } from '@/components/ui/round-icon';
@@ -10,8 +12,19 @@ import { Avatar } from '@/components/ui/avatar';
 import { useLetters } from '@/hooks/useLetters';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { notifyPartner } from '@/lib/push';
 import { VoiceLetterPlayer } from '@/components/letter/VoiceLetterPlayer';
+
+/** Gentle staggered "unfold" for the letter — the page settling open (§10.13).
+ *  Honours Reduce Motion by snapping to the final state. */
+const unfold = (delay: number, reduced: boolean) =>
+  reduced
+    ? ({ type: 'none' } as const)
+    : ({
+        opacity: { type: 'timing', duration: 300, delay },
+        transform: { type: 'spring', damping: 14, stiffness: 220, delay },
+      } as const);
 
 const REACTIONS = ['❤️', '🥹', '😍', '😘', '🔥', '😂'];
 
@@ -68,6 +81,7 @@ export default function LetterReaderScreen() {
   const { letters, reactToLetter, deleteLetter } = useLetters();
   const { profile } = useAuth();
   const { partner } = usePartner();
+  const reduced = useReducedMotion();
 
   const letter = letters.find((l) => l.id === id);
   if (!letter) return null;
@@ -153,9 +167,17 @@ export default function LetterReaderScreen() {
         </RoundIcon>
       </View>
 
+      {/* DESTINATION for the card→letter morph (§10.13): the source LetterCard
+          (group="letter" id) grows into this surface. sharedBoundTag 'letter'. */}
+      <Transition.Boundary.View group="letter" id={id} style={{ flex: 1 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 30, paddingVertical: 18, paddingBottom: 80 }}>
         {/* Sender header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 24 }}>
+        <EaseView
+          initialAnimate={{ opacity: 0, translateY: 10 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={unfold(40, reduced)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 24 }}
+        >
           <Avatar initial={senderInitial} imageUrl={senderAvatar} color={isMine ? LK.coral : LK.blush} size={44} />
           <View>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, color: LK.espresso }}>
@@ -165,7 +187,7 @@ export default function LetterReaderScreen() {
               {letter.sent_at ? new Date(letter.sent_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
             </Text>
           </View>
-        </View>
+        </EaseView>
 
         {/* Voice letter player */}
         {letter.audio_path && (
@@ -184,11 +206,22 @@ export default function LetterReaderScreen() {
 
         {/* Letter body / transcript */}
         {(!letter.audio_path || letter.transcript) && (
-          <LetterBody html={letter.body_rich_html} />
+          <EaseView
+            initialAnimate={{ opacity: 0, translateY: 12 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={unfold(140, reduced)}
+          >
+            <LetterBody html={letter.body_rich_html} />
+          </EaseView>
         )}
 
         {/* Reactions */}
-        <View style={{ marginTop: 36, alignItems: 'center' }}>
+        <EaseView
+          initialAnimate={{ opacity: 0, translateY: 12 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={unfold(240, reduced)}
+          style={{ marginTop: 36, alignItems: 'center' }}
+        >
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginBottom: 12 }}>
             {letter.reaction ? 'Reacted' : 'React to this letter'}
           </Text>
@@ -211,7 +244,7 @@ export default function LetterReaderScreen() {
               );
             })}
           </View>
-        </View>
+        </EaseView>
 
         {/* Privacy note */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 34 }}>
@@ -221,6 +254,7 @@ export default function LetterReaderScreen() {
           </Text>
         </View>
       </ScrollView>
+      </Transition.Boundary.View>
     </SafeAreaView>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,7 @@ import { routeAfterAuth } from '@/lib/post-auth';
 import { LK, theme } from '@/constants/theme';
 import { Canvas, BackOrb, PrimaryCta, T } from '@/components/onboarding/Shell';
 import { PressableScale } from '@/components/onboarding/PressableScale';
+import { AnimatedField } from '@/components/ui/AnimatedField';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -75,12 +76,12 @@ export default function SignInScreen() {
         >
           <BackOrb />
 
-          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ paddingTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.System)} style={{ paddingTop: 30 }}>
             <Text style={T.title}>Welcome back</Text>
             <Text style={T.why}>Pick up right where you two left off.</Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.System)} style={{ marginTop: 30 }}>
             <AppleAuthentication.AppleAuthenticationButton
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
@@ -90,7 +91,7 @@ export default function SignInScreen() {
             />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(240).springify().damping(19).reduceMotion(ReduceMotion.Never)}>
+          <Animated.View entering={FadeInDown.delay(240).springify().damping(19).reduceMotion(ReduceMotion.System)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 18 }}>
               <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70 }}>or email</Text>
@@ -98,41 +99,36 @@ export default function SignInScreen() {
             </View>
 
             <View style={{ gap: 12 }}>
-              <View>
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      style={inputStyle}
-                      placeholder="Email"
-                      placeholderTextColor={LK.ink70}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      value={value}
-                      onChangeText={onChange}
-                    />
-                  )}
-                />
-                {errors.email && <Text style={errorStyle}>{errors.email.message}</Text>}
-              </View>
-              <View>
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      style={inputStyle}
-                      placeholder="Password"
-                      placeholderTextColor={LK.ink70}
-                      secureTextEntry
-                      value={value}
-                      onChangeText={onChange}
-                    />
-                  )}
-                />
-                {errors.password && <Text style={errorStyle}>{errors.password.message}</Text>}
-              </View>
+              <Controller
+                control={control}
+                name="email"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <AnimatedField
+                    placeholder="Email"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.email?.message}
+                  />
+                )}
+              />
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <AnimatedField
+                    placeholder="Password"
+                    secureTextEntry
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={errors.password?.message}
+                  />
+                )}
+              />
               <PrimaryCta
                 label={loading ? 'Signing in…' : 'Sign in'}
                 busy={loading}
@@ -143,7 +139,7 @@ export default function SignInScreen() {
 
           <View style={{ flex: 1 }} />
 
-          <Animated.View entering={FadeInDown.delay(310).springify().damping(19).reduceMotion(ReduceMotion.Never)}>
+          <Animated.View entering={FadeInDown.delay(310).springify().damping(19).reduceMotion(ReduceMotion.System)}>
             <PressableScale haptic="soft" onPress={() => router.push('/(auth)/forgot-password')} style={{ alignItems: 'center', paddingVertical: 10 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70 }}>Forgot password?</Text>
             </PressableScale>
@@ -159,10 +155,3 @@ export default function SignInScreen() {
     </Canvas>
   );
 }
-
-const inputStyle = {
-  backgroundColor: LK.ivory, borderRadius: 16,
-  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso,
-  shadowColor: LK.espresso, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-} as const;
-const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.danger, marginTop: 5 } as const;

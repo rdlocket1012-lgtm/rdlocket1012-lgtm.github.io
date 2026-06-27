@@ -844,6 +844,8 @@ The bar floats — it does not span edge-to-edge like a docked shelf. This makes
 
 Locket buttons feel like pressing something real — a warm rubber stamp, a soft pill badge. Never flat, never garish.
 
+> **Implementation (§10.12):** `Btn` and the circular icon button render through `ScalePressable` (Reanimated UI-thread scale) and fire a `tap()` haptic on press-in by default. A bare `TouchableOpacity` with only `activeOpacity` is not acceptable — the pressed-state values in the tables below are the spec, not a suggestion.
+
 #### Primary button
 One per screen. The dominant CTA.
 
@@ -2064,8 +2066,10 @@ Clean, warm, welcoming — the first impression. Uses the same onboarding templa
 
 When a text input is focused — the keyboard is a guest, not an intruder.
 
+> **Implementation (§10.12):** standardise on **`react-native-keyboard-controller`** (new native dep — needs an EAS dev-client rebuild). The `KeyboardAvoidingView behavior="padding"` approach below is the legacy fallback; the library version keeps the Send/Save bar tracking the keyboard as it animates, and compose surfaces get a drag-to-dismiss `Gesture.Pan` (blur on downward swipe + `soft()` haptic).
+
 **Rule: content scrolls up, primary CTA never hides.**
-- `KeyboardAvoidingView behavior="padding"` wraps the screen
+- `KeyboardAvoidingView` (from `react-native-keyboard-controller`) wraps the screen
 - `ScrollView keyboardShouldPersistTaps="handled"` allows tapping outside input to dismiss
 - Send / Save button sits in a fixed bar above the keyboard: Vellum surface, Hairline top border, 16px padding, primary coral button right-aligned
 
@@ -2170,11 +2174,13 @@ withSpring(target, { damping: 18, stiffness: 280, energyThreshold: 0.01 })
 - Direction: forward slides from right; back slides to right
 - Never override with a custom animation — native push/pop is already optimised
 
-**Zoom transition (card → detail screens)**
-- Letter card → Letter detail: expo-router zoom from card source bounds
-- Milestone card → Milestone detail: zoom from card source bounds
-- Read `.claude/skills/building-native-ui/references/zoom-transitions.md` before implementing
-- Photo map pin → does **not** use zoom — uses a bottom sheet instead (pin is too small for source-bounds zoom)
+**Zoom / shared-element transition (card → detail screens)** — see §10.13 for full standard
+- Implemented with **`react-native-screen-transitions`** (bounds API), not a hand-rolled zoom. Source card wraps in `Transition.Boundary.Trigger id="…"`, detail in `Transition.Boundary.View id="…"`, screen options drive it via `bounds({ id }).navigation.zoom()` / `.reveal()`.
+- Letter card → Letter detail: shared-element from card bounds
+- Milestone card → Milestone detail: shared-element from card bounds
+- Draw gallery thumbnail → Draw viewer: shared-element from thumbnail bounds
+- Photo map pin → does **not** use shared-element — uses a bottom sheet instead (pin is too small for source-bounds zoom)
+- These stacks opt in via the `TransitionStack` wrapper (`components/navigation/transition-stack.tsx`); all other navigation stays on expo-router's native `<Stack>`.
 
 **Modal entrance**
 - `presentation: "modal"`: system slide-up (iOS native)
@@ -2490,6 +2496,79 @@ export function useReducedMotion() {
 | Onboarding step transitions | `FadeIn/FadeOut.duration(150)` instead of slide |
 
 **Haptics** are independent from reduce-motion. Keep all haptic feedback active — haptics are controlled by a separate iOS setting.
+
+---
+
+### 10.12 Premium-feel implementation standards
+
+> ADDED 2026-06-24 after a "premium feel" audit (5 dimensions: press states · subtle animation · haptics · keyboard · loading/empty). The §10.1–§10.11 motion *intent* was already correct; this section closes the gap between the spec and the shipped code by naming the **one canonical primitive per dimension** so polish is structural, not per-call-site. Premium is the compounding of these — no single one carries it.
+
+**Principle:** every tappable feels like a physical object, motion only answers a question the user just asked, haptics confirm decisions (never navigation/scroll), the keyboard is a guest, and a wait shows the shape of what's coming — never a bare spinner.
+
+#### 1. Press states — bake into base components, never per-call-site
+- The canonical primitive is **`components/ui/scale-pressable.tsx`** (`ScalePressable`): Reanimated, UI-thread scale, press-in `withSpring(0.96, { damping: 22, stiffness: 400 })`, release `withSpring(1, { damping: 16, stiffness: 280 })`. This is the spec'd press feel from §8.3 / §10.4.
+- **`Btn` (§8.3) and `RoundIcon` (icon button) MUST render through `ScalePressable`** — not a bare `TouchableOpacity` with only `activeOpacity`. A flat rectangle that responds only with an opacity dip is the cheap tell. Because these two components back ~500 call-sites, fixing the primitive fixes the whole app at once.
+- Legacy `usePressScale` (RN `Animated` API) is **deprecated** — it violates the "Reanimated only" rule. Migrate remaining users to `ScalePressable`; do not add new ones.
+- iOS 26 Liquid Glass gives native press feedback for free, but Android + pre-26 iOS still need `ScalePressable` — keep it the default everywhere for cross-platform parity.
+
+#### 2. Subtle animation — purposeful, 150–300ms, two-tool split
+- Reaffirms §10.1: if you can't name the question the animation answers, cut it. Durations stay in the **150–300ms** band (§10.2 timing tokens).
+- **Two animation tools, crisp boundary (LOCKED 2026-06-24):**
+  - **`react-native-ease` (`<EaseView>`)** — declarative state-change animations: entrances (fade/slide/scale via `initialAnimate`→`animate`), `backgroundColor`/`borderColor`/`borderWidth`/`borderRadius`/`shadow` transitions, simple opacity/translate loops. Runs on native Core Animation (iOS) / Animator (Android) — **zero JS-thread overhead** during playback. Requires New Architecture (on) + RN 0.76+ (we're 0.81.5). New native dep → EAS dev-client rebuild (batch with §10.12 rule 4).
+  - **`react-native-reanimated`** — interactive / continuous / gesture-driven: press (`ScalePressable`), draw canvas, particle bursts, count-up, timer bars, scroll-driven parallax. ease explicitly cannot do gestures, layout (width/height), or chained interpolation — those stay Reanimated.
+- **Spring tokens map 1:1** — `<EaseView transition={{ type: 'spring', damping, stiffness, mass }}>` takes the exact `spring.*` shape from §10.2; reference the tokens, never raw values.
+- **`components/ui/FadeSlideIn.tsx` is deprecated** (RN `Animated`). Migrate entrances to `<EaseView initialAnimate={{ opacity: 0, translateY: 14 }} animate={{ opacity: 1, translateY: 0 }} transition={spring.warm}>`. ease has a Claude Code migration skill: `npx skills add appandflow/react-native-ease` → `/react-native-ease-refactor`.
+- Stagger only the first 5 visible items (`transition={{ ..., delay: i * 40 }}`); never animate off-screen rows.
+
+#### 3. Haptics — one vocabulary, baked into the same primitives
+- The canonical vocabulary is **`lib/haptics.ts`** (`tap / soft / tick / success / warn`) — keep it; it already encodes the "confirm decisions, not navigation" rule.
+- `ScalePressable` / `Btn` fire **`tap()` on press-in by default**, with an opt-out prop (`haptic={false}`) for rows where a tick would be noise (list scrolling, idle taps). State-change moments (`success` on send/save/join, `warn` on destructive ask) stay explicit at the call-site.
+- `expo-haptics` is the chosen engine — there is no plan to add `react-native-pulsar`.
+
+#### 4. Keyboard — `react-native-keyboard-controller`, not `KeyboardAvoidingView`
+- Adopt **`react-native-keyboard-controller`** as the standard. It is a new native dependency → requires an EAS dev-client rebuild (flag before adding). Supersedes the `KeyboardAvoidingView behavior="padding"` rule in §9.11.
+- Inputs stay visible and the Send/Save bar tracks the keyboard as it animates in (`KeyboardAvoidingView` from the library, or `useKeyboardAnimation` for the accessory bar).
+- Compose surfaces (letters, notes, milestones, pins) get **drag-to-dismiss**: a `react-native-gesture-handler` `Gesture.Pan` that blurs the input on downward swipe past threshold, with a `soft()` haptic on dismiss. Keyboard follows the finger.
+
+#### 5. Loading & empty — animated shimmer skeletons + a reusable primitive
+- Empty states are already world-class (illustration + heading + Shantell line + CTA — keep this exact recipe).
+- **Skeletons must shimmer.** Static grey placeholders are half-credit. Add a single reusable **`components/ui/Skeleton.tsx`** (Reanimated highlight sweep, `timing.shimmer` 1400ms linear loop, respects `useReducedMotion()` → static) and route the existing inline per-screen skeletons (notes, letters, etc.) through it.
+- Replace remaining bare `ActivityIndicator` spinners with skeletons or the `lo-kit-idle` mascot placeholder (§10.6). A spinner is the cheap answer.
+
+**Audit scorecard reference (2026-06-24 baseline): 69/100 "Premium".** Lowest dimensions: keyboard (10/20), press states (13/20). Highest-leverage first move: route `Btn` + `RoundIcon` through `ScalePressable` + default `tap()`. Build steps tracked in `BUILD_PLAN.md` Phase 18.
+
+---
+
+### 10.13 Screen transitions — shared elements (`react-native-screen-transitions`)
+
+> ADDED 2026-06-24. Library: **`react-native-screen-transitions`** v3.8.0 (Bounds API for shared-element / zoom transitions). This is the "premium feel" companion to §10.12 — a card that *grows into* its detail screen reads as crafted; a flat push reads as generic.
+
+**Scope — opt in per stack, never app-wide.**
+- Default navigation stays on expo-router's native `<Stack>` (native push/pop, §10.3) — fast, familiar, zero risk.
+- Only stacks listed below swap to the **`TransitionStack`** wrapper (`components/navigation/transition-stack.tsx`, a `createBlankStackNavigator` + `withLayoutContext` blank stack):
+
+| Source → Detail | Shared element | Transition |
+|---|---|---|
+| Letter / Love Card → Letter detail (§13.17) | the card surface | `bounds({ id }).navigation.zoom()` |
+| Milestone card → Milestone detail (§13.18) | category illustration + card | `bounds({ id }).navigation.zoom()` |
+| Draw gallery thumbnail → Draw viewer (§13.31) | the drawing image | `bounds({ id }).navigation.reveal()` |
+| Photo viewer / map pin | — | **no** shared element — bottom sheet (pin too small) |
+
+**Implementation pattern (Bounds API).**
+- **Source screen:** wrap the tappable card in `Transition.Boundary.Trigger` with a stable `id` (e.g. `letter-${id}`) and an `onPress` that navigates. Use `Transition.Boundary.Target` when the tap area ≠ the element that should animate (e.g. full row tappable, only the image flies).
+- **Detail screen:** wrap the matching element in `Transition.Boundary.View` with the **same `id`**.
+- **Screen options** (in the stack `_layout.tsx`): `screenStyleInterpolator` calls `bounds({ id }).navigation.zoom()` (or `.reveal()` with `navigationMaskEnabled: true` — needs `@react-native-masked-view/masked-view`). Set `gestureEnabled: true` + `gestureDirection` for swipe-to-dismiss.
+- `transitionSpec` open/close use **spring tokens** (§10.2) — keep close springier/faster than open (§10.1 "exit faster").
+
+**Reduced motion (§10.11):** when Reduce Motion is on, skip the bounds interpolator → fall back to a plain `FadeIn/FadeOut` (or native push). Gate the screen options on `useReducedMotion()`.
+
+**⚠️ Constraints (locked):**
+- **Expo SDK ≤ 55 only.** v3.8.0 rewires Expo Router's navigator internals and does **not** support SDK 56. Re-verify / pin before any SDK upgrade. (We're on SDK 54.)
+- Requires the **New Architecture** (on — SDK 54 default + `reactCompiler: true`). New native dep → EAS dev-client rebuild (batch with §10.12 keyboard + §10.12-rule-2 ease deps).
+- All `@react-navigation/*` peers are already satisfied transitively via expo-router (native 7.2.5 · native-stack 7.3.16 · elements 2.9.19 · screens 4.16).
+- Keep `presentation: "formSheet"` sheets on the native modal system (§8.8) — shared-element is for **card → full screen**, not for sheets.
+
+Build steps: `BUILD_PLAN.md` Phase 19.
 
 ---
 

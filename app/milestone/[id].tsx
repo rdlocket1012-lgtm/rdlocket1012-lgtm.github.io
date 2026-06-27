@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Pressable, ScrollView } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+import Transition from 'react-native-screen-transitions';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
@@ -42,6 +43,12 @@ export default function MilestoneDetailScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
+      {/* DESTINATION for the timeline-card → milestone morph (§10.13): the tapped
+          MilestoneCard (group="milestone" id) grows into this surface.
+          sharedBoundTag 'milestone' (preset set in app/_layout.tsx). The colored
+          header + scroll morph together as one card; overlays (delete sheet,
+          edit modal) stay outside the boundary. */}
+      <Transition.Boundary.View group="milestone" id={id} style={{ flex: 1 }}>
       {/* Colored header */}
       <View style={{ backgroundColor: tint(c.base, 0.35), paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -100,6 +107,7 @@ export default function MilestoneDetailScreen() {
           </View>
         )}
       </ScrollView>
+      </Transition.Boundary.View>
 
       {/* Confirm delete sheet */}
       {confirmDelete && (

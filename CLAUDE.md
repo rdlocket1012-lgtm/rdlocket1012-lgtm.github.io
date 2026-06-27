@@ -149,7 +149,28 @@ Animated WebP via `expo-image` — **NOT Lottie** (abandoned). Use `<MascotAnima
 ✅ process.env.EXPO_OS     ❌ Platform.OS
 ✅ React.use()             ❌ React.useContext()
 ✅ boxShadow CSS prop       ❌ RN shadow* / elevation props
+✅ ScalePressable          ❌ bare TouchableOpacity w/ only activeOpacity
+✅ react-native-ease (declarative)  ❌ RN Animated API (usePressScale, FadeSlideIn — deprecated)
+✅ react-native-reanimated (press/gesture/particles)  ❌ RN Animated API
+✅ react-native-keyboard-controller  ❌ RN KeyboardAvoidingView (new screens)
+✅ react-native-screen-transitions (card→detail, opt-in)  ❌ converting all stacks / SDK 56
 ```
+
+> **Screen transitions (§10.13):** `react-native-screen-transitions` (Bounds API) for card → detail shared-element transitions, opt-in per stack via `components/navigation/transition-stack.tsx`. Default nav stays on expo-router native `<Stack>`. v3.8.0 = Expo SDK ≤ 55 only — re-verify before any SDK upgrade.
+
+> **Two animation tools, crisp boundary (§10.12 rule 2):** `react-native-ease` (`<EaseView>`) for declarative state changes — entrances (fade/slide/scale), color/border/shadow transitions; native Core Animation/Animator, zero JS overhead. `react-native-reanimated` for interactive/continuous — press (`ScalePressable`), gestures, draw canvas, particles, count-up, scroll-driven. Spring tokens map 1:1 to both. Requires New Arch (on).
+
+---
+
+## Premium Feel
+
+Audit-derived standards — full spec `docs/DESIGN.md §10.12`, build steps `BUILD_PLAN.md` Phase 18. Premium is the compounding of all five; ship them together.
+
+- **Press state on every tappable** — route through `components/ui/scale-pressable.tsx` (UI-thread spring scale). `Btn`/`RoundIcon` must use it; a flat `activeOpacity`-only button is the cheap tell.
+- **Haptics confirm decisions, never navigation/scroll** — one vocabulary in `lib/haptics.ts` (`tap/soft/tick/success/warn`); `tap()` fires from the press primitive by default.
+- **Subtle, 150–300ms, purposeful** — if you can't name the question the animation answers, cut it. Reanimated only.
+- **No bare spinners** — loading shows a shimmer `Skeleton` or `lo-kit-idle` placeholder; empty states keep the illustration + Shantell line + CTA recipe.
+- **Keyboard is a guest** — `react-native-keyboard-controller`; the Send/Save bar tracks the keyboard; compose screens get drag-to-dismiss.
 
 ---
 
@@ -184,7 +205,7 @@ Animated WebP via `expo-image` — **NOT Lottie** (abandoned). Use `<MascotAnima
 - `FlashList` or `FlatList` for lists >10 items — never `ScrollView`
 - `contentInsetAdjustmentBehavior="automatic"` on all lists
 - Atomic Zustand selectors — subscribe to the slice, not the whole store
-- Reanimated for all animations — never RN `Animated` API
+- Never RN `Animated` API. Two-tool split (§10.12): `react-native-ease` for declarative state changes, Reanimated for press/gesture/particles/continuous
 - Animate only `transform` and `opacity` — never `width`/`height`/`top`/`left`
 - `useReducedMotion()` before any spring/particle code
 

@@ -7,12 +7,15 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, router } from 'expo-router';
+import { router } from 'expo-router';
 import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { RoundIcon } from '@/components/ui/round-icon';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { StationeryRules } from '@/components/ui/stationery-rules';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { usePrivateNotes, type PrivateNote } from '@/hooks/usePrivateNotes';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -40,35 +43,22 @@ export default function NotesScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
-      <Stack.Screen
-        options={{
-          title: 'My Notes',
-          headerShown: true,
-          headerLargeTitle: true,
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: LK.parchment },
-          headerTintColor: LK.espresso,
-          headerBackTitle: '',
-          headerBackButtonDisplayMode: 'minimal',
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() => router.push('/notes/compose')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="New note"
-            >
-              <Image
-                source="sf:square.and.pencil"
-                style={{ width: 22, height: 22 }}
-                contentFit="contain"
-                tintColor={LK.espresso}
-              />
-            </TouchableOpacity>
-          ),
-        }}
+      {/* Custom in-screen header — the root TransitionNativeStack renders native
+          headers (headerRight/back) as empty white circles (§10.13 GOTCHA 1), so
+          we use the standard ScreenHeader (RoundIcon back + right action). */}
+      <ScreenHeader
+        eyebrow="Private"
+        title="My Notes"
+        onBack={() => router.back()}
+        right={
+          <RoundIcon onPress={() => router.push('/notes/compose')}>
+            <Icon name="pen" size={20} color={LK.espresso} />
+          </RoundIcon>
+        }
       />
 
       {/* Private indicator eyebrow */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 20, paddingBottom: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 22, paddingTop: 8, paddingBottom: 8 }}>
         <Image source="sf:lock.fill" style={{ width: 11, height: 11 }} contentFit="contain" tintColor={LK.faded} />
         <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, color: LK.faded }}>
           private — only you can see this
@@ -87,7 +77,7 @@ export default function NotesScreen() {
           contentInsetAdjustmentBehavior="automatic"
           showsVerticalScrollIndicator={false}
           renderItem={({ item: note, index }) => (
-            <Animated.View entering={index < 10 ? FadeInUp.duration(280).delay(index * 30).reduceMotion(ReduceMotion.Never) : undefined}>
+            <Animated.View entering={index < 10 ? FadeInUp.duration(280).delay(index * 30).reduceMotion(ReduceMotion.System) : undefined}>
               <NoteCard
                 note={note}
                 onEdit={() => router.push({ pathname: '/notes/compose', params: { id: note.id } })}
@@ -256,9 +246,9 @@ function SkeletonCard() {
     >
       <StationeryRules opacity={0.2} leftMargin={0} />
       <View style={{ padding: 16, gap: 10 }}>
-        <View style={{ width: 80, height: 10, borderRadius: 5, backgroundColor: 'rgba(42,33,26,0.08)' }} />
-        <View style={{ width: '90%', height: 12, borderRadius: 6, backgroundColor: 'rgba(42,33,26,0.06)' }} />
-        <View style={{ width: '65%', height: 12, borderRadius: 6, backgroundColor: 'rgba(42,33,26,0.06)' }} />
+        <Skeleton width={80} height={10} radius={5} />
+        <Skeleton width="90%" height={12} radius={6} />
+        <Skeleton width="65%" height={12} radius={6} />
       </View>
     </View>
   );

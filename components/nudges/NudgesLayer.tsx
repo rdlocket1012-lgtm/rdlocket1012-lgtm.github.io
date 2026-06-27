@@ -292,21 +292,21 @@ function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, 
 
   const handlers = { sparkles: onSparkles, hug: onHug, kiss: onKiss, bite: onBite, thumbkiss: onThumbKiss };
   const cardEnter = reduced
-    ? FadeIn.duration(160).reduceMotion(ReduceMotion.Never)
-    : ZoomIn.springify().damping(theme.spring.warm.damping).stiffness(theme.spring.warm.stiffness).reduceMotion(ReduceMotion.Never);
+    ? FadeIn.duration(160).reduceMotion(ReduceMotion.System)
+    : ZoomIn.springify().damping(theme.spring.warm.damping).stiffness(theme.spring.warm.stiffness).reduceMotion(ReduceMotion.System);
 
   return (
     <Modal visible={open} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
       <Reanimated.View
-        entering={FadeIn.duration(160).reduceMotion(ReduceMotion.Never)}
-        exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.Never)}
+        entering={FadeIn.duration(160).reduceMotion(ReduceMotion.System)}
+        exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.System)}
         style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20,15,10,0.45)' }]}
       >
         <Pressable
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 }}
           onPress={onClose}
         >
-          <Reanimated.View entering={cardEnter} exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.Never)} style={{ width: '100%', maxWidth: 360 }}>
+          <Reanimated.View entering={cardEnter} exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.System)} style={{ width: '100%', maxWidth: 360 }}>
             <Pressable style={{ backgroundColor: LK.vellum, borderRadius: 28, padding: 22, ...theme.shadow.card }}>
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>
               Send a little love 💛

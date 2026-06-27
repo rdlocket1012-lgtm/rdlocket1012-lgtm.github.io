@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withSpring, useReducedMotion } from 'react-native-reanimated';
+import Transition from 'react-native-screen-transitions';
 import { LK, tint, shade, rgba, theme, catColor } from '@/constants/theme';
 import { useCouple } from '@/hooks/useCouple';
 import { useAuth } from '@/hooks/useAuth';
@@ -324,8 +325,14 @@ export default function HomeScreen() {
                   <Icon name="chevR" size={14} color={shade(LK.marigold, 0.5)} />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity
+              {/* SOURCE for the card → milestone-detail morph (§10.13). Same
+                  group/id as the timeline + story-strip triggers; pairs are keyed
+                  per source screen so the duplicate id is unambiguous. */}
+              <Transition.Boundary.Trigger
+                group="milestone"
+                id={memory.id}
                 onPress={() => router.push(`/milestone/${memory.id}`)}
+                accessibilityLabel={memory.title}
                 style={{ borderRadius: theme.radii.lg, borderCurve: 'continuous', overflow: 'hidden', height: 248, ...theme.shadow.card }}
               >
                 <View style={{ flex: 1, backgroundColor: tint(memoryColor.base, 0.35) }}>
@@ -352,7 +359,7 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </View>
-              </TouchableOpacity>
+              </Transition.Boundary.Trigger>
             </View>
           </FadeSlideIn>
         )}
@@ -397,9 +404,13 @@ export default function HomeScreen() {
                 renderItem={({ item }) => {
                   const c = catColor(item.type);
                   return (
-                    <ScalePressable
-                      scaleTo={0.97}
+                    // SOURCE for the card → milestone-detail morph (§10.13) —
+                    // shares group="milestone" with the timeline + On-this-day triggers.
+                    <Transition.Boundary.Trigger
+                      group="milestone"
+                      id={item.id}
                       onPress={() => router.push(`/milestone/${item.id}`)}
+                      accessibilityLabel={item.title}
                       style={{ width: 160, height: 180 }}
                     >
                       <View style={{ flex: 1, backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', overflow: 'hidden', ...theme.shadow.sm }}>
@@ -416,7 +427,7 @@ export default function HomeScreen() {
                         </View>
                         <View style={{ height: 4, backgroundColor: c.base }} />
                       </View>
-                    </ScalePressable>
+                    </Transition.Boundary.Trigger>
                   );
                 }}
               />

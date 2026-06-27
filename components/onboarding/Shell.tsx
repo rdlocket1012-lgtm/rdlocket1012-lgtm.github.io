@@ -156,7 +156,7 @@ export function Shell({ step, total, title, why, children, footer, showBack = tr
       </View>
 
       <Animated.View
-        entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.Never)}
+        entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.System)}
         style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 34 }}
       >
         <Text style={T.title}>{title}</Text>
@@ -164,7 +164,7 @@ export function Shell({ step, total, title, why, children, footer, showBack = tr
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.Never)}
+        entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.System)}
         style={{ flex: 1, paddingHorizontal: theme.layout.screenX }}
       >
         {children}
@@ -172,7 +172,7 @@ export function Shell({ step, total, title, why, children, footer, showBack = tr
 
       {!!footer && (
         <Animated.View
-          entering={FadeInDown.delay(270).springify().damping(19).reduceMotion(ReduceMotion.Never)}
+          entering={FadeInDown.delay(270).springify().damping(19).reduceMotion(ReduceMotion.System)}
           style={{ paddingHorizontal: theme.layout.screenX, gap: 6 }}
         >
           {footer}

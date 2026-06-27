@@ -1,5 +1,8 @@
 import React, { useEffect } from 'react';
-import { Stack, router } from 'expo-router';
+import { router } from 'expo-router';
+import Transition from 'react-native-screen-transitions';
+import { TransitionNativeStack } from '@/components/navigation/transition-native-stack';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import Mapbox from '@rnmapbox/maps';
 
 // Initialise Mapbox once at app startup — must run before any MapView renders.
@@ -13,6 +16,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ReducedMotionConfig, ReduceMotion } from 'react-native-reanimated';
 import { useAuth } from '@/hooks/useAuth';
 import { useSyncTimezone } from '@/hooks/useSyncTimezone';
@@ -51,6 +55,17 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayout() {
   const { session, loading } = useAuth();
+  const reduced = useReducedMotion();
+
+  // Milestone card → detail morph (§10.13). The TRUE shared-element morph: the
+  // tapped timeline card (Transition.Boundary.Trigger group="milestone") grows
+  // into the detail surface (Transition.Boundary.View group="milestone"). This
+  // is why the root navigator is a TransitionNativeStack — the trigger lives in
+  // a tab, so the morph has to be owned by the root stack, not a nested group.
+  // Reduce Motion → fall back to the plain modal slide (no morph).
+  const milestoneOptions = reduced
+    ? ({ presentation: 'modal' } as const)
+    : Transition.Presets.SharedAppleMusic({ sharedBoundTag: 'milestone' });
 
   // Keep our own timezone synced so the partner sees our correct local time.
   useSyncTimezone();
@@ -147,42 +162,73 @@ function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* Force-enable Reanimated animations even when the OS "Reduce Motion"
-          setting is on. Sets the global default for every withSpring/withTiming
-          in the app — no per-call-site override needed. */}
-      <ReducedMotionConfig mode={ReduceMotion.Never} />
+      {/* KeyboardProvider (react-native-keyboard-controller) powers the smooth,
+          keyboard-frame-tracking KeyboardAvoidingView used by the compose screens
+          (§10.12 / Library Rules: lib KAV over RN KAV for new/compose screens).
+          ⚠️ It mounts a NATIVE module — screens still on RN KeyboardAvoidingView
+          keep working, but the JS won't load until a dev build includes this dep.
+          RN <Modal> renders outside this provider, so modals re-wrap their own. */}
+      <KeyboardProvider>
+      {/* Honour the OS "Reduce Motion" setting globally (DESIGN.md §10.11). When
+          it's on, Reanimated springs/timings collapse to instant; flows pair this
+          with useReducedMotion() to swap EaseView/shared-element transitions for
+          fades. Never force motion app-wide — that's an accessibility fail. */}
+      <ReducedMotionConfig mode={ReduceMotion.System} />
       <StatusBar style="dark" />
       <OfflineBanner />
-      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-        <Stack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
-        <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
-        <Stack.Screen name="(auth)/forgot-password" options={{ animation: 'fade' }} />
-        <Stack.Screen name="(auth)/reset-password" options={{ animation: 'fade' }} />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="map/index" />
-        <Stack.Screen name="milestone/[id]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="milestone/photo-viewer" options={{ presentation: 'modal', animation: 'fade' }} />
-        <Stack.Screen name="invite" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="letters/index" />
-        <Stack.Screen name="coupons/index" />
-        <Stack.Screen name="letter/[id]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="games/index" />
-        <Stack.Screen name="games/this-or-that" />
-        <Stack.Screen name="games/draw-and-guess" options={{ headerShown: false }} />
-        <Stack.Screen name="bucket-list/index" />
-        <Stack.Screen name="bucket-list/add-item" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="settings/index" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="settings/danger-zone" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="quiz/history" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="streak/index" />
-        <Stack.Screen name="notes/index" />
-        <Stack.Screen name="notes/compose" options={{ presentation: 'formSheet', sheetGrabberVisible: true, sheetAllowedDetents: [1.0], sheetExpandsWhenScrolledToEdge: true }} />
-        <Stack.Screen name="profile/about" />
-        <Stack.Screen name="profile/edit" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="notifications/index" />
-        <Stack.Screen name="draw/index" />
-        <Stack.Screen name="draw/compose" options={{ presentation: 'formSheet', sheetGrabberVisible: true, sheetAllowedDetents: [1.0], sheetExpandsWhenScrolledToEdge: true }} />
-      </Stack>
+      {/* Root navigator is a TransitionNativeStack (§10.13) so root-level screens
+          can opt into shared-element (bounds) morphs while every other screen
+          keeps native chrome (modal/formSheet/large-title headers) and native
+          animations unchanged — it's a drop-in over react-native-screens. Only
+          screens that pass a Transition preset (milestone/[id]) run the morph;
+          all others behave exactly as they did under expo-router's <Stack>. */}
+      <TransitionNativeStack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <TransitionNativeStack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
+        <TransitionNativeStack.Screen name="(auth)" options={{ animation: 'fade' }} />
+        <TransitionNativeStack.Screen name="(auth)/forgot-password" options={{ animation: 'fade' }} />
+        <TransitionNativeStack.Screen name="(auth)/reset-password" options={{ animation: 'fade' }} />
+        <TransitionNativeStack.Screen name="(tabs)" />
+        <TransitionNativeStack.Screen name="map/index" />
+        {/* Milestone detail morphs out of the tapped timeline card (see
+            milestoneOptions above). Reduce Motion falls back to the modal slide. */}
+        <TransitionNativeStack.Screen name="milestone/[id]" options={milestoneOptions} />
+        <TransitionNativeStack.Screen name="milestone/photo-viewer" options={{ presentation: 'modal', animation: 'fade' }} />
+        <TransitionNativeStack.Screen name="invite" options={{ presentation: 'modal' }} />
+        {/* Letters is a nested TransitionStack group (§10.13) — the detail
+            screen lives at app/letters/[id].tsx and uses screen transitions.
+            gestureEnabled:false so the outer native edge-swipe doesn't pop the
+            whole group (skipping the list); the inner TransitionStack owns the
+            back-swipe (detail → list). Back button still pops the group → home. */}
+        <TransitionNativeStack.Screen name="letters" options={{ gestureEnabled: false }} />
+        <TransitionNativeStack.Screen name="coupons/index" />
+        <TransitionNativeStack.Screen name="games/index" />
+        <TransitionNativeStack.Screen name="games/this-or-that" />
+        <TransitionNativeStack.Screen name="games/draw-and-guess" options={{ headerShown: false }} />
+        <TransitionNativeStack.Screen name="bucket-list/index" />
+        <TransitionNativeStack.Screen name="bucket-list/add-item" options={{ presentation: 'modal' }} />
+        <TransitionNativeStack.Screen name="settings/index" options={{ presentation: 'modal' }} />
+        <TransitionNativeStack.Screen name="settings/danger-zone" options={{ presentation: 'modal' }} />
+        <TransitionNativeStack.Screen name="quiz/history" options={{ presentation: 'modal' }} />
+        <TransitionNativeStack.Screen name="streak/index" />
+        <TransitionNativeStack.Screen name="notes/index" />
+        {/* fullScreenModal (not formSheet): in the TransitionNativeStack a
+            formSheet sizes to its content — a flex:1 writing surface collapses —
+            and a native header renders as empty circles (draw/compose GOTCHAS
+            1+3). fullScreenModal fills the screen + slides up; compose renders
+            its own header. */}
+        <TransitionNativeStack.Screen name="notes/compose" options={{ presentation: 'fullScreenModal', headerShown: false }} />
+        <TransitionNativeStack.Screen name="profile/about" />
+        <TransitionNativeStack.Screen name="profile/edit" options={{ presentation: 'modal' }} />
+        <TransitionNativeStack.Screen name="notifications/index" />
+        {/* Draw is a nested TransitionNativeStack group (§10.13) — the gallery
+            cell morphs into app/draw/viewer.tsx. headerShown:false so the root
+            stack doesn't double the group's native header; gestureEnabled:false
+            so the outer edge-swipe doesn't pop the whole group (mirrors letters).
+            index keeps its native large-title header, compose keeps its formSheet
+            — both configured inside app/draw/_layout.tsx + the screens. */}
+        <TransitionNativeStack.Screen name="draw" options={{ headerShown: false, gestureEnabled: false }} />
+      </TransitionNativeStack>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

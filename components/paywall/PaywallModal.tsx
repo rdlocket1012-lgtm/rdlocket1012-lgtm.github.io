@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Alert, Linking } from 'react-native';
+import { EaseView } from 'react-native-ease';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { purchasePlan, restorePurchases, purchasesAvailable } from '@/lib/revenuecat';
+import { success as hapticSuccess } from '@/lib/haptics';
 import { useCouple } from '@/hooks/useCouple';
 
 const PLANS = [
@@ -36,6 +39,7 @@ export function PaywallModal({ onClose }: Props) {
       const ok = await purchasePlan(plan);
       if (ok) {
         await fetchCouple();
+        hapticSuccess();
         setSuccess(true);
       }
     } catch (e: any) {
@@ -54,6 +58,7 @@ export function PaywallModal({ onClose }: Props) {
       const ok = await restorePurchases();
       if (ok) {
         await fetchCouple();
+        hapticSuccess();
         setSuccess(true);
       } else {
         Alert.alert('Nothing to restore', 'No previous purchases were found for this account.');
@@ -69,21 +74,27 @@ export function PaywallModal({ onClose }: Props) {
     return (
       <Modal animationType="fade" transparent>
         <View style={{ flex: 1, backgroundColor: tint(LK.marigold, 0.55), alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-          <IconChip color={LK.marigold} size={104}>
-            <Icon name="crown" size={50} color={shade(LK.marigold, 0.55)} />
-          </IconChip>
+          <EaseView
+            initialAnimate={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', damping: 12, stiffness: 260 }}
+          >
+            <IconChip color={LK.marigold} size={104}>
+              <Icon name="crown" size={50} color={shade(LK.marigold, 0.55)} />
+            </IconChip>
+          </EaseView>
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 32, color: LK.espresso, marginTop: 22, letterSpacing: -1, textAlign: 'center' }}>
             You're Premium!
           </Text>
           <Text style={{ fontFamily: theme.fonts.body, fontSize: 15.5, color: LK.ink70, marginTop: 10, lineHeight: 24, maxWidth: 260, textAlign: 'center' }}>
             Every limit is gone. Your story has all the room it needs.
           </Text>
-          <TouchableOpacity
+          <ScalePressable
             onPress={onClose}
             style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 28, paddingVertical: 16, marginTop: 26 }}
           >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Keep writing it</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
       </Modal>
     );
@@ -127,33 +138,37 @@ export function PaywallModal({ onClose }: Props) {
             {PLANS.map((pl) => {
               const on = plan === pl.id;
               return (
-                <TouchableOpacity
-                  key={pl.id}
-                  onPress={() => setPlan(pl.id)}
-                  style={{
-                    backgroundColor: on ? tint(LK.marigold, 0.7) : LK.ivory,
-                    borderRadius: 18, padding: 15,
-                    flexDirection: 'row', alignItems: 'center', gap: 13,
-                    borderWidth: on ? 2.5 : 0, borderColor: on ? LK.marigold : 'transparent',
-                    ...theme.shadow.sm,
-                  }}
-                >
-                  <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2.5, borderColor: on ? shade(LK.marigold, 0.5) : 'rgba(42,33,26,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                    {on && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: shade(LK.marigold, 0.5) }} />}
-                  </View>
-                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 16, color: LK.espresso }}>{pl.title}</Text>
-                    {pl.tag && (
-                      <View style={{ backgroundColor: rgba(LK.marigold, 0.3), borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 3 }}>
-                        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.marigold, 0.45) }}>{pl.tag}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, color: LK.espresso }}>{pl.price}</Text>
-                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70 }}>{pl.per}</Text>
-                  </View>
-                </TouchableOpacity>
+                <ScalePressable key={pl.id} scaleTo={0.98} onPress={() => setPlan(pl.id)}>
+                  <EaseView
+                    animate={{
+                      backgroundColor: on ? tint(LK.marigold, 0.7) : LK.ivory,
+                      borderColor: on ? LK.marigold : 'rgba(0,0,0,0)',
+                    }}
+                    transition={{ default: { type: 'timing', duration: 180, easing: 'easeOut' } }}
+                    style={{
+                      borderRadius: 18, padding: 15,
+                      flexDirection: 'row', alignItems: 'center', gap: 13,
+                      borderWidth: 2.5,
+                      boxShadow: '0 5px 14px rgba(42,33,26,0.06)',
+                    }}
+                  >
+                    <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2.5, borderColor: on ? shade(LK.marigold, 0.5) : 'rgba(42,33,26,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                      {on && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: shade(LK.marigold, 0.5) }} />}
+                    </View>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 16, color: LK.espresso }}>{pl.title}</Text>
+                      {pl.tag && (
+                        <View style={{ backgroundColor: rgba(LK.marigold, 0.3), borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.marigold, 0.45) }}>{pl.tag}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, color: LK.espresso }}>{pl.price}</Text>
+                      <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70 }}>{pl.per}</Text>
+                    </View>
+                  </EaseView>
+                </ScalePressable>
               );
             })}
           </View>
@@ -177,7 +192,7 @@ export function PaywallModal({ onClose }: Props) {
             </View>
           )}
 
-          <TouchableOpacity
+          <ScalePressable
             onPress={handlePurchase}
             disabled={loading}
             style={{ backgroundColor: LK.marigold, borderRadius: 9999, padding: 16, alignItems: 'center', marginTop: 18, ...theme.shadow.card }}
@@ -187,7 +202,7 @@ export function PaywallModal({ onClose }: Props) {
             ) : (
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: LK.espresso }}>Start Premium</Text>
             )}
-          </TouchableOpacity>
+          </ScalePressable>
 
           <TouchableOpacity
             onPress={handleRestore}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { LK, theme } from '@/constants/theme';
 import { Btn } from '@/components/ui/btn';
 import { Icon } from '@/components/ui/Icon';
+import { AnimatedField } from '@/components/ui/AnimatedField';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -56,20 +57,19 @@ export default function ForgotPasswordScreen() {
                 <Controller
                   control={control}
                   name="email"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      style={inputStyle}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <AnimatedField
                       placeholder="Email"
-                      placeholderTextColor={LK.ink70}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoComplete="email"
                       value={value}
                       onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={errors.email?.message}
                     />
                   )}
                 />
-                {errors.email && <Text style={errorStyle}>{errors.email.message}</Text>}
               </View>
 
               <Btn full kind="primary" onPress={handleSubmit(onSubmit)} disabled={loading}>
@@ -91,10 +91,3 @@ export default function ForgotPasswordScreen() {
     </SafeAreaView>
   );
 }
-
-const inputStyle = {
-  backgroundColor: LK.ivory, borderRadius: 16,
-  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso,
-  shadowColor: LK.espresso, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-};
-const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.danger, marginTop: 5 };

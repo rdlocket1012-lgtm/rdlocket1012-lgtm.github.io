@@ -6,10 +6,12 @@ import {
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { NewTag } from '@/components/ui/NewTag';
 import { useCoupons } from '@/hooks/useCoupons';
@@ -28,6 +30,11 @@ const COLORS: Record<string, string> = {
   gold: LK.marigold, mint: LK.success, sky: LK.sky, amber: LK.warning,
 };
 const couponColor = (k: string) => COLORS[k] ?? LK.blush;
+
+// First-6-only entrance stagger (§10.3) — matches the timeline/letters card feel.
+// Honours Reduce Motion via ReduceMotion.System.
+const stagger = (i: number) =>
+  i < 6 ? FadeInUp.duration(300).delay(i * 40).reduceMotion(ReduceMotion.System) : undefined;
 
 const TEMPLATES = [
   { title: 'One home-cooked meal',         description: 'Your favourite, made with love.',    icon: 'fork',    color: 'coral' },
@@ -209,12 +216,13 @@ export default function CouponsScreen() {
         title="Love Coupons"
         onBack={() => router.back()}
         right={
-          <TouchableOpacity
+          <ScalePressable
             onPress={openCreate}
+            accessibilityLabel="Gift a coupon"
             style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
           >
             <Icon name="plus" size={22} color="#fff" />
-          </TouchableOpacity>
+          </ScalePressable>
         }
       />
 
@@ -291,13 +299,15 @@ export default function CouponsScreen() {
                 <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, textAlign: 'center', maxWidth: 260, lineHeight: 21 }}>
                   Create a little favour for your partner — a meal, a back rub, control of the remote.
                 </Text>
-                <TouchableOpacity
+                <ScalePressable
+                  scaleTo={0.97}
                   onPress={openCreate}
+                  accessibilityLabel="Create a coupon"
                   style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 6, flexDirection: 'row', gap: 8, alignItems: 'center', ...theme.shadow.sm }}
                 >
                   <Icon name="plus" size={18} color="#fff" />
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Create a coupon</Text>
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
             ) : (
               <View style={{ backgroundColor: tint(activeTab === 'mine' ? LK.blush : LK.sky, 0.5), borderRadius: 18, padding: 20, alignItems: 'center', gap: 8 }}>
@@ -308,19 +318,20 @@ export default function CouponsScreen() {
               </View>
             )
           ) : (
-            tabList.map((c) => (
-              <CouponCard
-                key={c.id}
-                c={c}
-                mode={tabMode}
-                isNew={isNew(c)}
-                partnerName={partnerName}
-                onRequest={() => confirmRequest(c)}
-                onCancelRequest={() => handleCancelRequest(c)}
-                onApprove={() => confirmApprove(c)}
-                onDecline={() => confirmDecline(c)}
-                onDelete={() => deleteCoupon(c.id)}
-              />
+            tabList.map((c, i) => (
+              <Animated.View key={c.id} entering={stagger(i)}>
+                <CouponCard
+                  c={c}
+                  mode={tabMode}
+                  isNew={isNew(c)}
+                  partnerName={partnerName}
+                  onRequest={() => confirmRequest(c)}
+                  onCancelRequest={() => handleCancelRequest(c)}
+                  onApprove={() => confirmApprove(c)}
+                  onDecline={() => confirmDecline(c)}
+                  onDelete={() => deleteCoupon(c.id)}
+                />
+              </Animated.View>
             ))
           )}
 
@@ -573,14 +584,15 @@ function CouponCard({
 
         {/* Action buttons */}
         {mode === 'recipient' && !isPending && onRequest && (
-          <TouchableOpacity
+          <ScalePressable
+            scaleTo={0.97}
             onPress={onRequest}
-            activeOpacity={0.85}
+            accessibilityLabel="Redeem this coupon"
             style={{ marginTop: 12, backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, ...theme.shadow.sm }}
           >
             <Icon name="gift" size={16} color="#fff" />
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14, letterSpacing: 0.4, color: '#fff' }}>Redeem this coupon</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         )}
         {mode === 'recipient' && isPending && onCancelRequest && (
           <TouchableOpacity

@@ -52,11 +52,11 @@ export default function WelcomeScreen() {
         paddingHorizontal: theme.layout.screenX,
       }}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Animated.View entering={FadeInDown.delay(60).springify().damping(18).reduceMotion(ReduceMotion.Never)}>
+          <Animated.View entering={FadeInDown.delay(60).springify().damping(18).reduceMotion(ReduceMotion.System)}>
             <HeartbeatOrb />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(190).springify().damping(18).reduceMotion(ReduceMotion.Never)} style={{ alignItems: 'center' }}>
+          <Animated.View entering={FadeInDown.delay(190).springify().damping(18).reduceMotion(ReduceMotion.System)} style={{ alignItems: 'center' }}>
             <Text style={{
               fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 54,
               color: LK.espresso, letterSpacing: -2, marginTop: 20,
@@ -75,7 +75,7 @@ export default function WelcomeScreen() {
           </Animated.View>
         </View>
 
-        <Animated.View entering={FadeInDown.delay(330).springify().damping(18).reduceMotion(ReduceMotion.Never)}>
+        <Animated.View entering={FadeInDown.delay(330).springify().damping(18).reduceMotion(ReduceMotion.System)}>
           <PrimaryCta label="Begin your story" onPress={() => router.push('/(auth)/sign-up')} />
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
             <PressableScale haptic="soft" onPress={() => router.push('/(auth)/sign-in')} style={{ padding: 12 }}>

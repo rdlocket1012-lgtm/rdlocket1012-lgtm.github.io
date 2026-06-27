@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
   Alert,
@@ -21,6 +20,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import MascotAnimation from '@/components/ui/mascot-animation';
 import { DrawCanvas, type Stroke } from '@/components/draw/DrawCanvas';
 import { DrawToolbar } from '@/components/draw/DrawToolbar';
@@ -463,7 +463,8 @@ export default function DrawAndGuessScreen() {
             <Text style={{ fontFamily: theme.fonts.hand, fontSize: 15, color: LK.faded, textAlign: 'center' }}>
               we’ve sent them a nudge to hop in
             </Text>
-            <TouchableOpacity
+            <ScalePressable
+              scaleTo={0.97}
               onPress={inviteAgain}
               disabled={justInvited}
               style={{
@@ -482,12 +483,13 @@ export default function DrawAndGuessScreen() {
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: justInvited ? LK.sepia : '#fff' }}>
                 {justInvited ? 'Invite sent' : `Invite ${partnerName}`}
               </Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         )}
 
         {coupleId && partnerOnline && (
-          <TouchableOpacity
+          <ScalePressable
+            scaleTo={0.97}
             onPress={startRound}
             style={{
               backgroundColor: LK.coral,
@@ -508,7 +510,7 @@ export default function DrawAndGuessScreen() {
             >
               Start a round
             </Text>
-          </TouchableOpacity>
+          </ScalePressable>
         )}
       </View>
     );
@@ -526,9 +528,11 @@ export default function DrawAndGuessScreen() {
           </Text>
           <View style={{ width: '100%', gap: 12 }}>
             {(['Easy', 'Medium', 'Hard'] as const).map((label, i) => (
-              <TouchableOpacity
+              <ScalePressable
                 key={label}
+                scaleTo={0.98}
                 onPress={() => pickWord(wordOptions[i])}
+                accessibilityLabel={`${label}: ${wordOptions[i]}`}
                 style={{
                   backgroundColor: LK.vellum,
                   borderRadius: 16,
@@ -551,7 +555,7 @@ export default function DrawAndGuessScreen() {
                   </Text>
                 </View>
                 <Icon name="chevR" size={18} color={LK.faded} />
-              </TouchableOpacity>
+              </ScalePressable>
             ))}
           </View>
         </View>
@@ -706,7 +710,7 @@ export default function DrawAndGuessScreen() {
               color: LK.espresso,
             }}
           />
-          <TouchableOpacity
+          <ScalePressable
             onPress={submitGuess}
             style={{
               width: 44,
@@ -719,7 +723,7 @@ export default function DrawAndGuessScreen() {
             accessibilityLabel="Submit guess"
           >
             <Icon name="plane" size={18} color="#fff" />
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
       </KeyboardAvoidingView>
     );
@@ -731,7 +735,7 @@ export default function DrawAndGuessScreen() {
         <ConfettiShower active />
         <MascotAnimation name="quiz-matched" size={140} />
         <Animated.Text
-          entering={ZoomIn.springify().damping(theme.spring.bounce.damping).stiffness(theme.spring.bounce.stiffness).reduceMotion(ReduceMotion.Never)}
+          entering={ZoomIn.springify().damping(theme.spring.bounce.damping).stiffness(theme.spring.bounce.stiffness).reduceMotion(ReduceMotion.System)}
           style={{
             fontFamily: theme.fonts.heading,
             fontWeight: '800',
@@ -753,8 +757,10 @@ export default function DrawAndGuessScreen() {
         >
           you two know each other so well
         </Text>
-        <TouchableOpacity
+        <ScalePressable
+          scaleTo={0.97}
           onPress={goNextRound}
+          accessibilityLabel="Next round"
           style={{
             backgroundColor: LK.espresso,
             borderRadius: 9999,
@@ -766,7 +772,7 @@ export default function DrawAndGuessScreen() {
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.vellum }}>
             Next round
           </Text>
-        </TouchableOpacity>
+        </ScalePressable>
       </View>
     );
   }
@@ -799,8 +805,10 @@ export default function DrawAndGuessScreen() {
         <Text style={{ fontFamily: theme.fonts.hand, fontSize: 17, color: LK.sepia, textAlign: 'center' }}>
           so close — try again!
         </Text>
-        <TouchableOpacity
+        <ScalePressable
+          scaleTo={0.97}
           onPress={goNextRound}
+          accessibilityLabel="Next round"
           style={{
             backgroundColor: LK.espresso,
             borderRadius: 9999,
@@ -811,7 +819,7 @@ export default function DrawAndGuessScreen() {
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.vellum }}>
             Next round
           </Text>
-        </TouchableOpacity>
+        </ScalePressable>
       </View>
     );
   }
@@ -834,7 +842,7 @@ export default function DrawAndGuessScreen() {
             gap: 12,
           }}
         >
-          <TouchableOpacity
+          <ScalePressable
             onPress={quit}
             style={{
               width: 36,
@@ -849,7 +857,7 @@ export default function DrawAndGuessScreen() {
             accessibilityLabel="Leave game"
           >
             <Icon name="x" size={15} color={LK.sepia} />
-          </TouchableOpacity>
+          </ScalePressable>
           <Text
             style={{
               flex: 1,
@@ -881,17 +889,18 @@ export default function DrawAndGuessScreen() {
             gap: 8,
           }}
         >
-          <TouchableOpacity
+          <ScalePressable
             onPress={() => {
               Alert.alert('Leave game?', 'Your partner will see "time up".', [
                 { text: 'Stay', style: 'cancel' },
                 { text: 'Leave', style: 'destructive', onPress: quit },
               ]);
             }}
+            accessibilityLabel="Leave game"
             style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(42,33,26,0.08)', alignItems: 'center', justifyContent: 'center' }}
           >
             <Icon name="x" size={14} color={LK.sepia} />
-          </TouchableOpacity>
+          </ScalePressable>
           <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 13, color: LK.sepia, textAlign: 'center' }}>
             Round {roundNum}
           </Text>

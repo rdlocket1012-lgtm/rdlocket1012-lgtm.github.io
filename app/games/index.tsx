@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { LK, shade, tint, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 
 type Game = {
   key: string;
@@ -29,14 +30,14 @@ export default function GamesScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.layout.screenX, paddingTop: 6, paddingBottom: 6 }}>
-        <TouchableOpacity
+        <ScalePressable
           onPress={() => router.back()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: LK.ivory, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
           accessibilityLabel="Back"
         >
           <Icon name="chevL" size={22} color={LK.espresso} />
-        </TouchableOpacity>
+        </ScalePressable>
         <Text style={{ flex: 1, textAlign: 'center', fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 21, color: LK.espresso }}>Games</Text>
         {/* spacer to balance the back button */}
         <View style={{ width: 42 }} />
@@ -60,12 +61,12 @@ export default function GamesScreen() {
 function GameCard({ game }: { game: Game }) {
   const live = !!game.route;
   return (
-    <TouchableOpacity
-      activeOpacity={live ? 0.9 : 1}
+    <ScalePressable
+      scaleTo={0.97}
       disabled={!live}
       onPress={() => game.route && router.push(game.route as never)}
       accessibilityLabel={game.name}
-      style={{ width: '48%', marginBottom: 14 }}
+      containerStyle={{ width: '48%', marginBottom: 14 }}
     >
       <LinearGradient
         colors={[tint(game.color, 0.12), shade(game.color, 0.18)]}
@@ -101,6 +102,6 @@ function GameCard({ game }: { game: Game }) {
           </Text>
         </View>
       </LinearGradient>
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }

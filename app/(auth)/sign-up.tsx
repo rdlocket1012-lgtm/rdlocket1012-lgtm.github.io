@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,6 +14,7 @@ import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { Canvas, BackOrb, PrimaryCta, T } from '@/components/onboarding/Shell';
 import { PressableScale } from '@/components/onboarding/PressableScale';
+import { AnimatedField } from '@/components/ui/AnimatedField';
 
 const schema = z.object({
   name: z.string().min(1, 'Enter your name'),
@@ -95,12 +96,12 @@ export default function SignUpScreen() {
         >
           <BackOrb />
 
-          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ paddingTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(70).springify().damping(19).reduceMotion(ReduceMotion.System)} style={{ paddingTop: 30 }}>
             <Text style={T.title}>Create your Locket</Text>
             <Text style={T.why}>One account. One private space for the two of you.</Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 30 }}>
+          <Animated.View entering={FadeInDown.delay(170).springify().damping(19).reduceMotion(ReduceMotion.System)} style={{ marginTop: 30 }}>
             <AppleAuthentication.AppleAuthenticationButton
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
@@ -117,7 +118,7 @@ export default function SignUpScreen() {
             </Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(250).springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 18 }}>
+          <Animated.View entering={FadeInDown.delay(250).springify().damping(19).reduceMotion(ReduceMotion.System)} style={{ marginTop: 18 }}>
             {!emailOpen ? (
               <PressableScale haptic="soft" onPress={() => setEmailOpen(true)} style={{ alignItems: 'center', paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: LK.ink70 }}>
@@ -126,32 +127,31 @@ export default function SignUpScreen() {
                 <Icon name="chevD" size={15} color={LK.ink70} />
               </PressableScale>
             ) : (
-              <Animated.View entering={FadeInDown.springify().damping(19).reduceMotion(ReduceMotion.Never)} style={{ gap: 12 }}>
+              <Animated.View entering={FadeInDown.springify().damping(19).reduceMotion(ReduceMotion.System)} style={{ gap: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 2 }}>
                   <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
                   <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70 }}>with email</Text>
                   <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
                 </View>
                 {(['name', 'email', 'password'] as const).map((field) => (
-                  <View key={field}>
-                    <Controller
-                      control={control}
-                      name={field}
-                      render={({ field: { onChange, value } }) => (
-                        <TextInput
-                          style={inputStyle}
-                          placeholder={field === 'name' ? 'Your name' : field === 'email' ? 'Email' : 'Password (8+ characters)'}
-                          placeholderTextColor={LK.ink70}
-                          keyboardType={field === 'email' ? 'email-address' : 'default'}
-                          autoCapitalize={field === 'name' ? 'words' : 'none'}
-                          secureTextEntry={field === 'password'}
-                          value={value}
-                          onChangeText={onChange}
-                        />
-                      )}
-                    />
-                    {errors[field] && <Text style={errorStyle}>{errors[field]?.message}</Text>}
-                  </View>
+                  <Controller
+                    key={field}
+                    control={control}
+                    name={field}
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <AnimatedField
+                        placeholder={field === 'name' ? 'Your name' : field === 'email' ? 'Email' : 'Password (8+ characters)'}
+                        keyboardType={field === 'email' ? 'email-address' : 'default'}
+                        autoCapitalize={field === 'name' ? 'words' : 'none'}
+                        autoComplete={field === 'name' ? 'name' : field === 'email' ? 'email' : 'password-new'}
+                        secureTextEntry={field === 'password'}
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        error={errors[field]?.message}
+                      />
+                    )}
+                  />
                 ))}
                 <PrimaryCta
                   label={loading ? 'Creating account…' : 'Create account'}
@@ -164,7 +164,7 @@ export default function SignUpScreen() {
 
           <View style={{ flex: 1 }} />
 
-          <Animated.View entering={FadeInDown.delay(330).springify().damping(19).reduceMotion(ReduceMotion.Never)}>
+          <Animated.View entering={FadeInDown.delay(330).springify().damping(19).reduceMotion(ReduceMotion.System)}>
             <PressableScale haptic="soft" onPress={() => router.push('/(auth)/sign-in')} style={{ alignItems: 'center', paddingVertical: 12 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70 }}>
                 Already have an account?{' '}
@@ -177,10 +177,3 @@ export default function SignUpScreen() {
     </Canvas>
   );
 }
-
-const inputStyle = {
-  backgroundColor: LK.ivory, borderRadius: 16,
-  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso,
-  shadowColor: LK.espresso, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-} as const;
-const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.danger, marginTop: 5 } as const;

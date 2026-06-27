@@ -92,7 +92,7 @@ export default function AnniversaryScreen() {
         </View>
 
         {/* Inline micro-reveal — the answer rewards you on the same screen */}
-        <Animated.View entering={FadeIn.delay(250).reduceMotion(ReduceMotion.Never)} style={{ alignItems: 'center', marginTop: 26, minHeight: 64 }}>
+        <Animated.View entering={FadeIn.delay(250).reduceMotion(ReduceMotion.System)} style={{ alignItems: 'center', marginTop: 26, minHeight: 64 }}>
           {!isFuture ? (
             <>
               <CountUp

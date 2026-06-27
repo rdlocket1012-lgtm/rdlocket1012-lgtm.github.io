@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useConnectionCalendar } from '@/hooks/useConnectionCalendar';
 import { useLetters } from '@/hooks/useLetters';
@@ -70,7 +71,7 @@ export default function NotificationsScreen() {
     color: LK.gold,
     title: 'New letter from your partner',
     subtitle: l.sent_at ? relativePast(l.sent_at) : 'Recently',
-    onPress: () => router.push(`/letter/${l.id}`),
+    onPress: () => router.push(`/letters/${l.id}`),
   }));
 
   const isEmpty = comingUp.length === 0 && recent.length === 0;
@@ -124,9 +125,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function FeedRow({ item }: { item: Feed }) {
   return (
-    <TouchableOpacity
+    <ScalePressable
+      scaleTo={0.98}
       onPress={item.onPress}
-      activeOpacity={0.85}
+      accessibilityLabel={item.title}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: LK.ivory, borderRadius: theme.radii.sm, padding: 13, ...theme.shadow.sm }}
     >
       <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: tint(item.color, 0.6), alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -137,6 +139,6 @@ function FeedRow({ item }: { item: Feed }) {
         <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.sepia, marginTop: 2 }}>{item.subtitle}</Text>
       </View>
       <Icon name="chevR" size={18} color={LK.ink70} />
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }

@@ -71,7 +71,7 @@ export default function ConnectScreen() {
       </View>
 
       {!!reward && (
-        <Animated.View key={selected} entering={FadeInDown.springify().damping(18).reduceMotion(ReduceMotion.Never)} style={{ marginTop: 20 }}>
+        <Animated.View key={selected} entering={FadeInDown.springify().damping(18).reduceMotion(ReduceMotion.System)} style={{ marginTop: 20 }}>
           <Text style={{
             fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 16.5,
             color: shade(LK.marigold, 0.4), textAlign: 'center', lineHeight: 24,

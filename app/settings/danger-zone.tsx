@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TextInput, SafeAreaView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { useAuth } from '@/hooks/useAuth';
 
 type Step = 'confirm' | 'type' | 'done';
@@ -60,18 +61,22 @@ export default function DangerZoneScreen() {
               Your partner's account will remain unaffected.
             </Text>
             <View style={{ flex: 1 }} />
-            <TouchableOpacity
+            <ScalePressable
+              scaleTo={0.97}
               onPress={() => setStep('type')}
+              accessibilityLabel="Continue"
               style={{ backgroundColor: LK.danger, borderRadius: 9999, padding: 16, alignItems: 'center', marginBottom: 12 }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Continue</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </ScalePressable>
+            <ScalePressable
+              scaleTo={0.97}
               onPress={() => router.back()}
+              accessibilityLabel="Cancel"
               style={{ backgroundColor: 'rgba(42,33,26,0.08)', borderRadius: 9999, padding: 16, alignItems: 'center', marginBottom: 20 }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: LK.espresso }}>Cancel</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </>
         )}
 
@@ -93,21 +98,25 @@ export default function DangerZoneScreen() {
               style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 20, color: LK.espresso, textAlign: 'center', letterSpacing: 4, ...theme.shadow.sm }}
             />
             <View style={{ flex: 1 }} />
-            <TouchableOpacity
+            <ScalePressable
+              scaleTo={0.97}
               onPress={handleFinalDelete}
               disabled={typed !== 'DELETE'}
+              accessibilityLabel="Delete my account"
               style={{ backgroundColor: typed === 'DELETE' ? LK.danger : 'rgba(42,33,26,0.15)', borderRadius: 9999, padding: 16, alignItems: 'center', marginBottom: 12 }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: typed === 'DELETE' ? '#fff' : LK.ink70 }}>
                 Delete my account
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </ScalePressable>
+            <ScalePressable
+              scaleTo={0.97}
               onPress={() => { setStep('confirm'); setTyped(''); }}
+              accessibilityLabel="Go back"
               style={{ backgroundColor: 'rgba(42,33,26,0.08)', borderRadius: 9999, padding: 16, alignItems: 'center', marginBottom: 20 }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: LK.espresso }}>Go back</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </>
         )}
       </View>

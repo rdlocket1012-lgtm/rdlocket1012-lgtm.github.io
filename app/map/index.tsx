@@ -19,8 +19,10 @@ import { router } from 'expo-router';
 import { IconChip } from '@/components/ui/icon-chip';
 import { Chip } from '@/components/ui/chip';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { AddPinModal } from '@/components/map/AddPinModal';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
 import type { MapPin } from '@/stores/map.store';
@@ -208,7 +210,7 @@ export default function MapScreen() {
             {loading ? (
               <View style={{ paddingTop: 20, gap: 10 }}>
                 {[1, 2, 3].map((i) => (
-                  <View key={i} style={{ height: 74, backgroundColor: LK.ivory, borderRadius: theme.radii.sm, opacity: 1 - i * 0.15, boxShadow: '0 2px 8px rgba(42,33,26,0.07)' } as any} />
+                  <Skeleton key={i} height={74} radius={theme.radii.sm} />
                 ))}
               </View>
             ) : pins.length === 0 ? (
@@ -230,10 +232,11 @@ export default function MapScreen() {
             ) : visiblePins.map((pin) => {
               const cc = catColor(pin.category);
               return (
-                <TouchableOpacity
+                <ScalePressable
                   key={pin.id}
+                  scaleTo={0.98}
                   onPress={() => setSelected(pin)}
-                  activeOpacity={0.85}
+                  accessibilityLabel={pin.name}
                   style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 13, ...theme.shadow.sm }}
                 >
                   <IconChip color={cc.base} size={46}>
@@ -249,7 +252,7 @@ export default function MapScreen() {
                     </Text>
                   </View>
                   <Icon name="chevR" size={18} color={LK.ink70} />
-                </TouchableOpacity>
+                </ScalePressable>
               );
             })}
           </ScrollView>
@@ -377,12 +380,13 @@ function PinDetailSheet({ pin, onClose, onEdit, catLabel }: {
                 {pin.place_name ?? pin.country ?? ''}
               </Text>
             </View>
-            <TouchableOpacity
+            <ScalePressable
               onPress={onEdit}
+              accessibilityLabel="Edit pin"
               style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
             >
               <Icon name="pen" size={18} color={LK.espresso} />
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
@@ -493,7 +497,7 @@ function MapControls({ view, setView, onAdd, atCap = false, floating = false }: 
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       <View style={{ flexDirection: 'row', backgroundColor: toggleBg, borderRadius: 9999, padding: 4, ...(floating ? theme.shadow.sm : {}) }}>
         {(['map', 'list'] as const).map((v) => (
-          <TouchableOpacity
+          <ScalePressable
             key={v}
             onPress={() => setView(v)}
             style={{
@@ -504,10 +508,10 @@ function MapControls({ view, setView, onAdd, atCap = false, floating = false }: 
             accessibilityLabel={`${v} view`}
           >
             <Icon name={v === 'map' ? 'mapPin' : 'list'} size={19} color={view === v ? '#fff' : LK.ink70} />
-          </TouchableOpacity>
+          </ScalePressable>
         ))}
       </View>
-      <TouchableOpacity
+      <ScalePressable
         onPress={onAdd}
         accessibilityLabel="Add pin"
         style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: LK.coral, alignItems: 'center', justifyContent: 'center', ...theme.shadow.card }}
@@ -518,7 +522,7 @@ function MapControls({ view, setView, onAdd, atCap = false, floating = false }: 
             <Icon name="lock" size={10} color="#fff" strokeWidth={2.5} />
           </View>
         )}
-      </TouchableOpacity>
+      </ScalePressable>
     </View>
   );
 }

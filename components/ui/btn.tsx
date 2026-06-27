@@ -1,6 +1,7 @@
 import React from 'react';
-import { TouchableOpacity, Text, type ViewStyle, type TextStyle } from 'react-native';
+import { Text, type ViewStyle, type TextStyle } from 'react-native';
 import { LK, theme } from '@/constants/theme';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 
 type BtnKind = 'primary' | 'accent' | 'soft' | 'ghost' | 'outline';
 
@@ -33,10 +34,11 @@ export function Btn({ children, onPress, kind = 'primary', color, full, style, t
   const bg = color && kind === 'accent' ? color : (bgMap[kind] ?? bgMap.primary);
   const fg = fgMap[kind] ?? fgMap.primary;
   return (
-    <TouchableOpacity
+    <ScalePressable
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.8}
+      haptic={!disabled}
+      containerStyle={full ? { width: '100%' } : undefined}
       style={[{
         backgroundColor: bg,
         borderRadius: 9999,
@@ -52,6 +54,6 @@ export function Btn({ children, onPress, kind = 'primary', color, full, style, t
       {typeof children === 'string'
         ? <Text style={[{ color: fg, fontWeight: '700', fontSize: 16, fontFamily: theme.fonts.body, letterSpacing: 0.1 }, textStyle]}>{children}</Text>
         : children}
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }

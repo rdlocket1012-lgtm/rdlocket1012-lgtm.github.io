@@ -336,6 +336,7 @@ Same card spec as 9.1 (§9.6b / §13.16b):
 - Features (Fun hub): Games (This or That) · Draw · Bucket List
 - With three features, Bucket List spans a full-width wide card under the two square cards
 - Draw, Games, and Bucket List move here **out** of the old More tab
+- **✅ REBUILT 2026-06-26 (premium pass, Phase 20):** featured This-or-That hero (`lo-kit-idle` mascot + "Surprise me" random-deck launch) → "Pick a deck" shelf (icon-in-tinted-zone, emoji removed) → Creative (LIVE badge / sticker) → Bucket list (overall ring + "X to go" + add-a-dream). Real-data-only: dropped always-0 deck rings; no streak chip (2 realtime channels + dup of Home, see realtime-channel-overload). Rebuild-gated w/ keyboard-controller. Detail in `premium-feel-audit` memory Batch 7.
 
 ### 9.2 Settings (`app/settings/index.tsx`)
 - `headerLargeTitle: true`, Parchment background
@@ -575,6 +576,307 @@ eas update --branch production                    # OTA for JS-only changes
 
 ---
 
+## Phase 18 — Premium Feel Polish
+
+*Audit-derived (2026-06-24). Baseline score 69/100 "Premium". The §10 motion **intent** was already correct; this phase closes the gap between spec and shipped code by baking each premium detail into one canonical primitive instead of per-call-site. Premium is the compounding of all five — ship them together.*
+
+[spec: `docs/DESIGN.md §10.12` (standards), `§8.3` (buttons), `§9.11` (keyboard), `§10.4`, `§10.6`]
+[skill: `react-native-best-practices/` + `building-native-ui/references/animations.md`]
+
+> Ordered by leverage. 18.1 is the single highest-leverage fix (two files → ~500 call-sites). Do it first.
+
+### 18.1 Press states — route base components through `ScalePressable` ⭐
+- [file: `components/ui/btn.tsx`] — wrap the `TouchableOpacity` in / replace it with `ScalePressable` so every `Btn` springs `1.0 → 0.96 → 1.0` on the UI thread. Keep the `disabled`/`kind`/`full` API unchanged.
+- [file: `components/ui/round-icon.tsx`] — same: render through `ScalePressable` (press scale per §8.3 icon-button row).
+- Verify the FAB (`fab-actions-overlay.tsx`) + tab bar already use spring press; align to `spring.bounce` for the FAB (§10.4).
+- Deprecate [file: `hooks/usePressScale.ts`] (legacy RN `Animated`) — migrate any users to `ScalePressable`, add a deprecation comment, do not delete yet (existing imports).
+- Verify with: `grep -rn "TouchableOpacity" components/ui/btn.tsx components/ui/round-icon.tsx` → should be gone.
+
+### 18.2 Haptics — bake `tap()` into the press primitive
+- [file: `components/ui/scale-pressable.tsx`] — fire `tap()` (from `lib/haptics.ts`) on `onPressIn` by default; add a `haptic?: boolean` prop (default `true`) to opt out for noisy/idle rows.
+- Audit existing explicit haptic calls: keep `success()` on send/save/join, `warn()` on destructive asks, `tick()` on wheel/stepper detents. Remove any haptics on plain navigation or scroll (§10.12 rule 3).
+- No new dependency — `expo-haptics` stays the engine (do NOT add `react-native-pulsar`).
+
+### 18.3 Loading — reusable shimmer skeleton
+- Create [file: `components/ui/Skeleton.tsx`] — Reanimated highlight sweep (`interpolate` + `withRepeat`, `timing.shimmer` 1400ms linear loop), `<Skeleton width height radius />`; collapses to static fill when `useReducedMotion()` is true.
+- Route existing inline skeletons through it: `app/notes/index.tsx` (`SkeletonCard`), letters, timeline, and any screen currently using a static grey placeholder or `ActivityIndicator`.
+- Replace remaining bare `ActivityIndicator` spinners (18 files) with a `Skeleton` row or the `lo-kit-idle` mascot placeholder (§10.6). Empty states are already correct — leave them.
+
+### 18.4 Keyboard — adopt `react-native-keyboard-controller`
+- **Native dep → requires an EAS dev-client rebuild.** Flag before installing; add to Phase 17.6 build batch.
+- `npx expo install react-native-keyboard-controller`; add `<KeyboardProvider>` in `app/_layout.tsx`.
+- Replace RN `KeyboardAvoidingView` (≈10 files) with the library's version so the Send/Save bar tracks the keyboard animation: `components/letter/ComposeLetterModal.tsx`, `app/notes/compose.tsx`, `components/milestone/AddMilestoneModal.tsx`, `components/map/AddPinModal.tsx`, auth screens, `app/profile/edit.tsx`, etc.
+- Compose surfaces (letter, note): add drag-to-dismiss — a `Gesture.Pan` that `blur()`s the input on a downward swipe past threshold + `soft()` haptic (pattern in §10.12 rule 4).
+
+### 18.5 Subtle-animation cleanup + adopt `react-native-ease`
+- **Adopt `react-native-ease` for declarative animations** (entrances + color/border/shadow transitions). New native dep → **batch the EAS dev-client rebuild with 18.4**. Compatible: New Arch on (SDK 54 default + `reactCompiler: true`), RN 0.81.5 ≥ 0.76. Two-tool boundary is locked in §10.12 rule 2 — ease for declarative state changes, Reanimated for press/gesture/particles/continuous.
+  - `npx expo install react-native-ease` (verify Expo config-plugin / autolink picks it up).
+  - Migration skill available: `npx skills add appandflow/react-native-ease` → run `/react-native-ease-refactor` to classify & convert candidates (review before applying — keep press/gesture/particle code on Reanimated).
+- ✅ STARTED 2026-06-24: `react-native-ease@^0.7.3` added to `package.json`; [file: `components/ui/FadeSlideIn.tsx`] re-implemented on `<EaseView>` (same props API → all ~32 call-sites keep working, now zero JS-thread). **Run `npx expo install react-native-ease` + EAS dev-client rebuild before the branch will bundle.**
+- Next: migrate the ~32 `FadeSlideIn` call-sites to use `<EaseView>` directly where worthwhile, then delete the wrapper. Spring tokens map 1:1 (`damping`/`stiffness`/`mass`).
+- Candidate conversions to `<EaseView>`: card/list entrances, quiz-pill `backgroundColor` fill (§10.4), selected-state border on cards, animated shadow on press-lift. Keep `ScalePressable` press scale on Reanimated (re-render-free).
+- Fix `.reduceMotion(ReduceMotion.Never)` usages (e.g. `app/notes/index.tsx:90`) → `ReduceMotion.System` so Reduce Motion is honoured (§10.11). For `<EaseView>`, gate behind `useReducedMotion()` → swap to `transition={{ type: 'none' }}`.
+- Spot-check entrance durations stay in the 150–300ms band; remove any decorative-only animation.
+
+### 18.6 Verify & re-score
+- Re-run the §10.12 audit prompt; target ≥ 85 ("World-class"). Confirm: no flat base buttons, no static-only skeletons, keyboard tracks on all compose screens, haptics reserved for decisions.
+- Device check on iPhone SE (375px) + an Android device (press feel + keyboard parity are the cross-platform risk areas).
+
+---
+
+## Phase 19 — Screen Transitions (shared elements)
+
+*Adopt `react-native-screen-transitions` (v3.8.0, Bounds API) for card → detail shared-element transitions. The §10.13 standard. Opt in per stack — default nav stays on native `<Stack>`.*
+
+[spec: `docs/DESIGN.md §10.13`, `§10.3`, `§13.17` (letters), `§13.18` (milestone), `§13.31` (draw gallery)]
+[skill: `building-native-ui/references/` (route structure)]
+
+> **⚠️ Gated on a successful dev build.** This rewires Expo Router's navigator for the opted-in stacks. Foundation is staged; wire screens only after the first dev-client build confirms the wrapper mounts. **SDK ≤ 55 only** — re-verify before any SDK 56 upgrade.
+
+### 19.1 Install + foundation — ✅ STAGED 2026-06-24
+- `react-native-screen-transitions@^3.8.0` added to `package.json`. All `@react-navigation/*` peers already satisfied transitively via expo-router (native 7.2.5 · native-stack 7.3.16 · elements 2.9.19 · screens 4.16) — nothing else to add.
+- `components/navigation/transition-stack.tsx` created — `TransitionStack` = `createBlankStackNavigator()` + `withLayoutContext()`.
+- **Run `npx expo install react-native-screen-transitions` + EAS dev-client rebuild** (batch with Phase 18.4 keyboard-controller + 18.5 ease — one rebuild covers all three native deps).
+- Verify `<GestureHandlerRootView>` wraps the app root (already present for gesture-handler) and Reanimated babel plugin is configured (it is — existing dep).
+
+### 19.2 Pilot: Letter card → Letter detail
+**Step 1 — foundation (✅ STAGED 2026-06-24, awaiting first dev build):**
+- `git mv app/letter/[id].tsx app/letters/[id].tsx`; new `app/letters/_layout.tsx` = `<TransitionStack>` with `index` + `[id]` (`options={{ ...Transition.Presets.ZoomIn() }}`). Root `app/_layout.tsx` now lists `<Stack.Screen name="letters" />` (was `letters/index` + a `letter/[id]` modal). Both `/letter/${id}` pushes (`app/letters/index.tsx`, `app/notifications/index.tsx`) → `/letters/${id}`.
+- Uses the **built-in `ZoomIn` preset** (no boundaries) on purpose: proves the blank stack mounts/routes in our app — the one thing that genuinely needs a device — with zero boundary/scroll-conflict surface. Graceful degradation: letters still open as a normal screen if the transition is off.
+- **First build check:** open Letters → tap a letter → it should zoom in (not slide-up modal); back button returns. If the screen white-screens or won't mount, the blank-stack/`withLayoutContext` wiring is the culprit (isolated to the letters group; root nav unaffected).
+
+**Step 2 — true shared element (after Step 1 verified on device):**
+- Source [`app/letters/index.tsx`]: wrap each letter card in `Transition.Boundary.Trigger group="letter" id={l.id}` (replaces the card's `ScalePressable`, or nest via `Boundary.Target`).
+- Detail [`app/letters/[id].tsx`]: wrap the letter surface in `Transition.Boundary.View group="letter" id={id}`.
+- Swap the layout preset `ZoomIn` → `Transition.Presets.SharedAppleMusic({ sharedBoundTag: 'letter' })` (or `SharedXImage`). Gate behind `useReducedMotion()` → ZoomIn/fade when on.
+- **Verify on device**, then roll the identical pattern to milestones + draw gallery.
+
+### 19.3 Roll out to remaining targets (after 19.2 verified)
+- Milestone card → Milestone detail (§13.18): same pattern, share the category illustration + card; `id={`milestone-${id}`}`.
+- Draw gallery thumbnail → Draw viewer (§13.31): `bounds({ id }).navigation.reveal()` (consider `navigationMaskEnabled` → adds `@react-native-masked-view/masked-view`).
+- Leave map pins / photo viewer on the bottom-sheet / native presentation (§10.13).
+
+### 19.4 Reconcile + QA
+- §10.3 already updated to point at §10.13. Confirm no stack uses both native `<Stack>` and `TransitionStack` for the same route group.
+- Re-check the §17.1 four-states + reduced-motion on every converted screen.
+
+---
+
+## Phase 20 — Per-Flow Premium Motion
+
+*The choreography pass. Phase 18 gave us the primitives (press/haptic/skeleton/keyboard), Phase 19 gave us shared-element foundations. This phase walks every user flow end-to-end and specifies the complete motion design — entry/exit transitions, in-screen animation, haptics, and reduced-motion fallback — so each flow feels authored, not assembled. Depends on 18 + 19. Deps installed (ease + screen-transitions ✅).*
+
+> **Implementation status (2026-06-24, pre-build — all unverified until the EAS dev build):**
+> - ✅ **20.0 foundation:** `use-reduced-motion` hook, `Skeleton` shimmer, `ScalePressable` (+default `tap()` haptic, `containerStyle`), `Btn`/`RoundIcon` routed through it, global `ReducedMotionConfig`→`System`, **all `ReduceMotion.Never`→`System` app-wide** (12 files).
+> - ✅ **20.2 auth:** `AnimatedField` (focus→Coral / error→Danger border via EaseView) on sign-in, sign-up, reset-password, forgot-password; reduce-motion fixed. (redeem-code keeps its bespoke large letter-spaced code input by design.)
+> - ✅ **20.3 onboarding:** already premium (springing ProgressBar, staggered Shell, PressableScale); only reduce-motion corrected. `PressableScale` confirmed Reanimated — kept.
+> - ✅ **20.5 home/tab/FAB:** already premium (FAB overlay staggers + reduced-motion branches, animated tab bar); reduce-motion corrected. No new work needed.
+> - ✅ **20.7 letters foundation VERIFIED ON DEVICE (2026-06-24):** TransitionStack mounts, routes work, ZoomIn transition + horizontal swipe-back (detail→list) all confirmed on the dev build. Two bugs found+fixed on-device: (a) `createBlankStackNavigator` must import from the `/blank-stack` subpath, not root; (b) nested-stack double-pop — disable outer native gesture on the root `letters` screen + enable inner `gestureDirection:'horizontal'`. Remaining for letters = Step 2 (true `SharedAppleMusic` morph via Boundary components).
+> - 🟡 **20.7 letters (detail):** shimmer `Skeleton` + staggered `EaseView` "unfold" done. **Shared-element FOUNDATION (2026-06-24):** `letter/[id].tsx` → `letters/[id].tsx` (git mv), new `app/letters/_layout.tsx` (`TransitionStack` + `ZoomIn` preset on detail), root stack now references the `letters` group, both `/letter/${id}` push sites → `/letters/${id}`. **Foundation-first ZoomIn pilot** — proves the blank stack mounts/routes with zero boundary complexity; letters still open if anything's off. **STEP 2 (after first dev build confirms mount): add `Boundary.Trigger/View` (`group="letter" id={l.id}`) + swap `ZoomIn`→`Presets.SharedAppleMusic({ sharedBoundTag: 'letter' })` for the true morph, then roll to milestones + draw.**
+> - ✅ **20.21 cross-cutting (skeletons):** shimmer `Skeleton` rolled into letters, notes, draw gallery, map pin list, streak, quiz history (replaced static blocks + bare `ActivityIndicator` loaders). bucket-list keeps its inline geocoding spinner (appropriate). Remaining: error-state fades, offline banner, pull-to-refresh mascot.
+> - ✅ **20.6 nudge:** already best-in-class — `SendMomentOverlay` (0ms success haptic, mascot scale-in, copy rise, reduce-motion, tap-to-skip) + `NudgesLayer` receive (mascot + particle bursts). Only reduce-motion correction needed (applied). No new work.
+> - ✅ **20.19 paywall:** animated plan toggle (`EaseView` background/border ease), `ScalePressable` press on plan rows + Start Premium + success CTA, `success()` haptic on unlock, `spring.bounce` icon pop on the success screen. IAP/RevenueCat logic + Apple subscription disclosure untouched.
+> - ✅ **20.9 timeline/milestones — milestone TRUE morph DONE & DEVICE-VERIFIED (2026-06-26):** user confirmed working on the 0bdee25d dev client over Metro (no rebuild — all JS). Root swap + morph from all 3 sources + notes/compose fullScreenModal + modal routes + nested letters/draw groups all verified. **Architecture decision #1 below was REVISED — the root `<Stack>` WAS swapped to `TransitionNativeStack`** (user greenlit; draw de-risked the primitive). `SharedAppleMusic({sharedBoundTag:'milestone'})` on `milestone/[id]` (reduce-motion → `presentation:'modal'`); `Boundary.View` on the detail; `Boundary.Trigger group="milestone"` on ALL THREE sources (timeline card + home On-this-day hero + home Your-story strip). Calendar tap → graceful backdrop-fade fallback (verified in lib source). `notes/compose` pre-emptively converted `formSheet`→`fullScreenModal`+custom header (would've hit native-stack GOTCHAS 1+3). Timeline cards already stagger (`FadeInUp` first-5). See [[letters-shared-element-step2]] for the full device-verify checklist (incl. new nesting: root TransitionNativeStack now wraps the letters/draw groups).
+> - ✅ **20.13 games / 20.18 notifications / 20.18 settings — press states (2026-06-25):** bare `TouchableOpacity`/`activeOpacity` → `ScalePressable` across `games/index` (back button + game cards, disabled "Soon" cards don't scale/haptic), `notifications/index` (FeedRow), `settings/index` (profile card, invite card, Upgrade, repeated `SRow` — toggle rows stay un-pressable so the Switch owns the tap), `settings/danger-zone` (all 4 CTAs). `tsc` clean.
+> - ✅ **20.16 coupons / 20.17 bucket-list — entrances + press states (2026-06-25):** card lists got the timeline/letters `FadeInUp` first-6 stagger (`reduceMotion(ReduceMotion.System)`); primary entry actions (header create, empty-CTA, "Redeem this coupon", bucket "Add to list") → `ScalePressable`.
+> - ✅ **Press-state cluster 2 (2026-06-26, `tsc` clean):** bare `TouchableOpacity`→`ScalePressable` across `games/this-or-that` (back + deck cards), `games/draw-and-guess` (all 8: invite-again, start-round, 3 word-pick cards, submit-guess, 2 next-round CTAs, 2 quit X's), `profile/edit` (avatar picker + 2 "+" add buttons), `invite` (Join now, Go to Locket, Open your Locket), `map/index` (pin list row, edit-pin, map/list view toggle, add-pin FAB). `quiz/history` had no tappables beyond its `RoundIcon` header — no change. Left as-is by design: text links (profile Cancel/Save/Done, invite "Not now", settings invite-code link), map filter chips + website link + dismiss backdrop, profile/edit chip pickers (strong active-state already). `TouchableOpacity` imports removed where fully replaced.
+> - 🟡 **18.4 keyboard-controller WIRED (2026-06-26, `tsc` clean) — ⛔ REBUILD-GATED:** installed `react-native-keyboard-controller@1.18.5`; `<KeyboardProvider>` added at the root (`app/_layout.tsx`, inside GestureHandlerRootView); the two writing composers swapped RN `KeyboardAvoidingView` → the lib's (`behavior="padding"`, real-time keyboard-frame tracking): `app/notes/compose.tsx` (route) + `components/letter/ComposeLetterModal.tsx` (RN `<Modal>` → re-wrapped in its OWN nested `<KeyboardProvider>`, the documented Modal caveat). **⛔ This adds a NATIVE module → the branch will NO LONGER load on the 0bdee25d dev client; needs a fresh EAS dev build before ANYTHING runs.** The other 14 RN-KAV screens (auth, AddMilestone/AddPin/coupons/bucket modals, profile/edit, draw-and-guess, Shell, calendar, WatchTogether) intentionally stay on RN KAV (still work; migrate incrementally after the rebuild verifies the pattern). Sticky Send/Save bar (`KeyboardStickyView`) NOT added — both composers use top-header actions, not a bottom bar, so plain KAV avoidance is the right fit.
+> - ⏳ Not yet started: 20.8/10–12/14–15/20 (mostly already animated — likely need only reduce-motion checks). **The 2026-06-25 transition/press work + cluster 2 (2026-06-26) are tested/`tsc`-clean, but were verifiable on 0bdee25d over Metro ONLY BEFORE the keyboard-controller wiring above — now a new EAS dev build is required to run/verify the branch at all.**
+
+[spec: `docs/DESIGN.md §10` (all), `§10.12`, `§10.13`]
+
+> **Tooling per layer (locked, §10.12 rule 2 / §10.13):**
+> - **Screen transitions** → `react-native-screen-transitions` (route-level, shared element / custom interpolator)
+> - **Declarative in-screen** (entrances, color/border/shadow, opacity/translate loops) → `react-native-ease` `<EaseView>`
+> - **Interactive / continuous** (press, gesture, particles, count-up, timer, scroll-driven) → Reanimated
+> - **Haptics** → `lib/haptics.ts` · **Mascots** → `<MascotAnimation>` (WebP)
+
+### 20.0 Motion architecture decisions (do first)
+
+1. **Nested `TransitionStack` groups, root stays native.** ⚠️ **SUPERSEDED 2026-06-25 — the root `<Stack>` WAS converted to `TransitionNativeStack`.** This was unavoidable for the milestone morph: its card sources live in tabs (home/timeline), so the trigger must register against a transition-aware root (lib keys pairs off the source-screen key). The swap is a drop-in — non-preset screens keep native chrome/animations — and `tsc` is clean, but it touches every screen's nav and is DEVICE-UNVERIFIED. The original concern still holds for the modals/sheets it now wraps: `notes/compose` was fixed; the rest need the device-verify checklist in [[letters-shared-element-step2]]. The historical reasoning is kept below for context:
+   - Instead isolate each shared-element flow into its own route group with a `TransitionStack` `_layout.tsx`. Restructure required (Phase 19/20.7/20.9/20.14):
+   - `app/letter/[id].tsx` (modal) → `app/letters/[id].tsx` inside a `letters` `TransitionStack` group with `index`.
+   - `app/milestone/[id].tsx` (modal) → milestone detail inside a `timeline`-adjacent group, OR a `milestone` group with the source list.
+   - Draw gallery + viewer → one `draw` group.
+   - Everything else stays on the native root `<Stack>` exactly as today.
+2. **Fix the global reduce-motion override.** `app/_layout.tsx:153` sets `<ReducedMotionConfig mode={ReduceMotion.Never} />` — this force-animates even when the user enabled Reduce Motion (accessibility fail, §10.11). Change to `ReduceMotion.System`, then audit any animation that *relied* on the override and gate it explicitly. This is a prerequisite for honest reduced-motion fallbacks below.
+3. **One reduced-motion helper, used everywhere.** Wire `useReducedMotion()` (§10.11) to a `ui.store` boolean; every flow below reads it. Fallback rule: shared-element → cross-fade/native push; `<EaseView>` → `transition={{ type: 'none' }}`; particles/mascot peaks → toast + haptic.
+4. **Motion QA gate.** Each flow ships only when verified on device (iOS + Android) at 60fps, in both motion modes, on iPhone SE width. No flow is "done" from a simulator screenshot alone.
+
+> Per-flow legend: **UX** = the decision & why · **Transition** = route enter/exit · **In-screen** = ease/Reanimated · **Haptics** · **Reduced-motion** · **Files**.
+
+### 20.1 App launch → auth gate
+- **UX:** the first 2s sets the tone — the locket "opens" into the app; no flash of unstyled Parchment, no spinner.
+- **Transition:** `splash` mascot WebP (2.0s, §10.7) over Parchment held by `expo-splash-screen` until `fontsReady && !loading` (`app/_layout.tsx:142`). On resolve: splash `FadeOut` 200ms → first route `FadeIn` 200ms (cross-fade, never a hard cut).
+- **In-screen:** if auth resolution outlasts the WebP, loop `lo-kit-idle` rather than freeze the last frame.
+- **Haptics:** none (launch is not a decision).
+- **Reduced-motion:** static splash logo, immediate route swap.
+- **Files:** `app/_layout.tsx`, `app/index.tsx`, `lib/post-auth.ts`.
+
+### 20.2 Auth flow (welcome → sign in/up → forgot/reset → redeem)
+- **UX:** calm and reassuring; warmth over efficiency. Welcome is emotional (Shantell line), the rest is fast.
+- **Transition:** keep `(auth)` group `slide_from_right` (`app/(auth)/_layout.tsx`); root already fades into the group. Welcome → Sign Up/In: native slide. Forgot/Reset: `fade` (already set, `_layout.tsx:159-160`) — these are interruptions, not forward progress.
+- **In-screen:** Welcome hero illustration `<EaseView>` fade+scale `0.96→1` (`spring.gentle`); headline + Shantell line + buttons stagger via `<EaseView delay={i*60}>` (≤200ms total). Inputs: focus = border color → Coral via `<EaseView transition={{ border: spring.snappy }}>`; invalid = Reanimated shake `translateX [8,-8,4,0]` (gesture-adjacent, keep on Reanimated).
+- **Haptics:** `tap()` on primary CTA; `warn()` on validation error; `success()` on auth success.
+- **Reduced-motion:** stagger collapses to one 150ms fade; no shake (border flashes Danger instead).
+- **Files:** `app/(auth)/*`, `components/ui/btn.tsx`, `components/ui/DateField.tsx`.
+
+### 20.3 Onboarding flow (name → connection style → anniversary → photo → invite → photo-permission)
+- **UX:** one continuously unfolding story, not a stepper — already fades between steps (`(onboarding)/_layout.tsx`, fade 260ms). Reinforce forward momentum + reduce perceived length.
+- **Transition:** keep group `fade`. Add a slim top progress bar that animates width per step via `<EaseView>` (allowed exception to "never animate width" — it's a 3px progress indicator, not layout) OR a dot row that springs the active dot (`spring.snappy`, Reanimated) — prefer the dot row to stay inside the no-width-anim rule.
+- **In-screen:** each step's hero + fields stagger in (`<EaseView delay={i*60}>`). Anniversary: the day-count reveal uses the Reanimated `CountUp` (`components/onboarding/CountUp.tsx`) — continuous, stays Reanimated. WheelPicker detents: `tick()` haptic (already wired).
+- **Haptics:** `tap()` on Continue; `tick()` on wheel/selection; `success()` at the final step.
+- **Reduced-motion:** instant step swap; CountUp jumps to final number.
+- **Status (2026-06-24):** onboarding is already premium — `Shell` has a springing `ProgressBar`, staggered `FadeInDown` entrances, and `PressableScale` (already a Reanimated press primitive with haptics — NOT deprecated, keep it; do not migrate to `ScalePressable`). Only correctness change applied: forced `ReduceMotion.Never` → `System`.
+- **Files:** `app/(onboarding)/*`, `components/onboarding/*` (Shell ✅, CountUp, WheelPicker, PressableScale ✅).
+
+### 20.4 Partner-connect moment (realtime)
+- **UX:** the single most emotional beat in onboarding — the partner appears. Must feel like a reunion, full-screen, earned.
+- **Transition:** when the Realtime "partner joined" event fires on `invite-partner`, play `<MascotAnimation name="connected" />` (~200px) full-screen over a Vellum wash (`FadeIn` 200ms), warm Shantell line "you're connected" fades in +300ms, then `router.replace('/(tabs)')` after the WebP (3.5s) with a cross-fade.
+- **In-screen:** dual partner avatars slide together + a `RippleBurst` (Reanimated) at the meet point.
+- **Haptics:** `success()` the instant the event lands.
+- **Reduced-motion:** Espresso toast "You're connected 💛" (doodle heart, not emoji) + `success()`, then route.
+- **Files:** `app/(onboarding)/invite-partner.tsx`, `hooks/useNudgeChannel.ts`-style channel, `components/ui/mascot-animation.tsx`, `components/nudges/RippleBurst.tsx`.
+
+### 20.5 Home arrival & tab/FAB system
+- **UX:** home should feel alive on every visit but never busy. The day counter is the hero.
+- **Transition:** tab roots = instant (iOS convention, §10.3); only the pill + icon animate (`spring.snappy`, Reanimated — already in `locket-tab-bar.tsx`).
+- **In-screen (home mount):** day counter `CountUp` (`spring.gentle`, Reanimated, first mount only); zones below stagger via `<EaseView delay={i*60}>` (quiz card → streak → nudge zone), first 5 only. Doodle scatter is static (decorative, `pointerEvents:none`).
+- **FAB quick-actions overlay** (`components/ui/fab-actions-overlay.tsx`): tap FAB → `+` rotates to `✕` (Reanimated `spring.bounce`), Parchment/blur backdrop `FadeIn` 200ms, 4 action cards stagger up via `<EaseView delay={i*40}>` from just above the FAB. Backdrop/✕/pick = reverse, exit 150ms.
+- **Haptics:** `tap()` on FAB open; `tap()` per action; `soft()` on dismiss.
+- **Reduced-motion:** FAB cross-fades (no rotation/stagger); home zones one 150ms fade.
+- **Files:** `app/(tabs)/index.tsx`, `components/ui/locket-tab-bar.tsx`, `components/ui/fab-actions-overlay.tsx`, `components/onboarding/CountUp.tsx`.
+
+### 20.6 Nudge flow (send + receive) — the heartbeat
+- **UX:** sending must feel precious and mutual (§10.5 send peak); receiving must feel like being thought of. This is the app's signature moment — over-invest here.
+- **Send transition:** tap partner avatar (home) → nudge picker (kiss/hug/bite) springs up (`spring.warm`, `<EaseView>` scale+fade) → on pick, `SendMomentOverlay` (full-screen, `components/ui/send-moment-overlay.tsx`): per-type `<MascotAnimation>` (kiss/hug/bite-send, 2.5s), Shantell "on its way to {partner}" +300ms, then auto-dismiss + `router.back()`.
+- **Receive:** push opens app → inline `<MascotAnimation>` (kiss/hug-receive, 120px) at top of home + particle burst (`BiteAvatarFx` / `RippleBurst` / `BiteBurst`, Reanimated). No full-screen overlay on receive (the peak belongs to the sender, §10.5).
+- **Haptics:** `success()` at send tap (0ms, before the overlay); `impactAsync(Medium)` on receive open. Picker open: `tap()`.
+- **Reduced-motion:** send = toast "Sent with love" + `success()`, no overlay; receive = static mascot frame, no particles.
+- **Files:** `components/nudges/NudgesLayer.tsx`, `components/ui/send-moment-overlay.tsx`, `components/home/StatusBubble.tsx`, `hooks/useNudgeChannel.ts`, `components/nudges/*Burst*.tsx`.
+
+### 20.7 Letters flow (list → detail shared element, compose, send peak)
+- **UX:** a letter should feel like a physical object you open — the card *becomes* the letter. This is the flagship shared-element transition.
+- **Transition (Phase 19):** restructure to a `letters` `TransitionStack` group. List card wrapped in `Transition.Boundary.Trigger id={`letter-${id}`}`; detail surface in `Transition.Boundary.View id={`letter-${id}`}`; options `bounds({ id }).navigation.zoom()`, `gestureEnabled` vertical+horizontal swipe-dismiss; close spring faster than open (§10.1). The wax-seal → open-flap is a Reanimated spring on the detail mount (`spring.warm`).
+- **Compose:** `formSheet` (keep), StationeryRules surface, Newsreader input; `react-native-keyboard-controller` so the Send bar tracks the keyboard + drag-to-dismiss (Phase 18.4). Voice letter: record button pulse (Reanimated loop), waveform on playback.
+- **Send:** seals → `SendMomentOverlay` (`letter-send` WebP).
+- **Haptics:** `tap()` open card; `soft()` on sheet drag-dismiss; `success()` on send; `tick()` on record start/stop.
+- **Reduced-motion:** shared-element → native modal + fade; flap opens instantly.
+- **Files:** `app/letters/index.tsx`, `app/letters/[id].tsx` (moved), `app/letters/_layout.tsx` (new), `components/letter/*`.
+
+### 20.8 Love Cards flow (compose → flip → send)
+- **UX:** playful, tactile — a card you flip. Distinct from letters (warmer/sillier).
+- **Transition:** entry from FAB → compose `formSheet`. Received card detail: 3:4 Vellum card, mascot animation plays on open.
+- **In-screen:** front→back **flip** = Reanimated `rotateY 0→90→180` with perspective (continuous/3D, keep on Reanimated, §10.4); sticker picker = horizontal scroll of WebP previews with `ScalePressable` select.
+- **Haptics:** `soft()` on flip; `success()` on send.
+- **Reduced-motion:** flip → cross-fade front/back, no rotation.
+- **Files:** `components/letter/*` (Love Card variant), FAB overlay action.
+
+### 20.9 Timeline & Milestones flow (list → detail shared element, add)
+- **UX:** scrolling the timeline is browsing your story; opening a milestone should zoom into the memory.
+- **Transition (Phase 19):** milestone card → detail as shared element (`bounds({ id }).navigation.zoom()`, share the category illustration + card). Restructure milestone detail out of root modal into the transition group. `milestone/photo-viewer` stays a `fade` modal (already), but the tapped photo gets a `bounds` reveal from its thumbnail.
+- **In-screen:** segment pill (All/Adventures/…) = Reanimated spring pill; year-divider sticky headers; cards stagger first-5 via `<EaseView>`; category accent bar color via `<EaseView>` on filter change. Add-milestone `formSheet`: category grid select springs (`ScalePressable`), WheelPicker date `tick()`.
+- **Haptics:** `tap()` card; `tick()` segment switch + wheel; `success()` on save.
+- **Reduced-motion:** shared-element → fade; pill jumps; photo viewer cross-fades.
+- **Files:** `app/(tabs)/timeline.tsx`, `app/milestone/[id].tsx` (restructure), `app/milestone/photo-viewer.tsx`, `components/milestone/AddMilestoneModal.tsx`.
+
+### 20.10 Map flow (Us hub → map → pin)
+- **UX:** the map is full-bleed and immersive; entering it should feel like stepping into a shared world.
+- **Transition:** Us hub "Map" card → `map/index` native push (map tiles load natively, no shared element — pin too small per §10.13). Filter chips fade/stagger in over the map on mount (`<EaseView>`).
+- **In-screen:** pin drop = Reanimated `spring.bounce` scale-in + `RippleBurst`; pin tap → detail **bottom sheet** (`formSheet`, not shared-element); filter chip select = `<EaseView>` backgroundColor to category color.
+- **Haptics:** `tap()` chip; `success()` on pin save; `soft()` on sheet dismiss.
+- **Reduced-motion:** pin appears instantly; chips fade once.
+- **Files:** `app/map/index.tsx`, `components/map/AddPinModal.tsx`, `app/(tabs)/us.tsx`.
+
+### 20.11 Daily Quiz flow (card → answer → reveal)
+- **UX:** a small daily ritual; the reveal (did we match?) is the payoff.
+- **In-screen:** quiz card enters with `1.5deg` tilt already (§8.1) + `<EaseView>` fade-scale on home mount. Answer pill select: `<EaseView>` backgroundColor no-fill → answer color (180ms). Both-answered reveal: `quiz-matched`/`quiz-correct` WebP + `SparkleBurst` (Reanimated) from pill center; mismatch = gentle shake (Reanimated), never a "wrong" red.
+- **Haptics:** `tap()` select; `success()` on match reveal; `soft()` on mismatch (never `warn` — no guilt).
+- **Reduced-motion:** no sparkle/shake; reveal is a 150ms color settle + static mascot.
+- **Files:** `components/quiz/DailyQuizCard.tsx`, `app/quiz/history.tsx`, `components/nudges/SparkleBurst.tsx`.
+
+### 20.12 Streak & achievements flow
+- **UX:** celebrate consistency, never punish a miss (forgiven state, no "broken").
+- **Transition:** `streak/index` native push; badge unlock = full-screen `BadgeUnlockOverlay`.
+- **In-screen:** flame = Reanimated sine loop (opacity/scale, §10.4); new streak day = `spring.bounce` pop + `ConfettiShower`; milestone (7/30/100) = `streak-milestone` WebP. Achievement badges stagger in via `<EaseView>`.
+- **Haptics:** `success()` on day gain / unlock; milestone = `success()` + heavier pattern.
+- **Reduced-motion:** flame static full-opacity; no confetti; badge fades in.
+- **Files:** `app/streak/index.tsx`, `components/ui/AnimatedFlame.tsx`, `components/ui/ConfettiShower.tsx`, `components/ui/BadgeUnlockOverlay.tsx`, `components/ui/ChallengeCard.tsx`.
+
+### 20.13 Games flow (hub → This or That → Draw & Guess)
+- **UX:** play hub is energetic (Lilac); games are full-attention; live sync must feel instant.
+- **Transition:** Fun hub card → game native push; consider a Lilac-tinted custom interpolator (slide + slight scale) via the lib for game entry to signal "mode change."
+- **In-screen:** This or That timer bar = Reanimated `withTiming` 15s, Lilac→Coral as it runs low; category grid select `ScalePressable`; both-answered reveal `quiz-matched` WebP. Draw & Guess: live stroke render (Reanimated/SVG), correct-guess `SparkleBurst` + `SendMomentOverlay`.
+- **Haptics:** `tap()` select; `tick()` timer last-3s; `success()` on correct/match.
+- **Reduced-motion:** timer bar still animates (it's information, keep); no sparkle.
+- **Files:** `app/games/*`, `components/live/*`, `components/draw/DrawCanvas.tsx`.
+
+### 20.14 Draw widget flow (canvas → send; gallery → viewer shared element)
+- **UX:** drawing for your partner is intimate; the gallery → viewer should zoom the drawing.
+- **Transition (Phase 19):** draw gallery thumbnail → viewer as shared element (`bounds({ id }).navigation.reveal()`; consider `navigationMaskEnabled` + masked-view). `draw/compose` stays `formSheet`.
+- **In-screen:** "Sent" chip already exists (commit `543c91d`) — animate it in via `<EaseView>` scale+fade. Send-to-widget = `SendMomentOverlay` (`moment-send`). Stroke draw stays Reanimated/SVG.
+- **Haptics:** `tick()` on stroke start; `success()` on send.
+- **Reduced-motion:** gallery→viewer fade; chip appears instantly.
+- **Files:** `app/draw/index.tsx`, `app/draw/compose.tsx`, `app/draw/_layout.tsx` (new for group), `stores/draw.store.ts`.
+
+### 20.15 Bucket List flow
+- **UX:** shared dreaming; co-completion is a tiny joint celebration.
+- **In-screen:** checkbox tick = `spring.snappy` (Reanimated) + line-through fade via `<EaseView>` color/opacity; partner co-check = Sage glow pulse (Reanimated loop, brief). Add-item modal slide. Over-limit add → lock badge (Phase 15) → paywall.
+- **Haptics:** `success()` on check; `soft()` on uncheck.
+- **Reduced-motion:** instant check state; no glow.
+- **Files:** `app/bucket-list/index.tsx`, `app/bucket-list/add-item`.
+
+### 20.16 Coupons flow
+- **UX:** a coupon is a promise; redeeming is a deliberate, satisfying act.
+- **In-screen:** redeem = swipe-right gesture (Reanimated/gesture-handler) → perforation "tears" (translate + opacity) → "REDEEMED" stamp drops in `spring.bounce` → `SendMomentOverlay`. Card list stagger via `<EaseView>`.
+- **Haptics:** `tick()` as the swipe crosses threshold; `success()` on redeem.
+- **Reduced-motion:** tap-to-redeem fallback; stamp fades, no tear.
+- **Files:** `app/coupons/index.tsx`.
+
+### 20.17 Calendar flow
+- **UX:** shared dates at a glance; adding a date night should feel warm.
+- **In-screen:** month change = `<EaseView>` cross-fade of the grid (no slide-jank); event dots pop in `spring.snappy` (Reanimated, first paint only); event detail `formSheet`. Date-night events get Blush/Marigold accent fade-in.
+- **Haptics:** `tap()` on day; `success()` on event save.
+- **Reduced-motion:** instant month swap; dots static.
+- **Files:** `app/calendar/index.tsx`.
+
+### 20.18 Private Notes flow
+- **UX:** a private, quiet space; motion should be the calmest in the app.
+- **In-screen:** list cards stagger via `<EaseView>` (already wired in `notes/index.tsx` — swap the `FadeInUp` for `<EaseView>` or keep, but fix `ReduceMotion.Never`→`System`). Compose `formSheet` + keyboard-controller. Skeleton → shimmer (`Skeleton` primitive, Phase 18.3 — already has static `SkeletonCard`).
+- **Haptics:** `tap()` open; `success()` on save; `warn()` on delete confirm.
+- **Reduced-motion:** single fade; static skeleton.
+- **Files:** `app/notes/index.tsx`, `app/notes/compose.tsx`.
+
+### 20.19 Premium / Paywall flow
+- **UX:** the paywall must feel like an invitation, not a wall — warm, celebratory, never aggressive (soft-nudge model). Conversion lives in the *feel*.
+- **Transition:** `PaywallModal` as `formSheet` (grabber). Triggered from a lock badge tap or a soft-nudge entry point.
+- **In-screen:** `celebrating` mascot at top scale-in (`spring.gentle`); headline + Shantell line + plan toggle stagger (`<EaseView delay={i*60}>`); Annual/Monthly toggle = `<EaseView>` backgroundColor + a Reanimated spring pill on the selected plan; "savings %" badge pops `spring.bounce`. Primary CTA breathes subtly (very low-amplitude scale loop — premium tell). On purchase success: `connected`/`celebrating` WebP + `ConfettiShower` + `success()` → dismiss.
+- **Lock badges (Phase 15):** locked item = `<EaseView>` grey wash fade-in + lock icon; tap → paywall sheet springs up.
+- **Haptics:** `tap()` plan toggle; `success()` on purchase; `soft()` on restore.
+- **Reduced-motion:** no breathing CTA, no confetti; static mascot, plain success toast.
+- **Files:** `components/paywall/PaywallModal.tsx`, lock-badge component, `lib/revenuecat.ts`, `stores/auth.store.ts` (`isPremium`).
+
+### 20.20 Settings / Profile flow
+- **UX:** utilitarian but still warm; motion is restrained and fast.
+- **Transition:** `settings/index`, `profile/edit`, `danger-zone`, `quiz/history` stay native modals; `profile/about` native push. Modals keep system slide-up.
+- **In-screen:** grouped setting rows `ScalePressable`; toggles spring (Reanimated); profile avatar edit = `expo-image-picker` → uploaded avatar cross-fades via `<EaseView>`. Danger zone: destructive actions gated, `warn()` haptic, never a one-tap destruct.
+- **Haptics:** `tap()` rows; `tick()` toggles; `warn()` on destructive confirm; `success()` on save.
+- **Reduced-motion:** standard (modals already system-native).
+- **Files:** `app/settings/*`, `app/profile/*`.
+
+### 20.21 Cross-cutting motion (applies to all flows)
+- **Skeleton → content:** every list/detail uses the `Skeleton` shimmer (Phase 18.3); on data arrival, placeholder `FadeOut` 200ms + content `FadeIn` 200ms, 40ms stagger — no layout jump (placeholder = real card dims).
+- **Error state:** inline (never a modal interrupt) — error card `<EaseView>` fade-in + `warn()`; retry CTA `ScalePressable`.
+- **Offline banner** (`components/offline/OfflineBanner.tsx`): slide/fade in from top via `<EaseView>` (translate+opacity), persistent, non-blocking.
+- **Pull-to-refresh:** native spinner replaced by `lo-kit-idle` mascot where feasible.
+- **Reduced-motion matrix:** maintain the §10.11 replacement table; every new animation above must have its row. CI-style check: grep for `withSpring`/`withTiming`/`<EaseView` lacking a reduced-motion path during review.
+- **Files:** `components/offline/OfflineBanner.tsx`, `components/ui/Skeleton.tsx`, `components/ui/error-boundary.tsx`.
+
+### 20.22 Verify & re-score
+- Walk all 21 flows on device (iOS + Android), both motion modes, iPhone SE width. Re-run the §10.12 audit → target ≥ 90 ("World-class"). Confirm: no flat tappables, no static skeletons, shared-element transitions on letters/milestones/draw, keyboard tracking on all compose, haptics reserved for decisions, reduce-motion honoured everywhere (root override fixed).
+
+---
+
 ## Appendix A — Key file map
 
 | What | File |
@@ -585,6 +887,11 @@ eas update --branch production                    # OTA for JS-only changes
 | Free tier limits | `constants/free-limits.ts` |
 | Custom tab bar | `components/ui/locket-tab-bar.tsx` |
 | Send moment overlay | `components/ui/SendMomentOverlay.tsx` |
+| Press primitive (scale + haptic) | `components/ui/scale-pressable.tsx` |
+| Shimmer skeleton primitive | `components/ui/Skeleton.tsx` (create — Phase 18.3) |
+| Haptic vocabulary | `lib/haptics.ts` |
+| Declarative animations (entrances, color/border/shadow) | `react-native-ease` `<EaseView>` (adopt — Phase 18.5) |
+| Shared-element screen transitions | `components/navigation/transition-stack.tsx` + `react-native-screen-transitions` (Phase 19) |
 | Draw canvas | `components/draw/DrawCanvas.tsx` |
 | Widget bridge | `lib/widget-bridge.ts` |
 | Auth routing | `lib/post-auth.ts` |
@@ -625,6 +932,16 @@ eas update --branch production                    # OTA for JS-only changes
 - Never use `elevation` or `shadowColor`/`shadowOffset`/`shadowRadius` — CSS `boxShadow` string only
 - Never use spacing not on the 8-point grid: 4, 8, 12, 16, 24, 32, 48, 64, 80, 96
 - Never animate `width`, `height`, `top`, `left` — `transform` / `opacity` only
+- Never ship a tappable as a bare `TouchableOpacity` with only `activeOpacity` — route through `ScalePressable` (§10.12)
+- Never use the RN `Animated` API (`usePressScale`, `FadeSlideIn`) — both deprecated. Use `react-native-ease` for declarative state changes, Reanimated for press/gesture/particles (two-tool split, §10.12 rule 2)
+- Never show a bare `ActivityIndicator` spinner where a shimmer `Skeleton` or `lo-kit-idle` placeholder fits (§10.6)
+- Never use RN `KeyboardAvoidingView` for new compose screens — `react-native-keyboard-controller` only (§9.11)
+- Never convert all stacks to `TransitionStack` — shared-element transitions are opt-in per stack; default nav stays on native `<Stack>` (§10.13)
+- Never upgrade to Expo SDK 56 without re-verifying `react-native-screen-transitions` — v3.8.0 supports SDK ≤ 55 only (§10.13)
+- Never ship a new animation without a reduced-motion path — every `withSpring`/`withTiming`/`<EaseView>`/shared-element needs a §10.11 fallback row (Phase 20.0/20.21)
+- Never convert the root `<Stack>` to the transition lib — shared-element flows are isolated nested `TransitionStack` groups (Phase 20.0)
+- Never leave `<ReducedMotionConfig mode={ReduceMotion.Never} />` in `app/_layout.tsx` — use `ReduceMotion.System` (Phase 20.0)
+- Never fire a haptic on navigation or scroll — haptics confirm state changes and decisions only (§10.12)
 - Never skip reduced-motion check before spring/Lottie/particle code
 - Never use Shantell Sans as body copy — ONE warm accent line max
 - Never use Newsreader outside Letters and Private Notes

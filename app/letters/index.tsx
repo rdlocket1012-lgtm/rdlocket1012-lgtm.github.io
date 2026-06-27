@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, FlatList, useWindowDimensions } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import Transition from 'react-native-screen-transitions';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { useLetters } from '@/hooks/useLetters';
 import { useCouple } from '@/hooks/useCouple';
@@ -13,6 +14,7 @@ import { FREE_LIMITS } from '@/constants/free-limits';
 import { RoundIcon } from '@/components/ui/round-icon';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ComposeLetterModal } from '@/components/letter/ComposeLetterModal';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
@@ -152,7 +154,7 @@ export default function LettersScreen() {
                 mine={l.sender_id === myId}
                 senderName={l.sender_id === myId ? 'You' : partnerName}
                 unread={isUnread(l)}
-                onPress={() => router.push(`/letter/${l.id}`)}
+                onPress={() => router.push(`/letters/${l.id}`)}
               />
             );
           })
@@ -171,7 +173,16 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
   const preview = l.body_rich_html.replace(/<[^>]+>/g, '').trim();
 
   return (
-    <ScalePressable scaleTo={0.98} onPress={onPress} accessibilityLabel={`Letter from ${senderName}`}>
+    // SOURCE for the card→letter morph (§10.13). Boundary.Trigger is a Pressable;
+    // `group="letter"` + `id` pairs it with the matching Boundary.View on the detail
+    // (sharedBoundTag 'letter'). Only the real letter cards get a boundary —
+    // SealedCard / LoveCardsGrid deliberately stay plain ScalePressables.
+    <Transition.Boundary.Trigger
+      group="letter"
+      id={l.id}
+      onPress={onPress}
+      accessibilityLabel={`Letter from ${senderName}`}
+    >
       <View style={{ flexDirection: 'row', backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', overflow: 'hidden', ...theme.shadow.sm }}>
         <View style={{ width: 4, backgroundColor: LK.gold }} />
         <View style={{ flex: 1, padding: 16, flexDirection: 'row', gap: 13 }}>
@@ -204,7 +215,7 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
         </View>
         {unread && <View style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: LK.gold }} />}
       </View>
-    </ScalePressable>
+    </Transition.Boundary.Trigger>
   );
 }
 
@@ -342,11 +353,11 @@ function LettersSkeleton() {
             borderWidth: 1.5,
             borderColor: LK.hairline,
             boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
-          } as any}
+          }}
         >
-          <View style={{ width: 80, height: 10, borderRadius: 5, backgroundColor: 'rgba(42,33,26,0.08)' }} />
-          <View style={{ width: '85%', height: 14, borderRadius: 7, backgroundColor: 'rgba(42,33,26,0.06)' }} />
-          <View style={{ width: '60%', height: 12, borderRadius: 6, backgroundColor: 'rgba(42,33,26,0.05)' }} />
+          <Skeleton width={80} height={10} radius={5} />
+          <Skeleton width="85%" height={14} radius={7} />
+          <Skeleton width="60%" height={12} radius={6} />
         </View>
       ))}
     </View>

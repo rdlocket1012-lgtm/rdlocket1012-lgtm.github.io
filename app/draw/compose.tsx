@@ -2,29 +2,28 @@ import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
-  Pressable,
   ActivityIndicator,
   Alert,
+  useWindowDimensions,
   type View as RNView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { DrawCanvas, type Stroke } from '@/components/draw/DrawCanvas';
 import { DrawToolbar } from '@/components/draw/DrawToolbar';
+import { RoundIcon } from '@/components/ui/round-icon';
+import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { useDrawStore } from '@/stores/draw.store';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
+import { success } from '@/lib/haptics';
 import { LK, theme } from '@/constants/theme';
 import { Image } from 'expo-image';
 
 const SHADOW_LIFTED = '0 4px 16px rgba(42,33,26,0.10), 0 1px 3px rgba(42,33,26,0.06)';
+const MAX_STROKES = 200;
 
 export default function ComposeDrawScreen() {
   const { profile } = useAuth();
@@ -34,6 +33,7 @@ export default function ComposeDrawScreen() {
   const canvasRef = useRef<RNView>(null);
 
   const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [redo, setRedo] = useState<Stroke[]>([]);
   const [color, setColor] = useState<string>(LK.espresso);
   const [brushWidth, setBrushWidth] = useState(5);
   const [erasing, setErasing] = useState(false);
@@ -41,114 +41,146 @@ export default function ComposeDrawScreen() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sendScale = useSharedValue(1);
-  const sendAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: sendScale.value }],
-  }));
+  // Canvas is sized deterministically from the screen width (a measured/flex
+  // canvas collapses in this navigator's sheets — see _layout note).
+  const { width } = useWindowDimensions();
+  const canvasSize = Math.min(width - 32, 420);
+
+  // fullScreenModal renders under the status bar, and SafeAreaView's top edge
+  // reports 0 inside a native modal — fall back to the launch-time window inset
+  // (correct for the device) so the header always clears the notch.
+  const insets = useSafeAreaInsets();
+  const topInset = insets.top || initialWindowMetrics?.insets.top || 0;
 
   const coupleId = profile?.couple_id ?? null;
   const userId = profile?.id ?? null;
   const partnerName = partner?.display_name ?? 'your person';
 
-  // In erase mode, draw with parchment color (paints over existing strokes)
+  // In erase mode, draw with parchment color (paints over existing strokes).
   const activeColor = erasing ? LK.parchment : color;
+  const isEmpty = strokes.length === 0;
+  const isFull = strokes.length >= MAX_STROKES;
 
   function handleStroke(stroke: Stroke) {
-    if (strokes.length >= 200) return;
+    if (isFull) return;
     setStrokes((prev) => [...prev, stroke]);
+    if (redo.length) setRedo([]);
   }
 
   function handleUndo() {
+    if (strokes.length === 0) return;
+    setRedo((r) => [...r, strokes[strokes.length - 1]]);
     setStrokes((prev) => prev.slice(0, -1));
+  }
+
+  function handleRedo() {
+    if (redo.length === 0) return;
+    const next = redo[redo.length - 1];
+    setRedo((r) => r.slice(0, -1));
+    setStrokes((prev) => [...prev, next]);
   }
 
   function handleClear() {
     if (strokes.length === 0) return;
-    Alert.alert('Clear canvas?', 'This will remove all strokes.', [
+    Alert.alert('Clear canvas?', 'This will remove everything you’ve drawn.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => setStrokes([]) },
+      { text: 'Clear', style: 'destructive', onPress: () => { setStrokes([]); setRedo([]); } },
     ]);
   }
 
+  function handleClose() {
+    if (sending) return;
+    if (strokes.length > 0 && !sent) {
+      Alert.alert('Discard this drawing?', 'It hasn’t been sent yet.', [
+        { text: 'Keep drawing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+      ]);
+      return;
+    }
+    router.back();
+  }
+
   async function handleSend() {
-    if (strokes.length === 0) {
+    if (isEmpty) {
       Alert.alert('Nothing to send', 'Draw something first!');
       return;
     }
     if (!coupleId || !userId) return;
 
-    sendScale.value = withSpring(0.94, theme.spring.bounce, () => {
-      sendScale.value = withSpring(1, theme.spring.bounce);
-    });
-
     setSending(true);
     setError(null);
     try {
       await sendDrawing({ coupleId, userId, partnerName, canvasRef });
+      try { success(); } catch {}
       setSent(true);
-      setTimeout(() => router.back(), 2000);
+      setTimeout(() => router.back(), 1800);
     } catch (e: any) {
       setError(e?.message ?? 'Something went wrong — tap to retry.');
       setSending(false);
     }
   }
 
+  const canSend = !isEmpty && !sending && !sent;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['bottom']}>
-      <Stack.Screen
-        options={{
-          title: '',
-          headerStyle: { backgroundColor: LK.parchment },
-          headerShadowVisible: false,
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} hitSlop={12} disabled={sending}>
-              <Image source="sf:xmark" style={{ width: 20, height: 20 }} tintColor={LK.sepia} />
-            </Pressable>
-          ),
-          headerRight: () => (
-            <Animated.View style={sendAnimStyle}>
-              <Pressable
-                onPress={handleSend}
-                hitSlop={12}
-                disabled={sending || sent || strokes.length === 0}
-              >
-                {sending
-                  ? <ActivityIndicator size="small" color={LK.coral} />
-                  : (
-                    <Image
-                      source="sf:paperplane.fill"
-                      style={{ width: 22, height: 22 }}
-                      tintColor={strokes.length === 0 ? LK.faded : LK.coral}
-                    />
-                  )
-                }
-              </Pressable>
-            </Animated.View>
-          ),
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Title */}
-      <Text
-        style={{
-          fontFamily: theme.fonts.body,
-          fontWeight: '700',
-          fontSize: 17,
-          color: LK.espresso,
-          textAlign: 'center',
-          paddingTop: 4,
-          paddingBottom: 20,
-        }}
-      >
-        {`Draw for ${partnerName}`}
-      </Text>
+      {/* Header — custom bar (X · title · Send). Top padding clears the notch
+          manually since the native modal doesn't supply a top safe-area inset. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: topInset + 8, paddingBottom: 10 }}>
+        <RoundIcon onPress={handleClose}>
+          <Icon name="x" size={20} color={LK.espresso} />
+        </RoundIcon>
 
-      {/* Canvas — Vellum Hero card, 28px radius, Level 2 shadow */}
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: LK.espresso }}>
+            Draw for {partnerName}
+          </Text>
+        </View>
+
+        <ScalePressable
+          onPress={handleSend}
+          disabled={!canSend}
+          scaleTo={0.94}
+          accessibilityLabel="Send drawing"
+          style={{
+            minWidth: 44,
+            height: 44,
+            borderRadius: 22,
+            borderCurve: 'continuous',
+            paddingHorizontal: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            backgroundColor: canSend ? LK.coral : 'rgba(42,33,26,0.07)',
+            opacity: sending ? 0.9 : 1,
+            ...(canSend ? theme.shadow.sm : null),
+          }}
+        >
+          {sending ? (
+            <ActivityIndicator size="small" color={canSend ? '#fff' : LK.faded} />
+          ) : (
+            <>
+              <Icon name="plane" size={16} color={canSend ? '#fff' : LK.faded} strokeWidth={2.2} />
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: canSend ? '#fff' : LK.faded }}>
+                Send
+              </Text>
+            </>
+          )}
+        </ScalePressable>
+      </View>
+
+      {/* Canvas — a centered square Hero card, sized from the screen width.
+          The flex:1 wrapper expands the sheet to full height AND centres the
+          canvas vertically, so the toolbar sits flush at the bottom with no gap.
+          (Canvas size is fixed, not measured, so it always renders.) */}
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 }}>
         <View
           style={{
-            width: 280,
-            height: 280,
+            width: canvasSize,
+            height: canvasSize,
             borderRadius: 28,
             borderCurve: 'continuous',
             overflow: 'hidden',
@@ -169,30 +201,22 @@ export default function ComposeDrawScreen() {
           />
         </View>
 
-        {strokes.length > 0 && strokes.length < 200 && (
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              fontSize: 11,
-              color: LK.faded,
-              marginTop: 8,
-            }}
-          >
-            {strokes.length} {strokes.length === 1 ? 'stroke' : 'strokes'}
-          </Text>
-        )}
-        {strokes.length >= 200 && (
-          <Text
-            style={{
-              fontFamily: theme.fonts.body,
-              fontSize: 11,
-              color: LK.warning,
-              marginTop: 8,
-            }}
-          >
-            canvas full — undo or clear to keep drawing
-          </Text>
-        )}
+        {/* Hint line under the canvas */}
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontSize: 11.5,
+            color: isFull ? LK.warning : LK.faded,
+            marginTop: 14,
+            height: 16,
+          }}
+        >
+          {isFull
+            ? 'Canvas full — undo or clear to keep drawing'
+            : isEmpty
+              ? 'Use your finger to sketch something little'
+              : `${strokes.length} ${strokes.length === 1 ? 'stroke' : 'strokes'}`}
+        </Text>
       </View>
 
       {/* Toolbar */}
@@ -204,12 +228,15 @@ export default function ComposeDrawScreen() {
         onBrushChange={setBrushWidth}
         onEraserToggle={() => setErasing((e) => !e)}
         onUndo={handleUndo}
+        onRedo={handleRedo}
         onClear={handleClear}
+        canUndo={strokes.length > 0}
+        canRedo={redo.length > 0}
       />
 
       {/* Error toast (tap to retry) */}
       {error && (
-        <Pressable
+        <ScalePressable
           onPress={handleSend}
           style={{
             position: 'absolute',
@@ -226,7 +253,7 @@ export default function ComposeDrawScreen() {
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 13, color: LK.vellum }}>
             {error}
           </Text>
-        </Pressable>
+        </ScalePressable>
       )}
 
       {/* Sent confirmation overlay */}

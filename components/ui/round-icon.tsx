@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, TouchableOpacity, type ViewStyle } from 'react-native';
+import { View, type ViewStyle } from 'react-native';
 import { LK, theme } from '@/constants/theme';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 
 type RoundIconProps = { children: React.ReactNode; onPress?: () => void; badge?: boolean; style?: ViewStyle };
 
 export function RoundIcon({ children, onPress, badge, style }: RoundIconProps) {
   return (
-    <TouchableOpacity
+    <ScalePressable
       onPress={onPress}
-      activeOpacity={0.7}
+      scaleTo={0.92}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       style={[{
         width: 44, height: 44, borderRadius: 22,
@@ -26,6 +27,6 @@ export function RoundIcon({ children, onPress, badge, style }: RoundIconProps) {
           borderWidth: 1.5, borderColor: LK.ivory,
         }} />
       )}
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }

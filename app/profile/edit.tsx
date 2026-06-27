@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { decode as decodeBase64 } from 'base64-arraybuffer';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { DateField } from '@/components/ui/DateField';
 import { DETAIL_DEFS, type DetailDef } from '@/constants/categories';
 import { useAuth } from '@/hooks/useAuth';
@@ -159,7 +160,7 @@ export default function EditProfileScreen() {
             <>
               {/* Avatar */}
               <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                <TouchableOpacity onPress={pickPhoto} activeOpacity={0.85}>
+                <ScalePressable scaleTo={0.95} onPress={pickPhoto} accessibilityLabel="Change profile photo">
                   {profile?.avatar_url ? (
                     <Image source={{ uri: profile.avatar_url }} style={{ width: 96, height: 96, borderRadius: 48 }} />
                   ) : (
@@ -172,7 +173,7 @@ export default function EditProfileScreen() {
                   <View style={{ position: 'absolute', right: 0, bottom: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: LK.parchment }}>
                     {uploading ? <ActivityIndicator size="small" color="#fff" /> : <Icon name="camera" size={15} color="#fff" />}
                   </View>
-                </TouchableOpacity>
+                </ScalePressable>
                 <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 8 }}>Tap to change photo</Text>
               </View>
 
@@ -240,13 +241,14 @@ export default function EditProfileScreen() {
                   placeholderTextColor={LK.ink70}
                   style={[inputStyle, { flex: 1, marginBottom: 0 }]}
                 />
-                <TouchableOpacity
+                <ScalePressable
                   onPress={addQuestion}
                   disabled={!customQ.trim()}
-                  style={{ backgroundColor: customQ.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 16, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' }}
+                  accessibilityLabel="Add"
+                  style={{ backgroundColor: customQ.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Icon name="plus" size={20} color={customQ.trim() ? '#fff' : LK.ink70} />
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
             </>
           ) : (
@@ -298,13 +300,14 @@ export default function EditProfileScreen() {
                   placeholderTextColor={LK.ink70}
                   style={[inputStyle, { flex: 1, marginBottom: 0 }]}
                 />
-                <TouchableOpacity
+                <ScalePressable
                   onPress={addQuestion}
                   disabled={!customQ.trim()}
-                  style={{ backgroundColor: customQ.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 16, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' }}
+                  accessibilityLabel="Add"
+                  style={{ backgroundColor: customQ.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Icon name="plus" size={20} color={customQ.trim() ? '#fff' : LK.ink70} />
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
             </>
           )}

@@ -1,40 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
-  Modal,
   Pressable,
   Text,
   View,
   useWindowDimensions,
-  Alert,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Stack, router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Image } from 'expo-image';
-import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
+import Transition from 'react-native-screen-transitions';
 import { useDrawStore, type Drawing } from '@/stores/draw.store';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
 import { LK, theme } from '@/constants/theme';
+import { Icon } from '@/components/ui/Icon';
+import { RoundIcon } from '@/components/ui/round-icon';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Skeleton } from '@/components/ui/Skeleton';
 
-const SHADOW_DEFAULT  = '0 2px 8px rgba(42,33,26,0.07)';
-const SHADOW_FLOATING = '0 8px 28px rgba(42,33,26,0.14)';
+const SHADOW_DEFAULT = '0 2px 8px rgba(42,33,26,0.07)';
 
 // ─── Skeleton cell ────────────────────────────────────────────────────────────
 
 function SkeletonCell({ size }: { size: number }) {
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: 20,
-        backgroundColor: LK.ivory,
-        boxShadow: SHADOW_DEFAULT,
-      } as any}
-    />
-  );
+  return <Skeleton width={size} height={size} radius={20} />;
 }
 
 // ─── Drawing cell ─────────────────────────────────────────────────────────────
@@ -54,8 +45,15 @@ function DrawingCell({
   const label = ts.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
   return (
-    <Pressable onPress={onPress} onLongPress={onLongPress} style={{ gap: 6 }}>
-      <View
+    <View style={{ gap: 6 }}>
+      {/* SOURCE of the cell→viewer morph (§10.13). The Trigger IS the image card,
+          so the measured bound matches the viewer's square image destination. */}
+      <Transition.Boundary.Trigger
+        group="drawing"
+        id={drawing.id}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        accessibilityLabel={`Drawing from ${label}`}
         style={{
           width: size,
           height: size,
@@ -74,7 +72,7 @@ function DrawingCell({
           contentFit="contain"
           transition={200}
         />
-      </View>
+      </Transition.Boundary.Trigger>
       <Text
         style={{
           fontFamily: theme.fonts.body,
@@ -85,7 +83,7 @@ function DrawingCell({
       >
         {label}
       </Text>
-    </Pressable>
+    </View>
   );
 }
 
@@ -126,119 +124,6 @@ function EmptySent({ partnerName }: { partnerName: string }) {
   );
 }
 
-// ─── Lightbox ─────────────────────────────────────────────────────────────────
-
-function Lightbox({
-  drawing,
-  isSent,
-  partnerName,
-  onClose,
-}: {
-  drawing: Drawing | null;
-  isSent: boolean;
-  partnerName: string;
-  onClose: () => void;
-}) {
-  const { width } = useWindowDimensions();
-
-  async function handleSave() {
-    if (!drawing) return;
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow photo library access to save drawings.');
-      return;
-    }
-    try {
-      await MediaLibrary.saveToLibraryAsync(drawing.image_url);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      Alert.alert('Couldn\'t save', 'Something went wrong saving this drawing.');
-    }
-  }
-
-  if (!drawing) return null;
-
-  const authorName = isSent ? 'you' : (partnerName || 'your person');
-  const ts = new Date(drawing.created_at).toLocaleDateString(undefined, {
-    weekday: 'short', month: 'short', day: 'numeric',
-  });
-
-  return (
-    <Modal visible animationType="fade" transparent onRequestClose={onClose}>
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(42,33,26,0.85)',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <View
-          style={{
-            width: width - 48,
-            height: width - 48,
-            borderRadius: 20,
-            borderCurve: 'continuous',
-            overflow: 'hidden',
-            backgroundColor: LK.parchment,
-            boxShadow: SHADOW_FLOATING,
-          } as any}
-        >
-          <Image
-            source={{ uri: drawing.image_url }}
-            style={{ width: width - 48, height: width - 48 }}
-            contentFit="contain"
-          />
-        </View>
-
-        <View style={{ marginTop: 20, alignItems: 'center', gap: 4 }}>
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.ivory }}>
-            {`by ${authorName}`}
-          </Text>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.faded }}>
-            {ts}
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
-          <Pressable
-            onPress={handleSave}
-            style={{
-              backgroundColor: LK.ivory,
-              borderRadius: 99,
-              borderCurve: 'continuous',
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <Image source="sf:square.and.arrow.down" style={{ width: 16, height: 16 }} tintColor={LK.espresso} />
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 14, color: LK.espresso }}>
-              Save
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={onClose}
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              borderRadius: 99,
-              borderCurve: 'continuous',
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-            }}
-          >
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 14, color: LK.ivory }}>
-              Close
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function DrawGalleryScreen() {
@@ -246,7 +131,6 @@ export default function DrawGalleryScreen() {
   const { partner } = usePartner();
   const { received, sent, loading, fetchDrawings, subscribeToDrawings } = useDrawStore();
   const [tab, setTab] = useState<'received' | 'sent'>('received');
-  const [lightbox, setLightbox] = useState<Drawing | null>(null);
   const { width } = useWindowDimensions();
 
   const coupleId = profile?.couple_id ?? null;
@@ -264,7 +148,10 @@ export default function DrawGalleryScreen() {
   const CELL_SIZE = (width - 48) / 2;
 
   const drawings = tab === 'received' ? received : sent;
-  const isLightboxSent = lightbox ? sent.some((d) => d.id === lightbox.id) : false;
+
+  function openViewer(item: Drawing) {
+    router.push({ pathname: '/draw/viewer', params: { id: item.id } });
+  }
 
   const segmentTabs = (
     <View
@@ -276,6 +163,7 @@ export default function DrawGalleryScreen() {
         borderWidth: 1.5,
         borderColor: 'rgba(42,33,26,0.10)',
         marginHorizontal: 20,
+        marginTop: 14,
         marginBottom: 20,
         padding: 3,
       }}
@@ -308,22 +196,26 @@ export default function DrawGalleryScreen() {
     </View>
   );
 
-  const headerOptions = {
-    title: 'Draw',
-    headerLargeTitle: true,
-    headerStyle: { backgroundColor: LK.parchment },
-    headerShadowVisible: false,
-    headerRight: () => (
-      <Pressable onPress={() => router.push('/draw/compose')} hitSlop={12}>
-        <Image source="sf:pencil.and.outline" style={{ width: 22, height: 22 }} tintColor={LK.coral} />
-      </Pressable>
-    ),
-  };
+  // Custom in-screen header — the TransitionNativeStack renders native headers
+  // (headerRight/back) as empty white circles (§10.13 GOTCHA 1), so we use the
+  // standard ScreenHeader (RoundIcon back + right action) like the rest of the app.
+  const header = (
+    <ScreenHeader
+      eyebrow="Little doodles"
+      title="Draw"
+      onBack={() => router.back()}
+      right={
+        <RoundIcon onPress={() => router.push('/draw/compose')}>
+          <Icon name="pen" size={20} color={LK.coral} />
+        </RoundIcon>
+      }
+    />
+  );
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['bottom']}>
-        <Stack.Screen options={headerOptions} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
+        {header}
         {segmentTabs}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 20 }}>
           {[0, 1, 2, 3].map((i) => <SkeletonCell key={i} size={CELL_SIZE} />)}
@@ -333,8 +225,8 @@ export default function DrawGalleryScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['bottom']}>
-      <Stack.Screen options={headerOptions} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
+      {header}
 
       <FlatList
         data={drawings}
@@ -353,20 +245,13 @@ export default function DrawGalleryScreen() {
           <DrawingCell
             drawing={item}
             size={CELL_SIZE}
-            onPress={() => setLightbox(item)}
+            onPress={() => openViewer(item)}
             onLongPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setLightbox(item);
+              openViewer(item);
             }}
           />
         )}
-      />
-
-      <Lightbox
-        drawing={lightbox}
-        isSent={isLightboxSent}
-        partnerName={partnerName}
-        onClose={() => setLightbox(null)}
       />
     </SafeAreaView>
   );

@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
@@ -92,9 +93,9 @@ export default function InviteScreen() {
             <IconChip color={LK.coral} size={84}><Icon name="alert" size={40} color={shade(LK.coral, 0.5)} /></IconChip>
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: LK.espresso, textAlign: 'center' }}>Couldn't join</Text>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70, textAlign: 'center', maxWidth: 290, lineHeight: 22 }}>{error}</Text>
-            <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 26, paddingVertical: 15, marginTop: 8 }}>
+            <ScalePressable scaleTo={0.97} onPress={() => router.replace('/(tabs)')} accessibilityLabel="Go to Locket" style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 26, paddingVertical: 15, marginTop: 8 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Go to Locket</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </>
         ) : (
           <>
@@ -103,9 +104,9 @@ export default function InviteScreen() {
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70, textAlign: 'center', maxWidth: 290, lineHeight: 22 }}>
               You've been invited to share a Locket space — your milestones, letters, map and Premium, together.
             </Text>
-            <TouchableOpacity onPress={handleJoin} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 32, paddingVertical: 16, marginTop: 10, ...theme.shadow.card }}>
+            <ScalePressable scaleTo={0.97} onPress={handleJoin} accessibilityLabel="Join now" style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 32, paddingVertical: 16, marginTop: 10, ...theme.shadow.card }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: '#fff' }}>Join now</Text>
-            </TouchableOpacity>
+            </ScalePressable>
             <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={{ paddingVertical: 8 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.ink70 }}>Not now</Text>
             </TouchableOpacity>
@@ -193,15 +194,17 @@ function WelcomeHero({ coupleInfo, onEnter }: {
 
       {/* Enter button */}
       <Animated.View style={{ opacity: btnOpacity, marginTop: 40, width: '100%' }}>
-        <TouchableOpacity
+        <ScalePressable
+          scaleTo={0.97}
           onPress={onEnter}
-          activeOpacity={0.88}
+          accessibilityLabel="Open your Locket"
+          containerStyle={{ width: '100%' }}
           style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 17, alignItems: 'center', ...theme.shadow.card }}
         >
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: '#fff' }}>
             Open your Locket
           </Text>
-        </TouchableOpacity>
+        </ScalePressable>
       </Animated.View>
     </View>
   );

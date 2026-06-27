@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Icon } from '@/components/ui/Icon';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { AnimatedFlame } from '@/components/ui/AnimatedFlame';
@@ -129,8 +130,10 @@ export default function StreakScreen() {
       <ScreenHeader eyebrow="Daily Match" title="Your Streak" onBack={() => router.back()} />
 
       {streak.loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={LK.espresso} />
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16, gap: 16 }}>
+          <Skeleton height={150} radius={theme.radii.lg} />
+          <Skeleton height={90} radius={theme.radii.md} />
+          <Skeleton height={90} radius={theme.radii.md} />
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>

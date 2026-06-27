@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Easing } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, ActivityIndicator, Animated, Easing } from 'react-native';
+import { KeyboardProvider, KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -158,7 +159,11 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
 
   return (
     <Modal animationType="slide" transparent={false}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: LK.ivory }}>
+      {/* RN <Modal> renders in its own native window, OUTSIDE the root
+          <KeyboardProvider> — so the lib needs a fresh provider here for its
+          KeyboardAvoidingView to track the keyboard (documented Modal caveat). */}
+      <KeyboardProvider>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, backgroundColor: LK.ivory }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 56, paddingBottom: 6 }}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -331,6 +336,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
           onDismiss={onClose}
         />
       )}
+      </KeyboardProvider>
     </Modal>
   );
 }

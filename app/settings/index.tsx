@@ -10,6 +10,7 @@ import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Avatar } from '@/components/ui/avatar';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useAuth } from '@/hooks/useAuth';
@@ -159,9 +160,10 @@ export default function SettingsScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 80 }}>
         {/* Profile card (§13.28) — tap to edit your profile */}
-        <TouchableOpacity
+        <ScalePressable
+          scaleTo={0.98}
           onPress={() => router.push('/profile/edit')}
-          activeOpacity={0.9}
+          accessibilityLabel="Edit profile"
           style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.md, borderCurve: 'continuous', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 10, ...theme.shadow.card }}
         >
           <Avatar initial={((profile?.display_name || 'Y').charAt(0) || 'Y').toUpperCase()} imageUrl={profile?.avatar_url} color={LK.coral} size={56} />
@@ -174,7 +176,7 @@ export default function SettingsScreen() {
             ) : null}
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.coral, marginTop: 4 }}>Edit profile →</Text>
           </View>
-        </TouchableOpacity>
+        </ScalePressable>
 
         {/* Relationship banner */}
         <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 4, ...theme.shadow.card }}>
@@ -202,16 +204,17 @@ export default function SettingsScreen() {
             ? <View style={{ backgroundColor: tint(LK.marigold, 0.7), borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 6 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(LK.marigold, 0.5) }}>Premium</Text>
               </View>
-            : <TouchableOpacity onPress={() => setSheet('paywall')} style={{ backgroundColor: LK.marigold, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 8 }}>
+            : <ScalePressable onPress={() => setSheet('paywall')} accessibilityLabel="Upgrade to Premium" style={{ backgroundColor: LK.marigold, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 8 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.espresso }}>Upgrade</Text>
-              </TouchableOpacity>
+              </ScalePressable>
           }
         </View>
 
         {!partnerJoined && (
-          <TouchableOpacity
+          <ScalePressable
+            scaleTo={0.98}
             onPress={() => shareInvite()}
-            activeOpacity={0.9}
+            accessibilityLabel="Invite your partner"
             style={{ marginTop: 8, backgroundColor: tint(LK.sky, 0.7), borderRadius: theme.radii.sm, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, ...theme.shadow.sm }}
           >
             <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: LK.sky, alignItems: 'center', justifyContent: 'center' }}>
@@ -222,7 +225,7 @@ export default function SettingsScreen() {
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 1 }}>Send them a private link to join.</Text>
             </View>
             <Icon name="share" size={17} color={shade(LK.sky, 0.5)} />
-          </TouchableOpacity>
+          </ScalePressable>
         )}
         {!partnerJoined && (
           <TouchableOpacity onPress={handleEnterCode} style={{ alignSelf: 'center', paddingVertical: 12 }}>
@@ -330,10 +333,16 @@ interface SRowProps {
 
 function SRow({ icon, color, title, sub, chevron, toggle, value, onToggle, onPress, danger, last }: SRowProps) {
   const titleColor = danger ? LK.danger : LK.espresso;
+  // Toggle rows aren't tappable as a whole (you hit the Switch), so disable the
+  // press primitive there — keeps the scale/haptic for navigation/action rows.
+  const isPressable = !toggle && !!onPress;
   return (
-    <TouchableOpacity
+    <ScalePressable
+      scaleTo={0.985}
+      haptic={isPressable}
+      disabled={!isPressable}
       onPress={toggle ? undefined : onPress}
-      disabled={toggle && !onPress}
+      accessibilityLabel={title}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: LK.hairline, minHeight: 52 }}
     >
       <IconChip color={danger ? LK.danger : color} size={32}>
@@ -345,6 +354,6 @@ function SRow({ icon, color, title, sub, chevron, toggle, value, onToggle, onPre
       </View>
       {toggle && <Switch value={value} onValueChange={onToggle} trackColor={{ true: LK.success, false: 'rgba(42,33,26,0.18)' }} />}
       {chevron && !toggle && <Icon name="chevR" size={16} color={LK.ink70} />}
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }

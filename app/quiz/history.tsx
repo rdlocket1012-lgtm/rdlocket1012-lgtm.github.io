@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Icon } from '@/components/ui/Icon';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { supabase } from '@/lib/supabase';
@@ -168,8 +169,8 @@ export default function QuizHistoryScreen() {
       )}
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={LK.espresso} />
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16, gap: 12 }}>
+          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} height={64} radius={theme.radii.md} />)}
         </View>
       ) : rows.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>

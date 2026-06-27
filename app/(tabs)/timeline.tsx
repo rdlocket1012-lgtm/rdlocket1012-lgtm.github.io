@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
+import Transition from 'react-native-screen-transitions';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { LK, shade, catColor, theme, rgba } from '@/constants/theme';
 import { useMilestones } from '@/hooks/useMilestones';
@@ -185,12 +186,18 @@ export default function TimelineScreen() {
 function MilestoneCard({ milestone: m, animIndex }: { milestone: Milestone; animIndex: number }) {
   const c = catColor(m.type);
   const photos = m.photos ?? [];
-  const entering = animIndex < 5 ? FadeInUp.duration(320).delay(animIndex * 40).reduceMotion(ReduceMotion.Never) : undefined;
+  const entering = animIndex < 5 ? FadeInUp.duration(320).delay(animIndex * 40).reduceMotion(ReduceMotion.System) : undefined;
 
   return (
     <Animated.View entering={entering} style={{ paddingHorizontal: theme.layout.screenX, paddingBottom: 12 }}>
-      <ScalePressable
-        scaleTo={0.98}
+      {/* SOURCE for the card → milestone-detail morph (§10.13). Boundary.Trigger
+          is the Pressable; group="milestone" + id pairs it with the matching
+          Boundary.View on app/milestone/[id].tsx (sharedBoundTag 'milestone',
+          set in app/_layout.tsx). Mirrors the proven letters/draw morphs. The
+          nested photo-strip ScalePressables keep their own taps (photo viewer). */}
+      <Transition.Boundary.Trigger
+        group="milestone"
+        id={m.id}
         onPress={() => router.push(`/milestone/${m.id}`)}
         accessibilityLabel={m.title}
       >
@@ -216,7 +223,7 @@ function MilestoneCard({ milestone: m, animIndex }: { milestone: Milestone; anim
             {photos.length > 0 && <PhotoStrip photos={photos} />}
           </View>
         </View>
-      </ScalePressable>
+      </Transition.Boundary.Trigger>
     </Animated.View>
   );
 }

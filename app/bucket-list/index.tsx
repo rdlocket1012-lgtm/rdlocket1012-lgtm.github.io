@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, KeyboardAvoidingView, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { BUCKET_CATEGORIES } from '@/constants/categories';
 import { useBucketList } from '@/hooks/useBucketList';
@@ -17,6 +19,10 @@ import { ScratchCard } from '@/components/bucket/ScratchCard';
 import { dateIdeasForDay } from '@/constants/date-ideas';
 
 const SCRATCH_COLORS = [LK.coral, LK.marigold, LK.lilac, LK.success, LK.blush, LK.sky];
+
+// First-6-only entrance stagger (§10.3) — matches the timeline/letters card feel.
+const stagger = (i: number) =>
+  i < 6 ? FadeInUp.duration(300).delay(i * 40).reduceMotion(ReduceMotion.System) : undefined;
 
 export default function BucketListScreen() {
   const { category: initCategory } = useLocalSearchParams<{ category?: string }>();
@@ -120,12 +126,13 @@ export default function BucketListScreen() {
           title="Bucket List"
           onBack={() => router.back()}
           right={
-            <TouchableOpacity
+            <ScalePressable
               onPress={() => atCap ? setSheet('paywall') : openAdd()}
+              accessibilityLabel={atCap ? 'Upgrade to add more' : 'Add to list'}
               style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: atCap ? tint(LK.marigold, 0.7) : LK.espresso, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
             >
               <Icon name={atCap ? 'lock' : 'plus'} size={atCap ? 19 : 22} color={atCap ? shade(LK.marigold, 0.5) : '#fff'} />
-            </TouchableOpacity>
+            </ScalePressable>
           }
         />
 
@@ -236,20 +243,20 @@ export default function BucketListScreen() {
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, lineHeight: 22, textAlign: 'center', maxWidth: 250 }}>
                 Start your shared list — big adventures and tiny cosy plans alike.
               </Text>
-              <TouchableOpacity onPress={openAdd} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ScalePressable scaleTo={0.97} onPress={openAdd} accessibilityLabel="Add to list" style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Icon name="plus" size={18} color="#fff" />
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Add to list</Text>
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
           ) : list.length === 0 ? (
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', paddingTop: 40 }}>
               {filter === 'done' ? 'Nothing crossed off yet — go make a memory.' : 'All done! Dream up something new.'}
             </Text>
-          ) : list.map((it) => {
+          ) : list.map((it, idx) => {
             const catDef = BUCKET_CATEGORIES.find((c) => c.id === it.category);
             const color = catDef?.color ?? LK.sky;
             return (
-              <View key={it.id} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 15, flexDirection: 'row', gap: 13, ...theme.shadow.card, opacity: it.is_done ? 0.92 : 1 }}>
+              <Animated.View key={it.id} entering={stagger(idx)} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 15, flexDirection: 'row', gap: 13, ...theme.shadow.card, opacity: it.is_done ? 0.92 : 1 }}>
                 <TouchableOpacity
                   onPress={() => toggleItem(it.id, !it.is_done)}
                   style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -7 }}
@@ -291,7 +298,7 @@ export default function BucketListScreen() {
                     )}
                   </View>
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             );
           })}
         </View>
