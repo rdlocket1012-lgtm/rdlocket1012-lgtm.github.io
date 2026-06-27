@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { withLayoutContext } from 'expo-router';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { LK } from '@/constants/theme';
 import { useUnseen } from '@/hooks/useUnseen';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
@@ -10,6 +12,12 @@ import { usePartnerTime } from '@/hooks/usePartnerTime';
 import { LiveLayer, type LiveHandle } from '@/components/live/LiveLayer';
 import { NudgesLayer } from '@/components/nudges/NudgesLayer';
 import LocketTabBar from '@/components/ui/locket-tab-bar';
+
+// Swipe-enabled pager (react-native-pager-view) wired into expo-router's
+// file-based routing. Replaces bottom <Tabs> so the four main pages can be
+// dragged left/right; the floating LocketTabBar + center FAB still float over it.
+const { Navigator } = createMaterialTopTabNavigator();
+const SwipeTabs = withLayoutContext(Navigator);
 
 export default function TabsLayout() {
   // Keep unread counts live for the whole app (the tab bar reads them for badges).
@@ -53,15 +61,22 @@ export default function TabsLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Tabs
-        screenOptions={{ headerShown: false }}
+      <SwipeTabs
+        tabBarPosition="bottom"
+        screenOptions={{
+          swipeEnabled: true,
+          lazy: true,
+          animationEnabled: true,
+          sceneStyle: { backgroundColor: LK.parchment },
+          lazyPlaceholder: () => <View style={{ flex: 1, backgroundColor: LK.parchment }} />,
+        }}
         tabBar={(props) => <LocketTabBar {...props} />}
       >
-        <Tabs.Screen name="index" />
-        <Tabs.Screen name="timeline" />
-        <Tabs.Screen name="fun" />
-        <Tabs.Screen name="us" />
-      </Tabs>
+        <SwipeTabs.Screen name="index" />
+        <SwipeTabs.Screen name="timeline" />
+        <SwipeTabs.Screen name="fun" />
+        <SwipeTabs.Screen name="us" />
+      </SwipeTabs>
 
       <LiveLayer
         ref={liveRef}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -123,7 +123,7 @@ function TabButton({
   );
 }
 
-export default function LocketTabBar({ state, navigation }: BottomTabBarProps) {
+export default function LocketTabBar({ state, navigation }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets();
   const [fabOpen, setFabOpen] = useState(false);
   const counts = useUnseenStore((s) => s.counts);
