@@ -201,7 +201,7 @@ export default function HomeScreen() {
           <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 6 }}>
             <TouchableOpacity activeOpacity={0.94} onPress={() => router.push('/(tabs)/timeline')}>
               <View style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.lg, borderCurve: 'continuous', paddingTop: 18, paddingBottom: widgetCtaVisible ? 0 : 22, alignItems: 'center', ...theme.shadow.card }}>
-                <MascotAnimation name={isAnniversary ? 'anniversary' : 'lo-kit-idle'} size={72} />
+                <MascotAnimation name={isAnniversary ? 'anniversary' : 'lo-kit-idle'} size={104} />
                 <Animated.View style={pulseStyle}>
                   <CountUp
                     value={dayCount}
@@ -280,7 +280,7 @@ export default function HomeScreen() {
                   boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
                 } as any}
               >
-                <StreakMascot size={38} active={streak.current > 0} />
+                <StreakMascot size={52} active={streak.current > 0} />
                 <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: streak.current > 0 ? LK.coral : LK.espresso, letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>
                   {streak.current}
                 </Text>

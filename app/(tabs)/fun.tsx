@@ -130,8 +130,8 @@ export default function FunScreen() {
                     <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.vellum }}>Surprise me</Text>
                   </View>
                 </View>
-                <View style={{ width: 116, backgroundColor: rgba(LK.blush, 0.16), alignItems: 'center', justifyContent: 'center' }}>
-                  <MascotAnimation name="lo-kit-idle" size={104} autoPlay={!reduced} />
+                <View style={{ width: 144, backgroundColor: rgba(LK.blush, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+                  <MascotAnimation name="lo-kit-idle" size={132} autoPlay={!reduced} />
                 </View>
               </View>
             </ScalePressable>

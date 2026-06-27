@@ -317,7 +317,7 @@ export const LiveLayer = forwardRef<LiveHandle, {
       {/* Invited (accept/decline) */}
       <CenterModal visible={mode === 'invited'}>
         <View style={{ alignItems: 'center', marginBottom: 4 }}>
-          <MascotAnimation name="connected" size={80} />
+          <MascotAnimation name="connected" size={116} />
         </View>
         <Text style={styles.h}>{partner} wants to play</Text>
         <Text style={styles.p}>This or That — answer together and see how in sync you are.</Text>
@@ -409,7 +409,7 @@ export const LiveLayer = forwardRef<LiveHandle, {
                 <View style={{ alignItems: 'center', gap: 16 }}>
                   {matched ? (
                     <>
-                      <MascotAnimation name="quiz-matched" size={120} />
+                      <MascotAnimation name="quiz-matched" size={168} />
                       <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso }}>
                         Matched!
                       </Text>
@@ -461,7 +461,7 @@ export const LiveLayer = forwardRef<LiveHandle, {
       {/* Summary */}
       <CenterModal visible={mode === 'summary'}>
         <View style={{ alignItems: 'center', marginBottom: 4 }}>
-          <MascotAnimation name="quiz-matched" size={100} />
+          <MascotAnimation name="quiz-matched" size={140} />
         </View>
         <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 48, color: LK.espresso, textAlign: 'center', letterSpacing: -1.5, fontVariant: ['tabular-nums'] }}>
           {Math.round((matchCount / Math.max(order.length, 1)) * 100)}%

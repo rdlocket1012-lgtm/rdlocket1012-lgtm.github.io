@@ -386,7 +386,7 @@ function CatchItOverlay({ partnerName, onCatch, onDecline }: { partnerName: stri
           ...theme.shadow.card,
           transform: [{ scale }],
         }}>
-          <MascotAnimation name="kiss-receive" size={100} style={{ marginBottom: 8 }} />
+          <MascotAnimation name="kiss-receive" size={140} style={{ marginBottom: 8 }} />
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 26, color: LK.espresso, textAlign: 'center', letterSpacing: -0.5 }}>
             Incoming kiss!
           </Text>
@@ -445,7 +445,7 @@ function CaughtConfirmation({ partnerName, onClose }: { partnerName: string; onC
           ...theme.shadow.card,
           transform: [{ scale }],
         }}>
-          <MascotAnimation name="kiss-send" size={88} style={{ marginBottom: 6 }} />
+          <MascotAnimation name="kiss-send" size={124} style={{ marginBottom: 6 }} />
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 24, color: LK.espresso, textAlign: 'center' }}>
             Caught it!
           </Text>

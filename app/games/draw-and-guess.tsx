@@ -421,7 +421,7 @@ export default function DrawAndGuessScreen() {
   function renderLobby() {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 24 }}>
-        <MascotAnimation name="lo-kit-idle" size={120} />
+        <MascotAnimation name="lo-kit-idle" size={168} />
         <View style={{ alignItems: 'center', gap: 8 }}>
           <Text
             style={{
@@ -565,7 +565,7 @@ export default function DrawAndGuessScreen() {
     // Guesser waiting
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-        <MascotAnimation name="lo-kit-idle" size={100} />
+        <MascotAnimation name="lo-kit-idle" size={140} />
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 16, color: LK.espresso }}>
           {myName} is picking a word...
         </Text>
@@ -733,7 +733,7 @@ export default function DrawAndGuessScreen() {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 32 }}>
         <ConfettiShower active />
-        <MascotAnimation name="quiz-matched" size={140} />
+        <MascotAnimation name="quiz-matched" size={184} />
         <Animated.Text
           entering={ZoomIn.springify().damping(theme.spring.bounce.damping).stiffness(theme.spring.bounce.stiffness).reduceMotion(ReduceMotion.System)}
           style={{
@@ -780,7 +780,7 @@ export default function DrawAndGuessScreen() {
   function renderTimeout() {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 32 }}>
-        <MascotAnimation name="quiz-wrong" size={120} />
+        <MascotAnimation name="quiz-wrong" size={168} />
         <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>
           Time's up!
         </Text>

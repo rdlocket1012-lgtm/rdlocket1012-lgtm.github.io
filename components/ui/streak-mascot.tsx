@@ -29,7 +29,7 @@ type Props = {
  * The animated streak icon. Replaces the static SF-symbol flame so it renders
  * reliably across builds and reflects the time of day.
  */
-export function StreakMascot({ size = 36, active = true, style }: Props) {
+export function StreakMascot({ size = 52, active = true, style }: Props) {
   // Resolve once per mount — the day/night boundary is crossed rarely, and the
   // icon re-evaluates whenever the screen remounts.
   const name = useMemo(() => getStreakMascotForHour(), []);
@@ -38,8 +38,9 @@ export function StreakMascot({ size = 36, active = true, style }: Props) {
     <MascotAnimation
       name={name}
       size={size}
-      autoPlay={active}
-      style={[!active && { opacity: 0.45 }, style]}
+      // Always animate so the icon feels alive; a dormant streak only dims.
+      autoPlay
+      style={[!active && { opacity: 0.55 }, style]}
     />
   );
 }
