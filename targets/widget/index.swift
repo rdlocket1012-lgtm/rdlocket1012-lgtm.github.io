@@ -1,20 +1,75 @@
 import WidgetKit
 import SwiftUI
 import AppIntents
+import UIKit
+import Security
 
 let APP_GROUP = "group.com.siren96.locket"
+
+// Auth tokens live in a shared Keychain access group (encrypted at rest), not
+// the App Group's plaintext UserDefaults. These must match the JS side
+// (lib/widget-bridge.ts) and the `keychain-access-groups` entitlement.
+private let KEYCHAIN_ACCESS_GROUP = "6BSN47U3U2.com.siren96.locket"
+// expo-secure-store stores non-authenticated items under "<service>:no-auth".
+private let KEYCHAIN_SERVICE = "locket.widget:no-auth"
 
 // Brand palette — explicit RGB so the widget never depends on an asset catalog.
 extension Color {
   static let lkParch  = Color(red: 243/255, green: 233/255, blue: 210/255)  // Parchment #F3E9D2
   static let lkCream  = Color(red: 251/255, green: 245/255, blue: 232/255)  // Ivory #FBF5E8
+  static let lkVellum = Color(red: 255/255, green: 253/255, blue: 247/255)  // Vellum #FFFDF7
   static let lkInk    = Color(red: 42/255,  green: 33/255,  blue: 26/255)   // Espresso
   static let lkCoral  = Color(red: 255/255, green: 122/255, blue: 107/255)  // Coral #FF7A6B
-  static let lkGold   = Color(red: 255/255, green: 201/255, blue: 77/255)   // Marigold
-  static let lkBlush  = Color(red: 255/255, green: 158/255, blue: 196/255)  // Blush
-  static let lkSepia  = Color(red: 110/255, green: 98/255,  blue: 83/255)   // Sepia
+  static let lkBlush  = Color(red: 255/255, green: 158/255, blue: 196/255)  // Blush #FF9EC4
+  static let lkSepia  = Color(red: 110/255, green: 98/255,  blue: 83/255)   // Sepia #6E6253
   static let lkFaded  = Color(red: 154/255, green: 138/255, blue: 99/255)   // Faded #9A8A63
   static let lkHair   = Color(red: 42/255,  green: 33/255,  blue: 26/255).opacity(0.10)
+  static let lkBorder = Color(red: 42/255,  green: 33/255,  blue: 26/255).opacity(0.15)
+}
+
+// ─────────────────────────────────────────────────────────────
+// MARK: - Keychain helpers
+// ─────────────────────────────────────────────────────────────
+
+/// Reads a string from the shared Keychain access group. Mirrors the attribute
+/// shape expo-secure-store writes (generic password, raw-key account/generic).
+private func keychainRead(_ key: String) -> String? {
+  let account = Data(key.utf8)
+  let query: [String: Any] = [
+    kSecClass as String:           kSecClassGenericPassword,
+    kSecAttrService as String:     KEYCHAIN_SERVICE,
+    kSecAttrAccount as String:     account,
+    kSecAttrAccessGroup as String: KEYCHAIN_ACCESS_GROUP,
+    kSecMatchLimit as String:      kSecMatchLimitOne,
+    kSecReturnData as String:      kCFBooleanTrue as Any,
+  ]
+  var item: CFTypeRef?
+  guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+        let data = item as? Data,
+        let str = String(data: data, encoding: .utf8)
+  else { return nil }
+  return str
+}
+
+/// Persists a refreshed token back into the shared Keychain so the JS side and
+/// the next intent both read the up-to-date value.
+private func keychainWrite(_ key: String, _ value: String) {
+  let account = Data(key.utf8)
+  let base: [String: Any] = [
+    kSecClass as String:           kSecClassGenericPassword,
+    kSecAttrService as String:     KEYCHAIN_SERVICE,
+    kSecAttrAccount as String:     account,
+    kSecAttrAccessGroup as String: KEYCHAIN_ACCESS_GROUP,
+  ]
+  let valueData = Data(value.utf8)
+  let status = SecItemUpdate(base as CFDictionary, [kSecValueData as String: valueData] as CFDictionary)
+  if status == errSecItemNotFound {
+    var add = base
+    add[kSecValueData as String]     = valueData
+    add[kSecAttrGeneric as String]   = account
+    add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+    SecItemAdd(add as CFDictionary, nil)
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -22,17 +77,13 @@ extension Color {
 // ─────────────────────────────────────────────────────────────
 
 /// Refreshes the Supabase access token using the stored refresh token.
-/// Persists the new token pair back to UserDefaults on success.
+/// Persists the new token pair back to the Keychain on success.
 /// Returns a fresh access token, or nil if the refresh failed.
-private func refreshAccessToken(
-  base: String,
-  anon: String,
-  refreshToken: String,
-  defaults: UserDefaults?
-) async -> String? {
+private func refreshAccessToken(base: String, anon: String, refreshToken: String) async -> String? {
   guard let url = URL(string: "\(base)/auth/v1/token?grant_type=refresh_token") else { return nil }
   var req = URLRequest(url: url)
   req.httpMethod = "POST"
+  req.timeoutInterval = 10
   req.setValue("application/json", forHTTPHeaderField: "Content-Type")
   req.setValue(anon, forHTTPHeaderField: "apikey")
   req.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
@@ -41,10 +92,9 @@ private func refreshAccessToken(
     let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
     let access = json["access_token"] as? String
   else { return nil }
-  // Persist updated tokens so the next intent call is also fresh.
-  defaults?.set(access, forKey: "accessToken")
+  keychainWrite("widgetAccessToken", access)
   if let newRefresh = json["refresh_token"] as? String {
-    defaults?.set(newRefresh, forKey: "refreshToken")
+    keychainWrite("widgetRefreshToken", newRefresh)
   }
   return access
 }
@@ -64,21 +114,60 @@ struct LocketEntry: TimelineEntry {
   let justNudged: Bool
 }
 
+/// Computes the live day count from the stored relationship start date so the
+/// number flips at local midnight without the app being opened.
+///
+/// This must match the app's value exactly (home screen shows it too). The app
+/// uses date-fns `differenceInDays(now, new Date("YYYY-MM-DD")) + 1`, where the
+/// bare date string is parsed as **UTC midnight** and `differenceInDays` is a
+/// local calendar-day diff minus 1 when the final day isn't a full 24h. We
+/// replicate that precisely (including its timezone quirks) for parity, and only
+/// fall back to the last pushed value if no start date is available.
+private func computeDayCount(_ d: UserDefaults?) -> Int {
+  guard let raw = d?.string(forKey: "coupleStartDate"), !raw.isEmpty else {
+    return Int(d?.string(forKey: "dayCount") ?? "0") ?? 0
+  }
+  let df = DateFormatter()
+  df.calendar = Calendar(identifier: .gregorian)
+  df.locale = Locale(identifier: "en_US_POSIX")
+  df.timeZone = TimeZone(secondsFromGMT: 0)  // mirror JS `new Date("YYYY-MM-DD")`
+  df.dateFormat = "yyyy-MM-dd"
+  guard let start = df.date(from: String(raw.prefix(10))) else {
+    return Int(d?.string(forKey: "dayCount") ?? "0") ?? 0
+  }
+  let cal = Calendar.current  // local time zone
+  let now = Date()
+  let calDays = cal.dateComponents([.day],
+                                   from: cal.startOfDay(for: start),
+                                   to: cal.startOfDay(for: now)).day ?? 0
+  // "last day not full" adjustment from date-fns differenceInDays.
+  let shifted = cal.date(byAdding: .day, value: -calDays, to: now) ?? now
+  let notFull = shifted < start ? 1 : 0
+  return (calDays - notFull) + 1
+}
+
 func readEntry() -> LocketEntry {
   let d = UserDefaults(suiteName: APP_GROUP)
-  let dayCount = Int(d?.string(forKey: "dayCount") ?? "0") ?? 0
   let nickname = d?.string(forKey: "coupleNickname") ?? "Us"
   let emoji    = d?.string(forKey: "partnerStatusEmoji") ?? "💛"
   let partner  = d?.string(forKey: "partnerName") ?? "Partner"
 
-  // Show the "sent" state for 4s after the nudge intent stamped lastWidgetNudgeAt.
+  // Show the "sent" state for 4s after a successful nudge stamped lastWidgetNudgeAt.
   var justNudged = false
   if let iso = d?.string(forKey: "lastWidgetNudgeAt"),
      let when = ISO8601DateFormatter().date(from: iso) {
     justNudged = Date().timeIntervalSince(when) < 4
   }
-  return LocketEntry(date: Date(), dayCount: dayCount, nickname: nickname,
+  return LocketEntry(date: Date(), dayCount: computeDayCount(d), nickname: nickname,
                      partnerEmoji: emoji, partnerName: partner, justNudged: justNudged)
+}
+
+/// Next local midnight (a few seconds past), so the counter refreshes exactly
+/// when the day rolls over.
+private func nextMidnight() -> Date {
+  Calendar.current.nextDate(after: Date(),
+                            matching: DateComponents(hour: 0, minute: 0, second: 5),
+                            matchingPolicy: .nextTime) ?? Date().addingTimeInterval(1800)
 }
 
 struct Provider: TimelineProvider {
@@ -91,10 +180,9 @@ struct Provider: TimelineProvider {
   func getTimeline(in context: Context, completion: @escaping (Timeline<LocketEntry>) -> Void) {
     let entry = readEntry()
     // While the "sent" confirmation is showing, refresh again shortly so it
-    // clears back to the Nudge button; otherwise the usual 30-minute cadence.
-    let next = entry.justNudged
-      ? Date().addingTimeInterval(4)
-      : (Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800))
+    // clears back to the Nudge button; otherwise refresh at midnight so the
+    // day count flips on time.
+    let next = entry.justNudged ? Date().addingTimeInterval(4) : nextMidnight()
     completion(Timeline(entries: [entry], policy: .after(next)))
   }
 }
@@ -114,34 +202,46 @@ struct SendNudgeIntent: AppIntent {
 enum NudgeSender {
   static func send() async {
     let d = UserDefaults(suiteName: APP_GROUP)
+
+    // Cooldown — ignore repeated taps within 30s so we never spam the partner.
+    if let iso = d?.string(forKey: "lastWidgetNudgeAt"),
+       let when = ISO8601DateFormatter().date(from: iso),
+       Date().timeIntervalSince(when) < 30 {
+      return
+    }
+
     guard
-      let base  = d?.string(forKey: "supabaseUrl"),
-      let anon  = d?.string(forKey: "anonKey")
+      let base = d?.string(forKey: "supabaseUrl"),
+      let anon = d?.string(forKey: "anonKey")
     else { return }
 
     // Always try to refresh — access tokens expire after ~1 hour.
     // Fall back to the stored access token if refresh fails (e.g. offline).
     let freshToken: String?
-    if let refresh = d?.string(forKey: "refreshToken") {
-      freshToken = await refreshAccessToken(base: base, anon: anon, refreshToken: refresh, defaults: d)
+    if let refresh = keychainRead("widgetRefreshToken") {
+      freshToken = await refreshAccessToken(base: base, anon: anon, refreshToken: refresh)
     } else {
       freshToken = nil
     }
-    let token = freshToken ?? d?.string(forKey: "accessToken") ?? ""
+    let token = freshToken ?? keychainRead("widgetAccessToken") ?? ""
     guard !token.isEmpty, let url = URL(string: "\(base)/functions/v1/notify") else { return }
 
     var req = URLRequest(url: url)
     req.httpMethod = "POST"
-    req.setValue("application/json",    forHTTPHeaderField: "Content-Type")
-    req.setValue(anon,                  forHTTPHeaderField: "apikey")
-    req.setValue("Bearer \(token)",     forHTTPHeaderField: "Authorization")
+    req.timeoutInterval = 10
+    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    req.setValue(anon,              forHTTPHeaderField: "apikey")
+    req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     req.httpBody = try? JSONSerialization.data(withJSONObject: [
       "type":  "nudge_hug",
       "title": "💛 Thinking of you",
       "body":  "A little love from the home screen.",
     ])
-    d?.set(ISO8601DateFormatter().string(from: Date()), forKey: "lastWidgetNudgeAt")
-    _ = try? await URLSession.shared.data(for: req)
+    // Only stamp "sent" on a real 2xx so the widget never shows a false confirm.
+    if let (_, resp) = try? await URLSession.shared.data(for: req),
+       let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) {
+      d?.set(ISO8601DateFormatter().string(from: Date()), forKey: "lastWidgetNudgeAt")
+    }
   }
 }
 
@@ -155,13 +255,10 @@ struct NudgeButton: View {
       if sent {
         // Confirmation state — not tappable, auto-reverts on next refresh.
         sentChip
-      } else if #available(iOS 17, *) {
+      } else {
+        // Interactive App Intent — fires the nudge without launching the app.
         Button(intent: SendNudgeIntent()) { chip }
           .buttonStyle(.plain)
-      } else {
-        if let url = URL(string: "locket://nudge") {
-          Link(destination: url) { chip }
-        }
       }
     }
   }
@@ -206,10 +303,16 @@ struct LocketWidgetView: View {
 
   var body: some View {
     switch family {
-    case .systemSmall: smallView
-    default:           mediumView
+    case .systemSmall:        smallView
+    case .accessoryInline:    accessoryInlineView
+    case .accessoryCircular:  accessoryCircularView
+    case .accessoryRectangular: accessoryRectangularView
+    default:                  mediumView
     }
   }
+
+  // Hand-drawn ivory card on a parchment margin — the Cozy Scrapbook frame.
+  private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: 18, style: .continuous) }
 
   // ── Small ──────────────────────────────────────────────────
   var smallView: some View {
@@ -220,7 +323,7 @@ struct LocketWidgetView: View {
         Text(entry.nickname.uppercased())
           .font(.system(size: 9, weight: .heavy))
           .tracking(1.8)
-          .foregroundColor(Color.lkInk.opacity(0.35))
+          .foregroundColor(Color.lkInk.opacity(0.40))
           .lineLimit(1)
         Spacer()
         Image(systemName: "heart.fill")
@@ -243,11 +346,11 @@ struct LocketWidgetView: View {
         .minimumScaleFactor(0.5)
         .lineLimit(1)
 
-      // "days together" warm line
+      // "days together" warm line — Sepia for legibility on parchment/ivory.
       Text("days together")
-        .font(.system(size: 12, weight: .medium, design: .serif))
+        .font(.system(size: 12, weight: .semibold, design: .serif))
         .italic()
-        .foregroundColor(Color.lkGold)
+        .foregroundColor(Color.lkSepia)
         .lineLimit(1)
         .minimumScaleFactor(0.8)
         .padding(.top, 1)
@@ -256,7 +359,10 @@ struct LocketWidgetView: View {
 
       NudgeButton(sent: entry.justNudged)
     }
-    .padding(14)
+    .padding(12)
+    .background(cardShape.fill(Color.lkCream).overlay(cardShape.stroke(Color.lkBorder, lineWidth: 1.5)))
+    .padding(8)
+    .widgetURL(URL(string: "locket://home"))
     .containerBackground(Color.lkParch, for: .widget)
   }
 
@@ -270,7 +376,7 @@ struct LocketWidgetView: View {
           Text(entry.nickname.uppercased())
             .font(.system(size: 10, weight: .heavy))
             .tracking(1.8)
-            .foregroundColor(Color.lkInk.opacity(0.35))
+            .foregroundColor(Color.lkInk.opacity(0.40))
             .lineLimit(1)
           Spacer()
           Image(systemName: "heart.fill")
@@ -287,9 +393,9 @@ struct LocketWidgetView: View {
           .lineLimit(1)
 
         Text("days together")
-          .font(.system(size: 13, weight: .medium, design: .serif))
+          .font(.system(size: 13, weight: .semibold, design: .serif))
           .italic()
-          .foregroundColor(Color.lkGold)
+          .foregroundColor(Color.lkSepia)
           .lineLimit(1)
           .minimumScaleFactor(0.8)
           .padding(.top, 1)
@@ -323,7 +429,55 @@ struct LocketWidgetView: View {
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 14)
+    .background(cardShape.fill(Color.lkCream).overlay(cardShape.stroke(Color.lkBorder, lineWidth: 1.5)))
+    .padding(8)
+    .widgetURL(URL(string: "locket://home"))
     .containerBackground(Color.lkParch, for: .widget)
+  }
+
+  // ── Lock-screen accessories (iOS 16+) ───────────────────────
+  var accessoryInlineView: some View {
+    Text("💛 \(entry.dayCount) days together")
+      .widgetURL(URL(string: "locket://home"))
+  }
+
+  var accessoryCircularView: some View {
+    ZStack {
+      AccessoryWidgetBackground()
+      VStack(spacing: -2) {
+        Text("\(entry.dayCount)")
+          .font(.system(size: 22, weight: .heavy, design: .rounded))
+          .minimumScaleFactor(0.5)
+          .lineLimit(1)
+        Text("days")
+          .font(.system(size: 9, weight: .semibold))
+      }
+    }
+    .widgetURL(URL(string: "locket://home"))
+    .containerBackground(for: .widget) { Color.clear }
+  }
+
+  var accessoryRectangularView: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(entry.nickname.uppercased())
+        .font(.system(size: 11, weight: .semibold))
+        .tracking(1)
+        .lineLimit(1)
+      HStack(alignment: .firstTextBaseline, spacing: 4) {
+        Text("\(entry.dayCount)")
+          .font(.system(size: 24, weight: .heavy, design: .rounded))
+        Text("days together")
+          .font(.system(size: 12, weight: .medium))
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
+      }
+      Text("\(entry.partnerEmoji) \(partnerFirst)")
+        .font(.system(size: 11))
+        .lineLimit(1)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .widgetURL(URL(string: "locket://home"))
+    .containerBackground(for: .widget) { Color.clear }
   }
 }
 
@@ -336,7 +490,9 @@ struct LocketWidget: Widget {
     }
     .configurationDisplayName("Locket")
     .description("Your day counter and a one-tap nudge for your partner.")
-    .supportedFamilies([.systemSmall, .systemMedium])
+    .supportedFamilies([.systemSmall, .systemMedium,
+                        .accessoryRectangular, .accessoryCircular, .accessoryInline])
+    .contentMarginsDisabled()
   }
 }
 
@@ -346,30 +502,72 @@ struct LocketWidget: Widget {
 
 struct DrawWidgetEntry: TimelineEntry {
   let date: Date
-  let imageUrl: String?
+  /// Local path inside the shared container (pre-downloaded — AsyncImage is
+  /// unreliable in WidgetKit). Nil means nothing to render yet.
+  let imagePath: String?
+  /// True when a drawing URL exists even if the image isn't cached yet.
+  let hasDrawing: Bool
   let partnerName: String
 }
 
-func readDrawEntry() -> DrawWidgetEntry {
+/// Pre-downloads the latest drawing into the shared container and returns its
+/// local path. Re-downloads only when the URL changed; falls back to any cached
+/// file on failure so the widget degrades gracefully offline.
+private func buildDrawEntry() async -> DrawWidgetEntry {
   let d = UserDefaults(suiteName: APP_GROUP)
-  return DrawWidgetEntry(
-    date: Date(),
-    imageUrl: d?.string(forKey: "drawImageUrl"),
-    partnerName: d?.string(forKey: "drawPartnerName") ?? "Partner"
-  )
+  let name = d?.string(forKey: "drawPartnerName") ?? "Partner"
+  let urlStr = d?.string(forKey: "drawImageUrl")
+
+  guard
+    let urlStr, !urlStr.isEmpty, let url = URL(string: urlStr),
+    let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: APP_GROUP)
+  else {
+    return DrawWidgetEntry(date: Date(), imagePath: nil, hasDrawing: false, partnerName: name)
+  }
+
+  let dest = container.appendingPathComponent("partner_drawing.png")
+  let alreadyCached = d?.string(forKey: "drawCachedUrl") == urlStr
+                      && FileManager.default.fileExists(atPath: dest.path)
+  if alreadyCached {
+    return DrawWidgetEntry(date: Date(), imagePath: dest.path, hasDrawing: true, partnerName: name)
+  }
+
+  var req = URLRequest(url: url)
+  req.timeoutInterval = 12
+  if let (data, resp) = try? await URLSession.shared.data(for: req),
+     (resp as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
+     !data.isEmpty,
+     (try? data.write(to: dest, options: .atomic)) != nil {
+    d?.set(urlStr, forKey: "drawCachedUrl")
+    return DrawWidgetEntry(date: Date(), imagePath: dest.path, hasDrawing: true, partnerName: name)
+  }
+
+  // Download failed — show the last cached drawing if we have one.
+  let fallback = FileManager.default.fileExists(atPath: dest.path) ? dest.path : nil
+  return DrawWidgetEntry(date: Date(), imagePath: fallback, hasDrawing: true, partnerName: name)
 }
 
 struct DrawProvider: TimelineProvider {
   func placeholder(in context: Context) -> DrawWidgetEntry {
-    DrawWidgetEntry(date: Date(), imageUrl: nil, partnerName: "Partner")
+    DrawWidgetEntry(date: Date(), imagePath: nil, hasDrawing: false, partnerName: "Partner")
   }
   func getSnapshot(in context: Context, completion: @escaping (DrawWidgetEntry) -> Void) {
-    completion(readDrawEntry())
+    let d = UserDefaults(suiteName: APP_GROUP)
+    let name = d?.string(forKey: "drawPartnerName") ?? "Partner"
+    var path: String? = nil
+    if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: APP_GROUP) {
+      let dest = container.appendingPathComponent("partner_drawing.png")
+      if FileManager.default.fileExists(atPath: dest.path) { path = dest.path }
+    }
+    completion(DrawWidgetEntry(date: Date(), imagePath: path,
+                               hasDrawing: d?.string(forKey: "drawImageUrl") != nil, partnerName: name))
   }
   func getTimeline(in context: Context, completion: @escaping (Timeline<DrawWidgetEntry>) -> Void) {
-    let entry = readDrawEntry()
-    let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
-    completion(Timeline(entries: [entry], policy: .after(next)))
+    Task {
+      let entry = await buildDrawEntry()
+      let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
+      completion(Timeline(entries: [entry], policy: .after(next)))
+    }
   }
 }
 
@@ -382,16 +580,12 @@ struct LocketDrawWidgetView: View {
     return String(first.prefix(10))
   }
 
+  private var frameShape: RoundedRectangle { RoundedRectangle(cornerRadius: 16, style: .continuous) }
+
   @ViewBuilder
   var canvasContent: some View {
-    if let urlStr = entry.imageUrl, let url = URL(string: urlStr) {
-      AsyncImage(url: url) { phase in
-        switch phase {
-        case .success(let image): image.resizable().scaledToFit()
-        case .failure:            emptyCanvas
-        default:                  Color.lkParch.opacity(0.5)
-        }
-      }
+    if let path = entry.imagePath, let ui = UIImage(contentsOfFile: path) {
+      Image(uiImage: ui).resizable().scaledToFit()
     } else {
       emptyCanvas
     }
@@ -418,10 +612,11 @@ struct LocketDrawWidgetView: View {
     }
   }
 
+  // Vellum picture-frame on a parchment margin — the Love Card treatment.
   var smallView: some View {
     ZStack(alignment: .bottomLeading) {
       canvasContent.frame(maxWidth: .infinity, maxHeight: .infinity)
-      if entry.imageUrl != nil {
+      if entry.imagePath != nil {
         Text(partnerFirst)
           .font(.system(size: 11, weight: .bold))
           .foregroundColor(Color.lkInk)
@@ -429,9 +624,13 @@ struct LocketDrawWidgetView: View {
           .padding(.vertical, 4)
           .background(Color.lkParch.opacity(0.88))
           .clipShape(Capsule())
-          .padding(8)
+          .padding(6)
       }
     }
+    .padding(8)
+    .background(frameShape.fill(Color.lkVellum).overlay(frameShape.stroke(Color.lkInk.opacity(0.55), lineWidth: 1.5)))
+    .padding(8)
+    .widgetURL(URL(string: "locket://draw"))
     .containerBackground(Color.lkParch, for: .widget)
   }
 
@@ -455,16 +654,18 @@ struct LocketDrawWidgetView: View {
           .italic()
           .foregroundColor(Color.lkSepia)
         Spacer()
-        if entry.imageUrl != nil, let url = URL(string: "locket://draw") {
-          Link(destination: url) {
-            Text("see it →")
-              .font(.system(size: 11, weight: .semibold))
-              .foregroundColor(Color.lkCoral)
-          }
+        if entry.imagePath != nil {
+          Text("see it →")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(Color.lkCoral)
         }
       }
       .frame(width: 90)
     }
+    .padding(10)
+    .background(frameShape.fill(Color.lkVellum).overlay(frameShape.stroke(Color.lkInk.opacity(0.55), lineWidth: 1.5)))
+    .padding(8)
+    .widgetURL(URL(string: "locket://draw"))
     .containerBackground(Color.lkParch, for: .widget)
   }
 }
@@ -479,6 +680,7 @@ struct LocketDrawWidget: Widget {
     .configurationDisplayName("Partner Draw")
     .description("See the latest drawing from your partner.")
     .supportedFamilies([.systemSmall, .systemMedium])
+    .contentMarginsDisabled()
   }
 }
 

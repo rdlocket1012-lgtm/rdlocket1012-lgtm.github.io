@@ -77,11 +77,12 @@ export default function HomeScreen() {
   useEffect(() => {
     syncWidget({
       dayCount,
+      startDate: couple?.start_date ?? null,
       nickname: couple?.nickname ?? 'Us',
       partnerName: partner?.display_name ?? 'Partner',
       partnerStatusEmoji: (partner as any)?.status_emoji ?? null,
     });
-  }, [dayCount, couple?.nickname, partner?.display_name, (partner as any)?.status_emoji]);
+  }, [dayCount, couple?.start_date, couple?.nickname, partner?.display_name, (partner as any)?.status_emoji]);
 
   // Widget "Add to Home Screen" CTA — dismiss-once, gone forever.
   useEffect(() => {

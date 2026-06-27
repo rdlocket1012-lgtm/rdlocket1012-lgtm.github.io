@@ -93,6 +93,12 @@ function RootLayout() {
       return;
     }
 
+    // Day-counter widget tap — just bring the user to the home tab.
+    if (url.startsWith('locket://home')) {
+      try { router.navigate('/'); } catch {}
+      return;
+    }
+
     const params = parseAllParams(url);
 
     if (params.code) {

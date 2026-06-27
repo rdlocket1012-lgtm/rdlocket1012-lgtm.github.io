@@ -23,6 +23,9 @@
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.siren96.locket"
+        ],
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)com.siren96.locket"
         ]
       },
       "infoPlist": {

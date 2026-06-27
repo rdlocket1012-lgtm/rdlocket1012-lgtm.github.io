@@ -55,8 +55,9 @@ export const useDrawStore = create<DrawState>((set, get) => ({
         });
         // Keep the home-screen draw widget in sync with the latest received
         // drawing whenever the app loads them — not only on a live INSERT.
+        // (Partner name is published separately by syncWidget.)
         if (received[0]) {
-          syncDrawWidget(received[0].image_url, 'Partner').catch(() => {});
+          syncDrawWidget(received[0].image_url).catch(() => {});
         }
       }
     } catch {
@@ -123,9 +124,8 @@ export const useDrawStore = create<DrawState>((set, get) => ({
           const isReceived = drawing.sender_id !== userId;
           if (isReceived) {
             set((s) => ({ received: [drawing, ...s.received] }));
-            // Sync home-screen widget with the latest received drawing
-            const partnerName = 'Partner'; // widget shows first name from UserDefaults
-            syncDrawWidget(drawing.image_url, partnerName).catch(() => {});
+            // Sync home-screen widget with the latest received drawing.
+            syncDrawWidget(drawing.image_url).catch(() => {});
           } else {
             set((s) => ({ sent: [drawing, ...s.sent] }));
           }
