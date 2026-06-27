@@ -18,7 +18,7 @@ import { Icon } from '@/components/ui/Icon';
 import { TYPE_ICON } from '@/constants/milestone-types';
 import { DailyQuizCard } from '@/components/quiz/DailyQuizCard';
 import { ChallengeCard } from '@/components/ui/ChallengeCard';
-import { AnimatedFlame } from '@/components/ui/AnimatedFlame';
+import { StreakMascot } from '@/components/ui/streak-mascot';
 import { BadgeUnlockOverlay } from '@/components/ui/BadgeUnlockOverlay';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useBadgeCelebration } from '@/hooks/useBadgeCelebration';
@@ -280,7 +280,7 @@ export default function HomeScreen() {
                   boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
                 } as any}
               >
-                <AnimatedFlame size={22} color={streak.current > 0 ? LK.coral : LK.faded} active={streak.current > 0} />
+                <StreakMascot size={38} active={streak.current > 0} />
                 <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: streak.current > 0 ? LK.coral : LK.espresso, letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>
                   {streak.current}
                 </Text>

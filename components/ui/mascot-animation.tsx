@@ -31,6 +31,10 @@ const MASCOT_ANIMATIONS = {
   'letter-received': require('../../assets/animations/letter-received.gif'),
   anniversary: require('../../assets/animations/anniversary.gif'),
   'onboarding-complete': require('../../assets/animations/onboarding-complete.gif'),
+  // Streak icon mascots — looping. Lo = warm/fiery (day), Kit = cool/blue (night).
+  // Selected by time of day in components/ui/streak-mascot.tsx.
+  'lo-streak': require('../../assets/animations/lo-streak.gif'),
+  'kit-streak': require('../../assets/animations/kit-streak.gif'),
 } as const;
 
 export type MascotAnimationName = keyof typeof MASCOT_ANIMATIONS;
@@ -66,6 +70,8 @@ export const MASCOT_DURATIONS_MS: Record<MascotAnimationName, number> = {
   'letter-received': 4060,
   anniversary: 5060,
   'onboarding-complete': 5060,
+  'lo-streak': 3040,
+  'kit-streak': 3040,
 };
 
 type MascotAnimationProps = {

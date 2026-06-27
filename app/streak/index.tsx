@@ -5,7 +5,7 @@ import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Icon } from '@/components/ui/Icon';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { AnimatedFlame } from '@/components/ui/AnimatedFlame';
+import { StreakMascot } from '@/components/ui/streak-mascot';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
 import { STREAK_BADGES, nextBadge, unlockedCount, type StreakBadge } from '@/constants/streak-achievements';
@@ -151,7 +151,7 @@ export default function StreakScreen() {
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <AnimatedFlame size={40} color={streak.current > 0 ? LK.coral : LK.faded} active={streak.current > 0} />
+                  <StreakMascot size={64} active={streak.current > 0} />
                   <Text
                     style={{
                       fontFamily: theme.fonts.heading,
