@@ -151,7 +151,7 @@ export default function StreakScreen() {
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <StreakMascot size={96} active={streak.current > 0} />
+                  <StreakMascot size={120} active={streak.current > 0} />
                   <Text
                     style={{
                       fontFamily: theme.fonts.heading,
