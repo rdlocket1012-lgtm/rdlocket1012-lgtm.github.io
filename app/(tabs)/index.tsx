@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Pressable, FlatList, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, FlatList, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -43,7 +44,10 @@ import { WidgetHelpModal } from '@/components/ui/widget-help-modal';
 // native react-native-webview module which only exists in build #19 (v1.0.1).
 // Importing it would crash build #18 over OTA. Re-wire when cutting build #19.
 
-const WIDGET_CTA_KEY = 'lk.widgetCtaDismissed';
+// v2: the original CTA's button was a no-op that dismissed itself; users who
+// tapped it set the old key and never saw it again. Bump the key so the fixed
+// CTA (now opens the how-to sheet) reappears once.
+const WIDGET_CTA_KEY = 'lk.widgetCtaDismissed.v2';
 
 export default function HomeScreen() {
   const { dayCount, couple, isPremium } = useCouple();
@@ -141,7 +145,7 @@ export default function HomeScreen() {
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* ── Header: avatars + presence (left) · bell (right) ─────────────── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.layout.screenX, paddingTop: 16, paddingBottom: 8 }}>

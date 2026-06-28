@@ -45,10 +45,18 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
 
 export const LETTERS = ['A', 'B', 'C', 'D'] as const;
 
-/** Returns the question index for a given date (deterministic, rotates daily). */
+/**
+ * Returns the question index for a given date (deterministic, rotates daily).
+ *
+ * Day count is derived from the *calendar* fields via Date.UTC — NOT by dividing
+ * an absolute-millisecond diff by 86_400_000. The old approach undercounted a
+ * day across a DST spring-forward (the real elapsed time is one hour short of a
+ * whole day), so rows created shortly after local midnight in a DST timezone
+ * repeated the previous day's question. UTC has no DST, so this is exact and
+ * consecutive calendar dates always differ by exactly one.
+ */
 export function questionIndexForDate(d: Date): number {
-  const start = new Date(d.getFullYear(), 0, 0);
-  const diff = d.getTime() - start.getTime();
-  const dayOfYear = Math.floor(diff / 86400000);
-  return dayOfYear % QUIZ_QUESTIONS.length;
+  const dayNumber = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+  const n = QUIZ_QUESTIONS.length;
+  return ((dayNumber % n) + n) % n;
 }

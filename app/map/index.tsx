@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, SafeAreaView, ScrollView,
+  View, Text, TouchableOpacity, ScrollView,
   Platform, Animated, Image, Linking,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Mapbox, {
   MapView, Camera, PointAnnotation, UserLocation,
 } from '@rnmapbox/maps';
@@ -33,6 +34,7 @@ const DEFAULT_CENTER: [number, number] = [2.3522, 48.8566]; // [lng, lat]
 const DEFAULT_ZOOM = 2;
 
 export default function MapScreen() {
+  const insets = useSafeAreaInsets();
   const { pins, loading } = useMap();
   const { isPremium } = useCouple();
   const { items: bucketItems } = useBucketList();
@@ -182,7 +184,7 @@ export default function MapScreen() {
             style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 170 }}
             pointerEvents="none"
           />
-          <View style={{ paddingTop: 56, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ backgroundColor: rgba('#ffffff', 0.92), borderRadius: 22, ...theme.shadow.sm }}>
               <RoundIcon onPress={() => router.back()}><Icon name="chevL" size={20} color={LK.espresso} /></RoundIcon>
             </View>
@@ -194,7 +196,7 @@ export default function MapScreen() {
 
       {/* ── List view overlay ────────────────────────────────────────────── */}
       {view === 'list' && (
-        <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: LK.parchment }}>
+        <SafeAreaView style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: LK.parchment }} edges={['top']}>
           <ScreenHeader
             eyebrow="Our"
             title="Map"
