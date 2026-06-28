@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, Text, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Icon } from '@/components/ui/Icon';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { StreakMascot } from '@/components/ui/streak-mascot';
+import { ChallengeCard } from '@/components/ui/ChallengeCard';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
+import { useChallengesStore } from '@/stores/challenges.store';
 import { STREAK_BADGES, nextBadge, unlockedCount, type StreakBadge } from '@/constants/streak-achievements';
 
 const BADGE_COL_GAP = 12;
@@ -115,6 +118,17 @@ function InfoCard({ icon, accent, title, children }: {
 
 export default function StreakScreen() {
   const streak = useQuizStreak();
+
+  // This week's challenge — read from the already-subscribed store (Home keeps it
+  // fresh) instead of re-subscribing, to avoid an extra realtime channel.
+  const chDef = useChallengesStore((s) => s.def);
+  const chCurrent = useChallengesStore((s) => s.current);
+  const chProgress = useChallengesStore((s) => s.progress);
+  const chComplete = !!chCurrent?.completed_at;
+  const chDaysLeft = chCurrent
+    ? Math.max(0, Math.ceil((new Date(chCurrent.period_end + 'T23:59:59').getTime() - Date.now()) / 86400000))
+    : 0;
+
   const best = streak.best;
   const goal = nextBadge(best);
   const earned = unlockedCount(best);
@@ -126,7 +140,7 @@ export default function StreakScreen() {
   const pct = goal ? Math.min(1, into / span) : 1;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <ScreenHeader eyebrow="Daily Match" title="Your Streak" onBack={() => router.back()} />
 
       {streak.loading ? (
@@ -220,6 +234,26 @@ export default function StreakScreen() {
                     <View style={{ height: '100%', width: `${Math.round(pct * 100)}%`, backgroundColor: goal.accent, borderRadius: 3 }} />
                   </View>
                 </View>
+              </View>
+            </FadeSlideIn>
+          )}
+
+          {/* ── This week's challenge ──────────────────────────────────────── */}
+          {chDef && (
+            <FadeSlideIn delay={130}>
+              <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 26 }}>
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, letterSpacing: 0.5, textTransform: 'uppercase', color: LK.espresso, marginBottom: 14 }}>
+                  This week's challenge
+                </Text>
+                <ChallengeCard
+                  title={chDef.title}
+                  icon={chDef.icon}
+                  accent={chDef.accent}
+                  progress={chProgress}
+                  target={chDef.target}
+                  daysLeft={chDaysLeft}
+                  isComplete={chComplete}
+                />
               </View>
             </FadeSlideIn>
           )}
