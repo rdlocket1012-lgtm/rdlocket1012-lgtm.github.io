@@ -38,6 +38,7 @@ import { useUnseenStore } from '@/stores/unseen.store';
 import MascotAnimation from '@/components/ui/mascot-animation';
 import type { MascotAnimationName } from '@/components/ui/mascot-animation';
 import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
+import { WidgetHelpModal } from '@/components/ui/widget-help-modal';
 // NOTE: WatchTogether is intentionally NOT imported here yet — it pulls in the
 // native react-native-webview module which only exists in build #19 (v1.0.1).
 // Importing it would crash build #18 over OTA. Re-wire when cutting build #19.
@@ -57,6 +58,7 @@ export default function HomeScreen() {
     setPeakMoment({ name, message });
   }, []);
   const [widgetCtaVisible, setWidgetCtaVisible] = useState(false);
+  const [widgetHelpOpen, setWidgetHelpOpen] = useState(false);
   const { partner, partnerJoined } = usePartner();
   const partnerTime = usePartnerTime();
   const streak = useQuizStreak();
@@ -84,8 +86,10 @@ export default function HomeScreen() {
     });
   }, [dayCount, couple?.start_date, couple?.nickname, partner?.display_name, (partner as any)?.status_emoji]);
 
-  // Widget "Add to Home Screen" CTA — dismiss-once, gone forever.
+  // Widget "Add to Home Screen" CTA — iOS only (the widget is an apple-target),
+  // dismiss-once, gone forever.
   useEffect(() => {
+    if (process.env.EXPO_OS !== 'ios') return;
     AsyncStorage.getItem(WIDGET_CTA_KEY).then((v) => setWidgetCtaVisible(v !== '1')).catch(() => {});
   }, []);
   function dismissWidgetCta() {
@@ -219,16 +223,27 @@ export default function HomeScreen() {
                 {widgetCtaVisible && (
                   <>
                     <View style={{ height: 1, alignSelf: 'stretch', backgroundColor: LK.hairline, marginTop: 18, marginHorizontal: 18 }} />
-                    <Pressable
-                      onPress={dismissWidgetCta}
-                      accessibilityRole="button"
-                      accessibilityLabel="Add Locket to your home screen"
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'center', marginVertical: 14, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 9999, backgroundColor: LK.ivory, borderWidth: 1.5, borderColor: rgba(LK.gold, 0.5) }}
-                    >
-                      <Icon name="house" size={14} color={LK.gold} strokeWidth={2} />
-                      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 12, color: LK.gold }}>Add to Home Screen</Text>
-                      <Icon name="x" size={13} color={rgba(LK.gold, 0.6)} strokeWidth={2} />
-                    </Pressable>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'center', marginVertical: 14, paddingLeft: 14, paddingRight: 6, paddingVertical: 4, borderRadius: 9999, backgroundColor: LK.ivory, borderWidth: 1.5, borderColor: rgba(LK.gold, 0.5) }}>
+                      <Pressable
+                        onPress={(e) => { e.stopPropagation?.(); setWidgetHelpOpen(true); }}
+                        accessibilityRole="button"
+                        accessibilityLabel="How to add the Locket widget to your home screen"
+                        hitSlop={8}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 6 }}
+                      >
+                        <Icon name="house" size={14} color={LK.gold} strokeWidth={2} />
+                        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 12, color: LK.gold }}>Add to Home Screen</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={(e) => { e.stopPropagation?.(); dismissWidgetCta(); }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Dismiss"
+                        hitSlop={10}
+                        style={{ padding: 6 }}
+                      >
+                        <Icon name="x" size={13} color={rgba(LK.gold, 0.6)} strokeWidth={2} />
+                      </Pressable>
+                    </View>
                   </>
                 )}
               </View>
@@ -475,6 +490,7 @@ export default function HomeScreen() {
       {/* Defer the badge celebration until any quiz-reveal moment has cleared,
           so the two full-screen overlays never stack. */}
       <BadgeUnlockOverlay badge={peakMoment ? null : badge.celebrating} onDismiss={badge.dismiss} />
+      <WidgetHelpModal visible={widgetHelpOpen} onClose={() => setWidgetHelpOpen(false)} />
     </SafeAreaView>
   );
 }
