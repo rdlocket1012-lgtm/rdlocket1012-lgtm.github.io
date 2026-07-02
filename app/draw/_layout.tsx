@@ -24,7 +24,10 @@ export default function DrawLayout() {
 
   return (
     <TransitionNativeStack>
-      <TransitionNativeStack.Screen name="index" />
+      {/* `index` draws its own parchment ScreenHeader (RoundIcon back + pen), so
+          the native stack header is hidden — otherwise it shows a white bar with
+          the raw route name "index" above the custom header (§10.13 GOTCHA 1). */}
+      <TransitionNativeStack.Screen name="index" options={{ headerShown: false }} />
       {/* Compose is a FULL-SCREEN drawing pad. (A formSheet in this native-stack
           variant sizes to its content, not the [1.0] detent, leaving dead space
           below — fullScreenModal fills the screen and slides up.)
