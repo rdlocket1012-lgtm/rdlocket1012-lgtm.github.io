@@ -64,7 +64,9 @@ export const MASCOT_DURATIONS_MS: Record<MascotAnimationName, number> = {
   'quiz-matched': 4030,
   'partner-typing': 4060,
   connected: 5060,
-  'lo-kit-idle': 4060,
+  // Regenerated 2026-07-10 (Seedance job a3c0a85d): 45 frames × 80 ms,
+  // seamless loop (blink trimmed; seam diff ≈ adjacent-frame diff).
+  'lo-kit-idle': 3600,
   'letter-send': 5030,
   'moment-send': 5060,
   'letter-received': 4060,

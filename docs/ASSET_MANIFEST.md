@@ -136,6 +136,21 @@ All present. No action.
 
 ---
 
+## v1.1 asset regeneration (2026-07-10 → )
+
+Art direction approved 2026-07-10 (user picked **C1 — sticker die-cut style**): canonical ref
+`0c0f11c9` + house style tail + "refined modern picture-book rendering, soft warm even
+lighting" + explicit motion beat + begins-and-ends-on-identical-pose. Model: `seedance_2_0`,
+4 s, 1:1. Pipeline per asset: generate_video → video_background_remover (black matte) →
+difference-matte transparency (bg = orig-near-white AND matte-near-black; rescues subject
+details the remover eats) → loop-point trim via per-frame SSIM vs frame 0 → GIF 380px
+12.5 fps, 128-color palette, reserve_transparent. Update `MASCOT_DURATIONS_MS` on install.
+
+| File | Status | Higgsfield jobs | Notes |
+|---|---|---|---|
+| `lo-kit-idle.gif` | ✅ 2026-07-10 | gen `a3c0a85d-3c51-42aa-a260-ebae4ecd6401` · bg `bb59ee1c-3d81-4cfc-bcfb-7c0dbd840127` | 45f × 80 ms = 3600 ms, seamless (blink trimmed at f88, seam diff 4.8 ≈ adjacent 3.5); 939 KB (was 1467 KB); old file at `_lo-kit-idle.gif.bak`. Prompt: "Two round kawaii locket mascot characters from the reference image standing side by side, calm cozy idle animation: slow gentle synchronized breathing bob, one soft slow blink each, tiny warm content smiles, feet planted, no walking, no turning, no camera movement. The motion must loop seamlessly - the first frame and the last frame are the identical resting pose so the clip repeats with no jump. Soft colored-pencil kawaii sticker style, clean rounded dark-brown outline, dot eyes, pink blush cheeks, refined modern picture-book rendering, soft warm even lighting, plain solid white background, no text, centered with breathing room." |
+| rejected alt | — | `b7d0f258-930f-4376-971c-35d0d106542e` | borderless ink-outline variant (C2) — user chose C1 |
+
 ## Open items / decisions
 
 - **Lottie conversion (ONLY remaining step):** 18 source `.mp4` are in `assets/animations/_source/`; convert each to a transparent `<150 KB` Lottie JSON at `assets/animations/<name>.json` per `CONVERSION_CHECKLIST.md`. Non-scriptable (LottieFiles web tool).
