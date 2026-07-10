@@ -136,20 +136,31 @@ All present. No action.
 
 ---
 
-## v1.1 asset regeneration (2026-07-10 → )
+## v1.1 asset quality pass (2026-07-10 → )
 
-Art direction approved 2026-07-10 (user picked **C1 — sticker die-cut style**): canonical ref
-`0c0f11c9` + house style tail + "refined modern picture-book rendering, soft warm even
-lighting" + explicit motion beat + begins-and-ends-on-identical-pose. Model: `seedance_2_0`,
-4 s, 1:1. Pipeline per asset: generate_video → video_background_remover (black matte) →
-difference-matte transparency (bg = orig-near-white AND matte-near-black; rescues subject
-details the remover eats) → loop-point trim via per-frame SSIM vs frame 0 → GIF 380px
-12.5 fps, 128-color palette, reserve_transparent. Update `MASCOT_DURATIONS_MS` on install.
+**Direction (settled 2026-07-10 after trialling regeneration):** the user prefers the
+ORIGINAL Lo & Kit art — do **not** regenerate; instead **re-convert each runtime GIF from its
+`_source/*.mp4` at higher quality**. A full Seedance regeneration of lo-kit-idle was built,
+approved from video, installed, and then rejected against the original (jobs kept for the
+record: gen `a3c0a85d`, alt `b7d0f258`, bg `bb59ee1c`).
 
-| File | Status | Higgsfield jobs | Notes |
-|---|---|---|---|
-| `lo-kit-idle.gif` | ✅ 2026-07-10 | gen `a3c0a85d-3c51-42aa-a260-ebae4ecd6401` · bg `bb59ee1c-3d81-4cfc-bcfb-7c0dbd840127` | 45f × 80 ms = 3600 ms, seamless (blink trimmed at f88, seam diff 4.8 ≈ adjacent 3.5); 939 KB (was 1467 KB); old file at `_lo-kit-idle.gif.bak`. Prompt: "Two round kawaii locket mascot characters from the reference image standing side by side, calm cozy idle animation: slow gentle synchronized breathing bob, one soft slow blink each, tiny warm content smiles, feet planted, no walking, no turning, no camera movement. The motion must loop seamlessly - the first frame and the last frame are the identical resting pose so the clip repeats with no jump. Soft colored-pencil kawaii sticker style, clean rounded dark-brown outline, dot eyes, pink blush cheeks, refined modern picture-book rendering, soft warm even lighting, plain solid white background, no text, centered with breathing room." |
-| rejected alt | — | `b7d0f258-930f-4376-971c-35d0d106542e` | borderless ink-outline variant (C2) — user chose C1 |
+**Re-conversion pipeline (proven on lo-kit-idle):**
+1. Upload `_source/<name>.mp4` → Higgsfield `video_background_remover` (black matte)
+2. Difference-matte transparency: bg = (orig luma > 200) AND (matte luma < 25) — robust
+   against the remover eating small subject details; gblur σ0.6 edge soften
+3. Loop handling: per-frame SSIM vs frame 0; if the source doesn't loop (lo-kit-idle best
+   late match was only 0.81), **ping-pong** (fwd + reverse concat) → seam diff 0.
+   One-shots instead end on their natural settle frame, `-loop -1` (play once)
+4. GIF: native cadence → fps=12, scale 384px lanczos, palettegen 256 colors
+   `reserve_transparent`, paletteuse `alpha_threshold=128`, **bayer** dither scale 5
+   (error-diffusion dithers crawl frame-to-frame and ~2× the file size)
+5. Verify: corners alpha 0 / subject 255, seam vs adjacent-frame diff, no judder
+   (the old conversions upsampled 24→30 fps, duplicating every 4th frame)
+6. Install + update `MASCOT_DURATIONS_MS` (one full cycle incl. ping-pong return)
+
+| File | Status | Notes |
+|---|---|---|
+| `lo-kit-idle.gif` | ✅ 2026-07-10 | Original art, re-converted: ping-pong seamless (seam 0), 97f ≈ 8080 ms cycle, 2.3 MB (was 1.47 MB — the size buys 256 colors + no judder); rollback at `_lo-kit-idle.gif.bak` |
 
 ## Open items / decisions
 

@@ -64,9 +64,10 @@ export const MASCOT_DURATIONS_MS: Record<MascotAnimationName, number> = {
   'quiz-matched': 4030,
   'partner-typing': 4060,
   connected: 5060,
-  // Regenerated 2026-07-10 (Seedance job a3c0a85d): 45 frames × 80 ms,
-  // seamless loop (blink trimmed; seam diff ≈ adjacent-frame diff).
-  'lo-kit-idle': 3600,
+  // Re-converted 2026-07-10 from the ORIGINAL source (user kept the original
+  // art): ping-pong loop (fwd+rev, seam diff 0), native 12 fps, 256-color
+  // palette. One full cycle = 97 frames × ~83 ms.
+  'lo-kit-idle': 8080,
   'letter-send': 5030,
   'moment-send': 5060,
   'letter-received': 4060,
