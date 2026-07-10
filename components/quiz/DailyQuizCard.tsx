@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, Alert, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { DoodleBackground } from '@/components/ui/doodle-background';
 import { useQuiz } from '@/hooks/useQuiz';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
@@ -167,9 +168,9 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: shade(LK.lilac, 0.5) }}>
             {CATEGORY_LABEL[q.category]}
           </Text>
-          <TouchableOpacity onPress={() => router.push('/quiz/history')} hitSlop={{ top: 13, bottom: 13, left: 13, right: 13 }} accessibilityLabel="Quiz history">
+          <ScalePressable onPress={() => router.push('/quiz/history')} scaleTo={0.9} hitSlop={{ top: 13, bottom: 13, left: 13, right: 13 }} accessibilityLabel="Quiz history">
             <Image source="sf:clock.arrow.circlepath" style={{ width: 18, height: 18 }} contentFit="contain" tintColor={LK.faded} />
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         {/* Title */}
@@ -211,15 +212,15 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
             const disabled = !selecting || submitting;
 
             return (
-              <TouchableOpacity
+              <ScalePressable
                 key={letter}
                 disabled={disabled}
                 onPress={() => (choosingGuess ? pickGuess(letter) : pickSelf(letter))}
-                activeOpacity={0.85}
+                scaleTo={0.98}
                 style={{
                   flexDirection: 'row', alignItems: 'center', gap: 11,
                   backgroundColor: highlighted ? tint(c, 0.6) : tint(c, 0.84),
-                  borderRadius: 16, padding: 13,
+                  borderRadius: 16, borderCurve: 'continuous', padding: 13,
                   borderWidth: highlighted ? 2 : 0, borderColor: highlighted ? c : 'transparent',
                   opacity: !selecting && !isMySelf && !isPartnerSelf ? 0.55 : 1,
                 }}
@@ -237,7 +238,7 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
                 {isMySelf && <Badge text="You" c={c} />}
                 {isPartnerSelf && !isMySelf && <Badge text={partnerName} c={c} />}
                 {isPartnerSelf && isMySelf && <Icon name="heart" size={16} color={shade(c, 0.55)} />}
-              </TouchableOpacity>
+              </ScalePressable>
             );
           })}
         </View>
@@ -311,13 +312,14 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
                   placeholderTextColor={LK.ink70}
                   style={{ flex: 1, backgroundColor: LK.parchment, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11, fontFamily: theme.fonts.body, fontSize: 14, color: LK.espresso }}
                 />
-                <TouchableOpacity
+                <ScalePressable
                   onPress={saveComment}
                   disabled={!commentDraft.trim() || savingComment}
-                  style={{ backgroundColor: commentDraft.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 14, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}
+                  accessibilityLabel="Send comment"
+                  style={{ backgroundColor: commentDraft.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 14, borderCurve: 'continuous', paddingHorizontal: 16, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Icon name="arrowR" size={18} color={commentDraft.trim() ? '#fff' : LK.ink70} />
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
             )}
           </View>
@@ -396,13 +398,14 @@ function QuizIntroModal({ visible, partnerName, onClose }: { visible: boolean; p
             Once you've both finished, you'll see how well you guessed each other 💛
           </Text>
 
-          <TouchableOpacity
+          <ScalePressable
             onPress={onClose}
-            activeOpacity={0.85}
+            scaleTo={0.97}
+            accessibilityLabel="Got it"
             style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 14, alignItems: 'center', marginTop: 18 }}
           >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15.5, color: '#fff' }}>Got it</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
       </View>
     </Modal>
