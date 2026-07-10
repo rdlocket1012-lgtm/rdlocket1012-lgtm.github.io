@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Pressable, FlatList, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, Pressable, FlatList, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -149,7 +149,7 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* ── Header: avatars + presence (left) · bell (right) ─────────────── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.layout.screenX, paddingTop: 16, paddingBottom: 8 }}>
-          <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/profile/about')} style={{ flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 }} accessibilityLabel="About us">
+          <ScalePressable scaleTo={0.98} onPress={() => router.push('/profile/about')} containerStyle={{ flex: 1, minWidth: 0 }} style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }} accessibilityLabel="About us">
             <View style={{ flexDirection: 'row' }}>
               <View style={{ marginRight: -12, zIndex: 2 }}>
                 <Avatar initial={myInitial} imageUrl={profile?.avatar_url} color={LK.coral} size={38} style={{ borderWidth: 2.5, borderColor: LK.parchment }} />
@@ -192,7 +192,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
-          </TouchableOpacity>
+          </ScalePressable>
           {/* Right: bell → activity feed (recent letters + upcoming dates). Coral dot when unread. */}
           <View style={{ flexShrink: 0 }}>
             <RoundIcon onPress={() => router.push('/notifications')}>
@@ -207,7 +207,7 @@ export default function HomeScreen() {
         {/* ── Zone A: Hero counter card ────────────────────────────────────── */}
         <FadeSlideIn delay={60} fromY={10}>
           <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 6 }}>
-            <TouchableOpacity activeOpacity={0.94} onPress={() => router.push('/(tabs)/timeline')}>
+            <ScalePressable scaleTo={0.985} onPress={() => router.push('/(tabs)/timeline')} accessibilityLabel="Open timeline">
               <View style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.lg, borderCurve: 'continuous', paddingTop: 18, paddingBottom: widgetCtaVisible ? 0 : 22, alignItems: 'center', ...theme.shadow.card }}>
                 <MascotAnimation name={isAnniversary ? 'anniversary' : 'lo-kit-idle'} size={104} />
                 <Animated.View style={pulseStyle}>
@@ -251,16 +251,17 @@ export default function HomeScreen() {
                   </>
                 )}
               </View>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         </FadeSlideIn>
 
         {/* Invite-partner banner (only when no partner) */}
         {!partnerJoined && (
           <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 12 }}>
-            <TouchableOpacity
+            <ScalePressable
               onPress={() => shareInvite()}
-              activeOpacity={0.9}
+              scaleTo={0.98}
+              accessibilityLabel="Invite your person to Locket"
               style={{ backgroundColor: tint(LK.sky, 0.7), borderRadius: theme.radii.lg, borderCurve: 'continuous', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, ...theme.shadow.sm }}
             >
               <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: LK.sky, alignItems: 'center', justifyContent: 'center' }}>
@@ -271,7 +272,7 @@ export default function HomeScreen() {
                 <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 2 }}>Locket is better for two — send them a link.</Text>
               </View>
               <Icon name="share" size={16} color={shade(LK.sky, 0.5)} />
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         )}
 
@@ -284,8 +285,8 @@ export default function HomeScreen() {
         {partnerJoined && !streak.loading && (
           <FadeSlideIn delay={160}>
             <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
-              <TouchableOpacity
-                activeOpacity={0.9}
+              <ScalePressable
+                scaleTo={0.98}
                 onPress={() => router.push('/streak')}
                 accessibilityLabel="View your streak and achievements"
                 style={{
@@ -312,7 +313,7 @@ export default function HomeScreen() {
                   </Text>
                 )}
                 <Icon name="chevR" size={16} color={LK.faded} />
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
           </FadeSlideIn>
         )}
@@ -340,10 +341,15 @@ export default function HomeScreen() {
             <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 2 }}>
                 <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso }}>On this day</Text>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/timeline')} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <ScalePressable
+                  onPress={() => router.push('/(tabs)/timeline')}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                  accessibilityLabel="See all memories"
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+                >
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: shade(LK.marigold, 0.5) }}>See all</Text>
                   <Icon name="chevR" size={14} color={shade(LK.marigold, 0.5)} />
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
               {/* SOURCE for the card → milestone-detail morph (§10.13). Same
                   group/id as the timeline + story-strip triggers; pairs are keyed
@@ -410,10 +416,15 @@ export default function HomeScreen() {
             <View style={{ paddingTop: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.layout.screenX, marginBottom: 12 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, letterSpacing: 0.5, textTransform: 'uppercase', color: LK.espresso }}>Your story</Text>
-                <TouchableOpacity onPress={() => router.push('/(tabs)/timeline')} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <ScalePressable
+                  onPress={() => router.push('/(tabs)/timeline')}
+                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                  accessibilityLabel="See all of your story"
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+                >
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: LK.sepia }}>See all</Text>
                   <Icon name="chevR" size={13} color={LK.sepia} />
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
               <FlatList
                 data={story}
@@ -459,9 +470,10 @@ export default function HomeScreen() {
         {!isPremium && (
           <FadeSlideIn delay={300}>
             <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 24 }}>
-              <TouchableOpacity
+              <ScalePressable
                 onPress={() => setPaywallOpen(true)}
-                activeOpacity={0.9}
+                scaleTo={0.98}
+                accessibilityLabel="Unlock Locket Premium"
                 style={{
                   backgroundColor: tint(LK.marigold, 0.82), borderRadius: theme.radii.lg, borderCurve: 'continuous',
                   borderWidth: 1.5, borderColor: rgba(LK.marigold, 0.55), padding: 16,
@@ -478,7 +490,7 @@ export default function HomeScreen() {
                   </Text>
                 </View>
                 <Icon name="chevR" size={20} color={shade(LK.marigold, 0.5)} />
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
           </FadeSlideIn>
         )}

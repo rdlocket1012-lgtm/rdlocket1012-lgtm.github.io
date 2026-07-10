@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, SafeAreaView, Animated } from 'react-native';
+import { View, Text, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import MascotAnimation from '@/components/ui/mascot-animation';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
@@ -79,8 +81,9 @@ export default function InviteScreen() {
       <View style={{ flex: 1, padding: 30, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
         {phase === 'loading' || phase === 'joining' ? (
           <>
-            <ActivityIndicator color={LK.espresso} size="large" />
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70 }}>
+            {/* §10.12: no bare spinners — the idle mascot holds the moment. */}
+            <MascotAnimation name="lo-kit-idle" size={140} />
+            <Text style={{ fontFamily: theme.fonts.hand, fontSize: 16, color: LK.sepia }}>
               {phase === 'joining' ? 'Linking your spaces…' : 'Getting things ready…'}
             </Text>
           </>
@@ -107,9 +110,16 @@ export default function InviteScreen() {
             <ScalePressable scaleTo={0.97} onPress={handleJoin} accessibilityLabel="Join now" style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 32, paddingVertical: 16, marginTop: 10, ...theme.shadow.card }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: '#fff' }}>Join now</Text>
             </ScalePressable>
-            <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={{ paddingVertical: 8 }}>
+            <ScalePressable
+              onPress={() => router.replace('/(tabs)')}
+              haptic={false}
+              accessibilityRole="button"
+              accessibilityLabel="Not now"
+              hitSlop={{ top: 6, bottom: 6, left: 20, right: 20 }}
+              style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }}
+            >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.ink70 }}>Not now</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </>
         )}
       </View>

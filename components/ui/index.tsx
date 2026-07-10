@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, type ViewStyle } from 'react-native';
+import { View, Text, type ViewStyle } from 'react-native';
 import { LK, tint, theme } from '@/constants/theme';
+import { ScalePressable } from './scale-pressable';
 
 // Direct-import these — do NOT import from this barrel file.
 export { Avatar } from './avatar';
@@ -34,9 +35,9 @@ export function Sticker({ children, color, tiltDeg = 0, soft, style, onPress, fl
   );
   if (!onPress) return inner;
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+    <ScalePressable onPress={onPress} scaleTo={0.98}>
       {inner}
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }
 
