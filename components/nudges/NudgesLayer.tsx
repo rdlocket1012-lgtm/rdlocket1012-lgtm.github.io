@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, Modal, Animated,
+  View, Text, Modal, Animated,
   Easing, Pressable, StyleSheet,
 } from 'react-native';
-import Reanimated, { FadeIn, FadeOut, ZoomIn, useReducedMotion, ReduceMotion } from 'react-native-reanimated';
+import Reanimated, {
+  FadeIn, FadeOut, ZoomIn, useReducedMotion, ReduceMotion,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { SparkleBurst } from '@/components/nudges/SparkleBurst';
 import { RippleBurst } from '@/components/nudges/RippleBurst';
 import { BiteBurst } from '@/components/nudges/BiteBurst';
@@ -206,6 +210,30 @@ export function NudgesLayer({
     setCatchItOpen(false);
   }
 
+  // ── Single overlay host ───────────────────────────────────────────────
+  // All nudge overlays share ONE <Modal>. Sibling RN Modals race on iOS: when a
+  // kiss_request landed while another nudge modal was up (e.g. my own send menu
+  // — both partners nudging at once), presenting the second modal failed
+  // silently or presented without a working touch context — the "really
+  // difficult to accept a kiss" bug. One host = one native presentation.
+  // Priority: the time-sensitive consent gate always wins.
+  const overlayContent = catchItOpen
+    ? ('catchit' as const)
+    : caughtOpen
+    ? ('caught' as const)
+    : kissOpen
+    ? ('thumbkiss' as const)
+    : open
+    ? ('menu' as const)
+    : null;
+
+  function closeTopOverlay() {
+    if (catchItOpen) { setCatchItOpen(false); return; }
+    if (caughtOpen) { setCaughtOpen(false); return; }
+    if (kissOpen) { setHolding(false); setKissOpen(false); return; }
+    onClose();
+  }
+
   return (
     <>
       {/* Always-on overlays (pointer-events: none) */}
@@ -213,43 +241,52 @@ export function NudgesLayer({
       <RippleBurst trigger={rippleTrigger} />
       <BiteBurst trigger={biteTrigger} />
 
-      {/* Send menu */}
-      <RadialMenu
-        open={open}
-        onClose={onClose}
-        partnerName={partner}
-        partnerAsleep={!!partnerAsleep}
-        partnerSilent={!!partnerSilent}
-        onSparkles={doSparkles}
-        onHug={doHug}
-        onKiss={doKissRequest}
-        onBite={doBite}
-        onThumbKiss={doThumbKiss}
-      />
+      <Modal
+        visible={overlayContent !== null}
+        transparent
+        statusBarTranslucent
+        animationType="fade"
+        onRequestClose={closeTopOverlay}
+      >
+        {/* Send menu */}
+        {overlayContent === 'menu' && (
+          <RadialMenu
+            onClose={onClose}
+            partnerName={partner}
+            partnerAsleep={!!partnerAsleep}
+            partnerSilent={!!partnerSilent}
+            onSparkles={doSparkles}
+            onHug={doHug}
+            onKiss={doKissRequest}
+            onBite={doBite}
+            onThumbKiss={doThumbKiss}
+          />
+        )}
 
-      {/* Thumb-kiss sync screen (existing feature) */}
-      {kissOpen && (
-        <ThumbKiss
-          partnerName={partner}
-          partnerHolding={partnerHolding}
-          onHoldChange={setHolding}
-          onClose={() => { setHolding(false); setKissOpen(false); }}
-        />
-      )}
+        {/* Thumb-kiss sync screen (existing feature) */}
+        {overlayContent === 'thumbkiss' && (
+          <ThumbKiss
+            partnerName={partner}
+            partnerHolding={partnerHolding}
+            onHoldChange={setHolding}
+            onClose={() => { setHolding(false); setKissOpen(false); }}
+          />
+        )}
 
-      {/* Consent gate — receiver sees this */}
-      {catchItOpen && (
-        <CatchItOverlay
-          partnerName={partner}
-          onCatch={handleCatchIt}
-          onDecline={handleDeclineKiss}
-        />
-      )}
+        {/* Consent gate — receiver sees this */}
+        {overlayContent === 'catchit' && (
+          <CatchItOverlay
+            partnerName={partner}
+            onCatch={handleCatchIt}
+            onDecline={handleDeclineKiss}
+          />
+        )}
 
-      {/* Confirmation — sender sees this when kiss is caught */}
-      {caughtOpen && (
-        <CaughtConfirmation partnerName={partner} onClose={() => setCaughtOpen(false)} />
-      )}
+        {/* Confirmation — sender sees this when kiss is caught */}
+        {overlayContent === 'caught' && (
+          <CaughtConfirmation partnerName={partner} onClose={() => setCaughtOpen(false)} />
+        )}
+      </Modal>
 
       {/* Send peak (§10.5) — mascot WebP plays full-screen to the sender */}
       {sendPeak && (
@@ -274,8 +311,8 @@ const ACTIONS = [
   { key: 'thumbkiss', label: 'Thumb-Kiss', icon: 'hand',    color: LK.sky },
 ] as const;
 
-function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, onSparkles, onHug, onKiss, onBite, onThumbKiss }: {
-  open: boolean;
+// Rendered inside the shared overlay <Modal> host — no Modal of its own.
+function RadialMenu({ onClose, partnerName, partnerAsleep, partnerSilent, onSparkles, onHug, onKiss, onBite, onThumbKiss }: {
   onClose: () => void;
   partnerName: string;
   partnerAsleep: boolean;
@@ -288,16 +325,13 @@ function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, 
 }) {
   const reduced = useReducedMotion();
 
-  if (!open) return null;
-
   const handlers = { sparkles: onSparkles, hug: onHug, kiss: onKiss, bite: onBite, thumbkiss: onThumbKiss };
   const cardEnter = reduced
     ? FadeIn.duration(160).reduceMotion(ReduceMotion.System)
     : ZoomIn.springify().damping(theme.spring.warm.damping).stiffness(theme.spring.warm.stiffness).reduceMotion(ReduceMotion.System);
 
   return (
-    <Modal visible={open} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
-      <Reanimated.View
+    <Reanimated.View
         entering={FadeIn.duration(160).reduceMotion(ReduceMotion.System)}
         exiting={FadeOut.duration(120).reduceMotion(ReduceMotion.System)}
         style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20,15,10,0.45)' }]}
@@ -356,105 +390,123 @@ function RadialMenu({ open, onClose, partnerName, partnerAsleep, partnerSilent, 
           </Pressable>
           </Reanimated.View>
         </Pressable>
-      </Reanimated.View>
-    </Modal>
+    </Reanimated.View>
   );
 }
 
 // ── "Catch It!" consent overlay (receiver) ─────────────────────────────────
 
+// Rendered inside the shared overlay <Modal> host. Entrance is driven by
+// Reanimated *shared values* (not entering/exiting layout animations — those
+// silently no-op inside RN Modals) so the card animates reliably.
 function CatchItOverlay({ partnerName, onCatch, onDecline }: { partnerName: string; onCatch: () => void; onDecline: () => void }) {
-  const scale = useRef(new Animated.Value(0.8)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useSharedValue(0.8);
+  const opacity = useSharedValue(0);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, damping: 18, stiffness: 220 }),
-      Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-    ]).start();
+    opacity.value = withTiming(1, { duration: 250 });
+    scale.value = withSpring(1, { damping: theme.spring.warm.damping, stiffness: theme.spring.warm.stiffness });
+    // shared values are stable refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
   return (
-    <Modal visible transparent animationType="none">
-      <Animated.View style={[
-        StyleSheet.absoluteFill,
-        { backgroundColor: 'rgba(20,15,10,0.72)', alignItems: 'center', justifyContent: 'center', padding: 30, opacity },
-      ]}>
-        <Animated.View style={{
-          backgroundColor: LK.vellum, borderRadius: 30, padding: 30,
-          alignItems: 'center', width: '100%', maxWidth: 340,
-          ...theme.shadow.card,
-          transform: [{ scale }],
-        }}>
-          <MascotAnimation name="kiss-receive" size={140} style={{ marginBottom: 8 }} />
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 26, color: LK.espresso, textAlign: 'center', letterSpacing: -0.5 }}>
-            Incoming kiss!
-          </Text>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70, textAlign: 'center', marginTop: 8, lineHeight: 22, maxWidth: 240 }}>
-            {partnerName} is sending you a kiss. Tap before it floats away…
-          </Text>
+    <Reanimated.View style={[
+      StyleSheet.absoluteFill,
+      { backgroundColor: 'rgba(20,15,10,0.72)', alignItems: 'center', justifyContent: 'center', padding: 30 },
+      backdropStyle,
+    ]}>
+      <Reanimated.View style={[{
+        backgroundColor: LK.vellum, borderRadius: 30, borderCurve: 'continuous', padding: 30,
+        alignItems: 'center', width: '100%', maxWidth: 340,
+        ...theme.shadow.card,
+      }, cardStyle]}>
+        <MascotAnimation name="kiss-receive" size={140} style={{ marginBottom: 8 }} />
+        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 26, color: LK.espresso, textAlign: 'center', letterSpacing: -0.5 }}>
+          Incoming kiss!
+        </Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 15, color: LK.ink70, textAlign: 'center', marginTop: 8, lineHeight: 22, maxWidth: 240 }}>
+          {partnerName} is sending you a kiss. Tap before it floats away…
+        </Text>
 
-          <TouchableOpacity
-            onPress={onCatch}
-            activeOpacity={0.85}
-            style={{
-              marginTop: 28, backgroundColor: LK.blush,
-              borderRadius: 9999, paddingHorizontal: 40, paddingVertical: 16,
-              ...theme.shadow.sm,
-            }}
-          >
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 17, color: shade(LK.blush, 0.55) }}>
-              Catch it!
-            </Text>
-          </TouchableOpacity>
+        <ScalePressable
+          onPress={onCatch}
+          hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
+          accessibilityRole="button"
+          accessibilityLabel="Catch the kiss"
+          containerStyle={{ marginTop: 28 }}
+          style={{
+            backgroundColor: LK.blush,
+            borderRadius: 9999, paddingHorizontal: 40, paddingVertical: 16,
+            minHeight: 52, alignItems: 'center', justifyContent: 'center',
+            ...theme.shadow.sm,
+          }}
+        >
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 17, color: shade(LK.blush, 0.55) }}>
+            Catch it!
+          </Text>
+        </ScalePressable>
 
-          <TouchableOpacity onPress={onDecline} style={{ marginTop: 16 }} hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 14, color: LK.ink70 }}>Later</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
+        <ScalePressable
+          onPress={onDecline}
+          haptic={false}
+          hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
+          accessibilityRole="button"
+          accessibilityLabel="Catch it later"
+          containerStyle={{ marginTop: 8 }}
+          style={{ minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}
+        >
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 14, color: LK.ink70 }}>Later</Text>
+        </ScalePressable>
+      </Reanimated.View>
+    </Reanimated.View>
   );
 }
 
 // ── Caught confirmation (sender's side) ────────────────────────────────────
 
+// Rendered inside the shared overlay <Modal> host; shared-value entrance
+// (layout animations no-op inside RN Modals). Tap anywhere to dismiss early.
 function CaughtConfirmation({ partnerName, onClose }: { partnerName: string; onClose: () => void }) {
-  const scale = useRef(new Animated.Value(0.85)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useSharedValue(0.85);
+  const opacity = useSharedValue(0);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true, damping: 18, stiffness: 220 }),
-      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-    ]).start();
+    opacity.value = withTiming(1, { duration: 220 });
+    scale.value = withSpring(1, { damping: theme.spring.warm.damping, stiffness: theme.spring.warm.stiffness });
     // Auto-dismiss after 3 s
     const t = setTimeout(onClose, 3000);
     return () => clearTimeout(t);
+    // shared values are stable refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
   return (
-    <Modal visible transparent animationType="none">
-      <Animated.View style={[StyleSheet.absoluteFill, {
-        backgroundColor: 'rgba(20,15,10,0.55)',
-        alignItems: 'center', justifyContent: 'center', padding: 30, opacity,
-      }]}>
-        <Animated.View style={{
-          backgroundColor: LK.vellum, borderRadius: 30, padding: 28,
-          alignItems: 'center', width: '100%', maxWidth: 320,
-          ...theme.shadow.card,
-          transform: [{ scale }],
-        }}>
-          <MascotAnimation name="kiss-send" size={124} style={{ marginBottom: 6 }} />
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 24, color: LK.espresso, textAlign: 'center' }}>
-            Caught it!
-          </Text>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', marginTop: 8, lineHeight: 21 }}>
-            {partnerName} caught your kiss
-          </Text>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
+    <Reanimated.View style={[StyleSheet.absoluteFill, {
+      backgroundColor: 'rgba(20,15,10,0.55)',
+      alignItems: 'center', justifyContent: 'center', padding: 30,
+    }, backdropStyle]}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Dismiss" />
+      <Reanimated.View style={[{
+        backgroundColor: LK.vellum, borderRadius: 30, borderCurve: 'continuous', padding: 28,
+        alignItems: 'center', width: '100%', maxWidth: 320,
+        ...theme.shadow.card,
+      }, cardStyle]}>
+        <MascotAnimation name="kiss-send" size={124} style={{ marginBottom: 6 }} />
+        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 24, color: LK.espresso, textAlign: 'center' }}>
+          Caught it!
+        </Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', marginTop: 8, lineHeight: 21 }}>
+          {partnerName} caught your kiss
+        </Text>
+      </Reanimated.View>
+    </Reanimated.View>
   );
 }
 
@@ -474,7 +526,14 @@ function ThumbKiss({ partnerName, partnerHolding, onHoldChange, onClose }: {
   inSyncRef.current = inSync;
 
   useEffect(() => {
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      // Release the broadcast hold if we unmount mid-hold (e.g. the consent
+      // gate preempts this view) so the partner never sees a ghost hold.
+      onHoldChange(false);
+    };
+    // mount/unmount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -507,12 +566,19 @@ function ThumbKiss({ partnerName, partnerHolding, onHoldChange, onClose }: {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
   }
 
+  // Rendered inside the shared overlay <Modal> host — no Modal of its own.
   return (
-    <Modal visible transparent animationType="fade">
       <View style={{ flex: 1, backgroundColor: 'rgba(26,18,30,0.82)', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-        <TouchableOpacity onPress={onClose} style={{ position: 'absolute', top: 60, right: 24 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <ScalePressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close thumb-kiss"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          containerStyle={{ position: 'absolute', top: 60, right: 24 }}
+          style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
           <Icon name="x" size={26} color="rgba(255,255,255,0.8)" />
-        </TouchableOpacity>
+        </ScalePressable>
 
         <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 28, color: '#fff', textAlign: 'center', marginBottom: 8 }}>
           {inSync ? 'In sync 💋' : 'Thumb-Kiss'}
@@ -545,7 +611,6 @@ function ThumbKiss({ partnerName, partnerHolding, onHoldChange, onClose }: {
           <HoldDot label={partnerName} on={partnerHolding} />
         </View>
       </View>
-    </Modal>
   );
 }
 
