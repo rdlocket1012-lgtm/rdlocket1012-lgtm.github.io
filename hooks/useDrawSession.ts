@@ -4,7 +4,9 @@ import { supabase } from '@/lib/supabase';
 import type { Stroke } from '@/components/draw/DrawCanvas';
 
 export type DrawGameEvent =
-  | { type: 'round_start'; roundId: string; drawerUserId: string; options: [string, string, string] }
+  // `round` is optional for backwards compatibility with peers on builds that
+  // don't broadcast it yet — receivers must guard before using it.
+  | { type: 'round_start'; roundId: string; drawerUserId: string; options: [string, string, string]; round?: number }
   | { type: 'word_picked' }
   | { type: 'stroke'; stroke: Stroke }
   | { type: 'guess'; text: string }

@@ -155,13 +155,21 @@ export default function DrawAndGuessScreen() {
 
   const myId = profile?.id ?? null;
   const partnerId = partner?.id ?? null;
-  const myName = profile?.display_name ?? 'You';
   const partnerName = partner?.display_name ?? 'Partner';
   const coupleId = profile?.couple_id ?? null;
 
   // Game state
   const [phase, setPhase] = useState<Phase>('lobby');
   const [role, setRole] = useState<Role>('drawer');
+  // role is read inside long-lived closures (realtime handler, 90s timer) where
+  // state can be a render stale — e.g. word_picked arriving in the same tick as
+  // round_start. The ref is updated synchronously with setRole so those reads
+  // never mislabel the player.
+  const roleRef = useRef<Role>('drawer');
+  const applyRole = (r: Role) => {
+    roleRef.current = r;
+    setRole(r);
+  };
   const [roundNum, setRoundNum] = useState(0);
   const [roundId, setRoundId] = useState('');
   const [wordOptions, setWordOptions] = useState<[string, string, string]>(['?', '?', '?']);
@@ -181,13 +189,16 @@ export default function DrawAndGuessScreen() {
   const [brushWidth, setBrushWidth] = useState(5);
   const [erasing, setErasing] = useState(false);
 
-  function startTimer() {
+  // `word` is passed explicitly: pickWord() calls this in the same tick as
+  // setChosenWord, so reading chosenWord state here would give the *previous*
+  // round's word ('' on round 1) and the timeout reveal would show the wrong word.
+  function startTimer(word: string) {
     timerProgress.value = 1;
     timerProgress.value = withTiming(0, { duration: ROUND_DURATION, easing: Easing.linear });
     timerRef.current = setTimeout(() => {
-      if (role === 'drawer') {
-        send({ type: 'time_up', word: chosenWord });
-        handleTimeUp(chosenWord);
+      if (roleRef.current === 'drawer') {
+        send({ type: 'time_up', word });
+        handleTimeUp(word);
       }
     }, ROUND_DURATION);
   }
@@ -220,8 +231,11 @@ export default function DrawAndGuessScreen() {
       switch (e.type) {
         case 'round_start': {
           const iAmDrawer = e.drawerUserId === myId;
-          setRole(iAmDrawer ? 'drawer' : 'guesser');
+          applyRole(iAmDrawer ? 'drawer' : 'guesser');
           setRoundId(e.roundId);
+          // Sync the round counter from the starter so both devices agree on
+          // "Round N" and on whose turn the next round is.
+          if (typeof e.round === 'number') setRoundNum(e.round);
           setWordOptions(e.options);
           setStrokes([]);
           setGuesses([]);
@@ -231,10 +245,12 @@ export default function DrawAndGuessScreen() {
           break;
         }
         case 'word_picked': {
-          // Guesser receives this — drawer has picked, game starts
-          if (role === 'guesser') {
+          // Guesser receives this — drawer has picked, game starts.
+          // roleRef (not role state) — this can arrive in the same tick as
+          // round_start, before the role state has committed.
+          if (roleRef.current === 'guesser') {
             setPhase('drawing');
-            startTimer();
+            startTimer(''); // guesser never broadcasts time_up; drawer owns the word
           }
           break;
         }
@@ -265,7 +281,9 @@ export default function DrawAndGuessScreen() {
         }
       }
     },
-    [myId, role],
+    // role is intentionally absent: handlers read roleRef so mid-tick events
+    // (word_picked right after round_start) never see a stale role.
+    [myId],
   );
 
   const { send, partnerOnline } = useDrawSession(coupleId, myId, onDrawEvent);
@@ -276,9 +294,11 @@ export default function DrawAndGuessScreen() {
   const prevOnlineRef = useRef(false);
 
   const sendInvite = useCallback(() => {
-    const first = (myName || 'Your partner').split(' ')[0];
+    // Fall back past the 'You' default — the push reads on the partner's phone,
+    // where "You wants to draw!" would be wrong.
+    const first = (profile?.display_name?.trim() || 'Your partner').split(' ')[0];
     notifyPartner('draw_invite', `🎨 ${first} wants to draw!`, 'Tap to join a game of Draw & Guess');
-  }, [myName]);
+  }, [profile?.display_name]);
 
   // Auto-ping the partner once when we're waiting in the lobby and they're not
   // here yet. Reset when they join so a fresh invite can be sent if they leave.
@@ -317,11 +337,12 @@ export default function DrawAndGuessScreen() {
       roundId: newRoundId,
       drawerUserId,
       options,
+      round: newRoundNum,
     };
 
     // Apply locally (self excluded from Realtime broadcast)
     const iAmDrawer = drawerUserId === myId;
-    setRole(iAmDrawer ? 'drawer' : 'guesser');
+    applyRole(iAmDrawer ? 'drawer' : 'guesser');
     setRoundId(newRoundId);
     setWordOptions(options);
     setStrokes([]);
@@ -337,7 +358,7 @@ export default function DrawAndGuessScreen() {
     setChosenWord(word);
     setPhase('drawing');
     send({ type: 'word_picked' });
-    startTimer();
+    startTimer(word);
   }
 
   function handleStroke(stroke: Stroke) {
@@ -567,7 +588,7 @@ export default function DrawAndGuessScreen() {
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
         <MascotAnimation name="lo-kit-idle" size={140} />
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 16, color: LK.espresso }}>
-          {myName} is picking a word...
+          {partnerName} is picking a word…
         </Text>
         <PulsingDots />
       </View>
