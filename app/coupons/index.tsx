@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
+  View, Text, ScrollView, Pressable,
   TextInput, Modal, Alert, KeyboardAvoidingView,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -228,13 +228,13 @@ export default function CouponsScreen() {
 
       {/* ── Streak rescue banner (only when streak is broken & within 48 h) ─── */}
       {streakRestore.canRestore && (
-        <TouchableOpacity
+        <ScalePressable
           onPress={handleStreakRestore}
           disabled={restoring}
-          activeOpacity={0.88}
+          scaleTo={0.98}
+          accessibilityLabel="Save your streak"
+          containerStyle={{ marginHorizontal: 20, marginBottom: 14 }}
           style={{
-            marginHorizontal: 20,
-            marginBottom: 14,
             backgroundColor: tint(LK.coral, 0.85),
             borderRadius: 18,
             borderCurve: 'continuous',
@@ -259,7 +259,7 @@ export default function CouponsScreen() {
             </Text>
           </View>
           <Icon name="chevR" size={18} color={shade(LK.coral, 0.45)} />
-        </TouchableOpacity>
+        </ScalePressable>
       )}
 
       {/* Segmented tabs */}
@@ -269,10 +269,13 @@ export default function CouponsScreen() {
           const count = tab === 'mine' ? forMe.length : iGave.length;
           const on = activeTab === tab;
           return (
-            <TouchableOpacity
+            <ScalePressable
               key={tab}
               onPress={() => setActiveTab(tab)}
-              style={{ flex: 1, backgroundColor: on ? LK.vellum : 'transparent', borderRadius: 9999, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, ...( on ? theme.shadow.sm : {}) }}
+              scaleTo={0.97}
+              accessibilityLabel={label}
+              containerStyle={{ flex: 1 }}
+              style={{ backgroundColor: on ? LK.vellum : 'transparent', borderRadius: 9999, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, ...( on ? theme.shadow.sm : {}) }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: on ? LK.espresso : LK.sepia }}>{label}</Text>
               {count > 0 && (
@@ -280,7 +283,7 @@ export default function CouponsScreen() {
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: on ? shade(LK.coral, 0.5) : LK.sepia }}>{count}</Text>
                 </View>
               )}
-            </TouchableOpacity>
+            </ScalePressable>
           );
         })}
       </View>
@@ -360,31 +363,38 @@ export default function CouponsScreen() {
       {sheet && (
         <Modal animationType="slide" transparent>
           <KeyboardAvoidingView behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
-            <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} activeOpacity={1} onPress={() => setSheet(false)} />
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={() => setSheet(false)} accessibilityLabel="Close" />
             <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
               <View style={{ paddingTop: 14, alignItems: 'center' }}>
                 <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 12 }}>
-                <TouchableOpacity onPress={() => setSheet(false)}>
+                <ScalePressable
+                  onPress={() => setSheet(false)}
+                  haptic={false}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                  style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}
+                >
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-                </TouchableOpacity>
+                </ScalePressable>
                 <View style={{ alignItems: 'center' }}>
                   <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>Gift a coupon</Text>
                   <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70 }}>Your partner will receive this</Text>
                 </View>
-                <TouchableOpacity
+                <ScalePressable
                   onPress={handleCreate}
                   disabled={picked == null && !title.trim()}
+                  accessibilityLabel="Gift this coupon"
                   style={{
                     backgroundColor: (picked != null || title.trim()) ? LK.espresso : 'rgba(42,33,26,0.15)',
-                    borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10,
+                    borderRadius: 9999, paddingHorizontal: 18, minHeight: 44, justifyContent: 'center',
                   }}
                 >
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: (picked != null || title.trim()) ? '#fff' : LK.ink70 }}>
                     Gift
                   </Text>
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
@@ -396,14 +406,15 @@ export default function CouponsScreen() {
                     const on = picked === i;
                     const col = couponColor(t.color);
                     return (
-                      <TouchableOpacity
+                      <ScalePressable
                         key={i}
                         onPress={() => { setPicked(i); setTitle(''); }}
-                        activeOpacity={0.85}
+                        scaleTo={0.98}
+                        accessibilityLabel={t.title}
                         style={{
                           flexDirection: 'row', alignItems: 'center', gap: 12,
                           backgroundColor: on ? tint(col, 0.6) : LK.ivory,
-                          borderRadius: 16, padding: 13,
+                          borderRadius: 16, borderCurve: 'continuous', padding: 13,
                           borderWidth: on ? 2 : 0, borderColor: on ? col : 'transparent',
                           ...theme.shadow.sm,
                         }}
@@ -414,7 +425,7 @@ export default function CouponsScreen() {
                           <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 1 }}>{t.description}</Text>
                         </View>
                         {on && <Icon name="check" size={18} color={shade(col, 0.5)} />}
-                      </TouchableOpacity>
+                      </ScalePressable>
                     );
                   })}
                 </View>
@@ -595,42 +606,53 @@ function CouponCard({
           </ScalePressable>
         )}
         {mode === 'recipient' && isPending && onCancelRequest && (
-          <TouchableOpacity
+          <ScalePressable
             onPress={onCancelRequest}
-            activeOpacity={0.85}
-            style={{ marginTop: 12, backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 11, alignItems: 'center' }}
+            scaleTo={0.97}
+            haptic={false}
+            accessibilityLabel="Cancel request"
+            containerStyle={{ marginTop: 12 }}
+            style={{ backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.sepia }}>Cancel request</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         )}
         {mode === 'gifter' && isPending && (
           <View style={{ flexDirection: 'row', gap: 9, marginTop: 12 }}>
-            <TouchableOpacity
+            <ScalePressable
               onPress={onDecline}
-              activeOpacity={0.85}
-              style={{ flex: 1, backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 12, alignItems: 'center' }}
+              scaleTo={0.97}
+              haptic={false}
+              accessibilityLabel="Decline request"
+              containerStyle={{ flex: 1 }}
+              style={{ backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.sepia }}>Decline</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </ScalePressable>
+            <ScalePressable
               onPress={onApprove}
-              activeOpacity={0.85}
-              style={{ flex: 1.6, backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7, ...theme.shadow.sm }}
+              scaleTo={0.97}
+              accessibilityLabel="Approve request"
+              containerStyle={{ flex: 1.6 }}
+              style={{ backgroundColor: LK.espresso, borderRadius: 9999, minHeight: 44, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7, ...theme.shadow.sm }}
             >
               <Icon name="check" size={15} color="#fff" />
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14, letterSpacing: 0.3, color: '#fff' }}>Approve</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         )}
         {/* Trash — hidden while a request is in flight */}
         {onDelete && !isPending && !isRedeemed && (
-          <TouchableOpacity
+          <ScalePressable
             onPress={onDelete}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{ position: 'absolute', top: 15, right: 50 }}
+            scaleTo={0.88}
+            haptic={false}
+            accessibilityLabel="Delete coupon"
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            containerStyle={{ position: 'absolute', top: 15, right: 50 }}
           >
             <Icon name="trash" size={15} color="rgba(42,33,26,0.25)" />
-          </TouchableOpacity>
+          </ScalePressable>
         )}
       </View>
     </View>
