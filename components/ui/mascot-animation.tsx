@@ -74,8 +74,10 @@ export const MASCOT_DURATIONS_MS: Record<MascotAnimationName, number> = {
   'letter-received': 4080,
   anniversary: 5080,
   'onboarding-complete': 5080,
-  'lo-streak': 3040,
-  'kit-streak': 3040,
+  // Regenerated 2026-07-11 (Seedance 5f5d1821 / 5add4fc7, user-approved) —
+  // ping-pong seamless loop, 96f cycle.
+  'lo-streak': 8000,
+  'kit-streak': 8000,
 };
 
 type MascotAnimationProps = {
