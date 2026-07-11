@@ -163,7 +163,7 @@ Never install a regeneration without the user's explicit pick.
 | File | Status | Decision & notes |
 |---|---|---|
 | `lo-kit-idle.gif` | ✅ 2026-07-10 | **REGENERATED** (user pick): Seedance gen `a3c0a85d` + bg `bb59ee1c`, C1 sticker style; 45f × 80 ms = 3600 ms, seamless (blink trimmed at SSIM-matched f88), 939 KB (was 1467 KB). Original-art rollback at `_lo-kit-idle.gif.bak`; an original-art re-conversion (ping-pong, 2.3 MB) was also built and set aside. Gen prompt logged in git history (commit 728b1d3). |
-| `kiss-send.gif` | ◻ in progress | **KEEP ORIGINAL ART** (user pick — regen `5530a3f3` rejected): re-convert `_source/kiss-send.mp4` via the quality pipeline; one-shot → play-once (`-loop -1`), end on natural settle frame. |
+| `kiss-send.gif` | ✅ 2026-07-11 | **KEEP ORIGINAL ART** (user pick — regen `5530a3f3` rejected): re-converted from `_source/kiss-send.mp4` (bg job `8cf3865c`). One-shot, plays once + holds settle frame (old file wrongly looped forever), 61f = 5080 ms, glow ring on the heart preserved by the difference matte, 1.73 MB (was 2.46 MB). Rollback at `_kiss-send.gif.bak`. |
 
 ## Open items / decisions
 

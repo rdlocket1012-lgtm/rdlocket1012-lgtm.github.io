@@ -53,7 +53,9 @@ export type MascotAnimationName = keyof typeof MASCOT_ANIMATIONS;
  */
 export const MASCOT_DURATIONS_MS: Record<MascotAnimationName, number> = {
   splash: 5060,
-  'kiss-send': 5060,
+  // Re-converted 2026-07-11 from original source (user kept original art):
+  // 61 frames × ~83 ms, plays once and holds the settle frame (no loop ext).
+  'kiss-send': 5080,
   'kiss-receive': 4030,
   'hug-send': 5030,
   'hug-receive': 4060,
