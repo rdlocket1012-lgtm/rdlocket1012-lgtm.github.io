@@ -146,24 +146,34 @@ sees the regenerated candidate next to the original and picks one:
   e.g. kiss-send (regen `5530a3f3` rejected).
 Never install a regeneration without the user's explicit pick.
 
-**Re-conversion pipeline (proven on lo-kit-idle):**
-1. Upload `_source/<name>.mp4` → Higgsfield `video_background_remover` (black matte)
-2. Difference-matte transparency: bg = (orig luma > 200) AND (matte luma < 25) — robust
-   against the remover eating small subject details; gblur σ0.6 edge soften
-3. Loop handling: per-frame SSIM vs frame 0; if the source doesn't loop (lo-kit-idle best
-   late match was only 0.81), **ping-pong** (fwd + reverse concat) → seam diff 0.
-   One-shots instead end on their natural settle frame, `-loop -1` (play once)
-4. GIF: native cadence → fps=12, scale 384px lanczos, palettegen 256 colors
-   `reserve_transparent`, paletteuse `alpha_threshold=128`, **bayer** dither scale 5
-   (error-diffusion dithers crawl frame-to-frame and ~2× the file size)
-5. Verify: corners alpha 0 / subject 255, seam vs adjacent-frame diff, no judder
-   (the old conversions upsampled 24→30 fps, duplicating every 4th frame)
-6. Install + update `MASCOT_DURATIONS_MS` (one full cycle incl. ping-pong return)
+**Re-conversion pipeline (`scratchpad/reconvert.py`, proven across 17 assets):**
+1. Extract source frames at native 24 fps.
+2. **Transparency = local border flood-fill** (no Higgsfield credits): background =
+   bright + near-neutral pixels (luma ≥ 200, sat ≤ 40) that are **connected to the frame
+   border** (scipy label). This keeps interior glossy highlights, floating hearts, and
+   colored confetti/balloons (saturated → excluded from bg) while cutting only the
+   exterior paper. `binary_fill_holes` then 1px erosion kills the cream-surface fringe.
+   Frame-aligned by construction (same clip), so no fps-mismatch fringing.
+3. Loop handling: one-shots → `-loop -1` (play once, hold settle frame). Looping assets →
+   **ping-pong** (fwd + reversed tail) for a seam diff of 0 (sources don't truly loop:
+   partner-typing first-vs-last diff 130 vs adjacent 1).
+4. GIF: fps=12, 384px lanczos, palettegen 256 colors `reserve_transparent`, paletteuse
+   `alpha_threshold=128` + **bayer** dither scale 5 (error-diffusion crawls + ~2× size).
+5. Verify: alpha corners 0, composite over cream (#F3E9D2), confetti/particles intact,
+   no judder (old set upsampled 24→30 fps duplicating every 4th frame).
+6. Install (back up old → `_<name>.gif.bak`) + re-measure `MASCOT_DURATIONS_MS`.
+
+Note: several sources (hug-send, streak-milestone, …) have a **white sticker die-cut border
+baked in** — kept, because the current production GIFs have it too (verified side-by-side) and
+the user approved the sticker look (C1). Flood-fill keeps it (a faint die-cut line isolates it
+from the true background).
 
 | File | Status | Decision & notes |
 |---|---|---|
 | `lo-kit-idle.gif` | ✅ 2026-07-10 | **REGENERATED** (user pick): Seedance gen `a3c0a85d` + bg `bb59ee1c`, C1 sticker style; 45f × 80 ms = 3600 ms, seamless (blink trimmed at SSIM-matched f88), 939 KB (was 1467 KB). Original-art rollback at `_lo-kit-idle.gif.bak`; an original-art re-conversion (ping-pong, 2.3 MB) was also built and set aside. Gen prompt logged in git history (commit 728b1d3). |
 | `kiss-send.gif` | ✅ 2026-07-11 | **KEEP ORIGINAL ART** (user pick — regen `5530a3f3` rejected): re-converted from `_source/kiss-send.mp4` (bg job `8cf3865c`). One-shot, plays once + holds settle frame (old file wrongly looped forever), 61f = 5080 ms, glow ring on the heart preserved by the difference matte, 1.73 MB (was 2.46 MB). Rollback at `_kiss-send.gif.bak`. |
+| **16 others** re-converted | ✅ 2026-07-11 | **KEEP ORIGINAL ART**, local flood-fill pipeline (no credits): `splash, kiss-receive, hug-send, hug-receive, bite-send, streak-milestone, quiz-correct, quiz-wrong, quiz-matched, connected, letter-send, moment-send, letter-received, anniversary, onboarding-complete` (all one-shot, play-once+hold) and `partner-typing` (ping-pong loop). Each backed up to `_<name>.gif.bak`. Durations re-measured in `MASCOT_DURATIONS_MS`. Confetti/balloons/flame/hearts verified intact over cream. |
+| `lo-streak.gif` · `kit-streak.gif` | ◻ **REGENERATE** (user pick) | no `_source` mp4 exists → regenerate. Looping streak-icon mascots (Lo warm/day, Kit cool/night); need seamless loops. **Awaiting Seedance candidates + user review.** |
 
 ## Open items / decisions
 

@@ -51,29 +51,29 @@ export type MascotAnimationName = keyof typeof MASCOT_ANIMATIONS;
  * mid-hug. That frame's delay was repaired to a normal beat, giving a clean
  * 5 030 ms run (backup at assets/animations/_hug-send.gif.bak).
  */
+// Values re-measured 2026-07-11 after the v1.1 quality re-conversion (12 fps,
+// 256-color palette; one-shots play once + hold, partner-typing ping-pongs).
 export const MASCOT_DURATIONS_MS: Record<MascotAnimationName, number> = {
-  splash: 5060,
-  // Re-converted 2026-07-11 from original source (user kept original art):
-  // 61 frames × ~83 ms, plays once and holds the settle frame (no loop ext).
+  splash: 5080,
   'kiss-send': 5080,
-  'kiss-receive': 4030,
-  'hug-send': 5030,
-  'hug-receive': 4060,
-  'bite-send': 5030,
-  'streak-milestone': 5030,
-  'quiz-correct': 4060,
-  'quiz-wrong': 4030,
-  'quiz-matched': 4030,
-  'partner-typing': 4060,
-  connected: 5060,
+  'kiss-receive': 4080,
+  'hug-send': 5080,
+  'hug-receive': 4080,
+  'bite-send': 5080,
+  'streak-milestone': 5080,
+  'quiz-correct': 4080,
+  'quiz-wrong': 4080,
+  'quiz-matched': 4080,
+  'partner-typing': 8000, // ping-pong loop (source didn't loop); full cycle
+  connected: 5080,
   // Regenerated 2026-07-10 (Seedance job a3c0a85d, user-approved): 45 frames
   // × 80 ms, seamless loop (blink trimmed; seam diff ≈ adjacent-frame diff).
   'lo-kit-idle': 3600,
-  'letter-send': 5030,
-  'moment-send': 5060,
-  'letter-received': 4060,
-  anniversary: 5060,
-  'onboarding-complete': 5060,
+  'letter-send': 5080,
+  'moment-send': 5080,
+  'letter-received': 4080,
+  anniversary: 5080,
+  'onboarding-complete': 5080,
   'lo-streak': 3040,
   'kit-streak': 3040,
 };
