@@ -138,11 +138,13 @@ All present. No action.
 
 ## v1.1 asset quality pass (2026-07-10 → )
 
-**Direction (settled 2026-07-10 after trialling regeneration):** the user prefers the
-ORIGINAL Lo & Kit art — do **not** regenerate; instead **re-convert each runtime GIF from its
-`_source/*.mp4` at higher quality**. A full Seedance regeneration of lo-kit-idle was built,
-approved from video, installed, and then rejected against the original (jobs kept for the
-record: gen `a3c0a85d`, alt `b7d0f258`, bg `bb59ee1c`).
+**Direction (clarified 2026-07-10): PER-ASSET user choice.** For each animation the user
+sees the regenerated candidate next to the original and picks one:
+- **Regenerate** (Seedance, C1 sticker style, ref `0c0f11c9`) when the new beat wins —
+  e.g. lo-kit-idle.
+- **Keep original art, re-convert at high quality** when the original animation is better —
+  e.g. kiss-send (regen `5530a3f3` rejected).
+Never install a regeneration without the user's explicit pick.
 
 **Re-conversion pipeline (proven on lo-kit-idle):**
 1. Upload `_source/<name>.mp4` → Higgsfield `video_background_remover` (black matte)
@@ -158,9 +160,10 @@ record: gen `a3c0a85d`, alt `b7d0f258`, bg `bb59ee1c`).
    (the old conversions upsampled 24→30 fps, duplicating every 4th frame)
 6. Install + update `MASCOT_DURATIONS_MS` (one full cycle incl. ping-pong return)
 
-| File | Status | Notes |
+| File | Status | Decision & notes |
 |---|---|---|
-| `lo-kit-idle.gif` | ✅ 2026-07-10 | Original art, re-converted: ping-pong seamless (seam 0), 97f ≈ 8080 ms cycle, 2.3 MB (was 1.47 MB — the size buys 256 colors + no judder); rollback at `_lo-kit-idle.gif.bak` |
+| `lo-kit-idle.gif` | ✅ 2026-07-10 | **REGENERATED** (user pick): Seedance gen `a3c0a85d` + bg `bb59ee1c`, C1 sticker style; 45f × 80 ms = 3600 ms, seamless (blink trimmed at SSIM-matched f88), 939 KB (was 1467 KB). Original-art rollback at `_lo-kit-idle.gif.bak`; an original-art re-conversion (ping-pong, 2.3 MB) was also built and set aside. Gen prompt logged in git history (commit 728b1d3). |
+| `kiss-send.gif` | ◻ in progress | **KEEP ORIGINAL ART** (user pick — regen `5530a3f3` rejected): re-convert `_source/kiss-send.mp4` via the quality pipeline; one-shot → play-once (`-loop -1`), end on natural settle frame. |
 
 ## Open items / decisions
 
