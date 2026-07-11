@@ -47,6 +47,8 @@ assets/animations/_GIF/
 assets/animations/_source/
 assets/animations/_webm/
 assets/animations/_webp/
+# pre-reconversion rollback backups (v1.1 quality pass) — local only
+assets/animations/_*.gif.bak
 
 # Claude Code tooling / skills (local only — not part of the app)
 .claude/
