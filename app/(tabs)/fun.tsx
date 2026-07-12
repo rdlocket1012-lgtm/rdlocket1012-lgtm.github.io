@@ -153,8 +153,8 @@ export default function FunScreen() {
         {/* ── Section 2: CREATIVE ───────────────────────────────────────── */}
         <SectionEyebrow label="Creative" />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: theme.layout.screenX, gap: 12 }}>
-          <CreativeBlock index={7} width={cardW} color={LK.marigold} icon="pen" name="Draw" caption="a little doodle" route="/draw" sticker />
-          <CreativeBlock index={8} width={cardW} color={LK.sky} icon="feather" name="Draw & Guess" caption="guess it together" route="/games/draw-and-guess" live />
+          <CreativeBlock index={7} width={cardW} color={LK.marigold} illus={require('../../assets/illustrations/mascot/drawing.png')} tilt={-4} name="Draw" caption="a little doodle" route="/draw" sticker />
+          <CreativeBlock index={8} width={cardW} color={LK.sky} illus={require('../../assets/illustrations/mascot/guessing.png')} tilt={4} name="Draw & Guess" caption="guess it together" route="/games/draw-and-guess" live />
         </View>
 
         {/* ── Section 3: BUCKET LIST ────────────────────────────────────── */}
@@ -260,17 +260,22 @@ function DeckBlock({
 
 /** Creative block — Draw (async partner doodles) / Draw & Guess (live game). */
 function CreativeBlock({
-  index, width, color, icon, name, caption, route, live, sticker,
+  index, width, color, illus, tilt, name, caption, route, live, sticker,
 }: {
-  index: number; width: number; color: string; icon: string;
+  index: number; width: number; color: string; illus: number; tilt: number;
   name: string; caption: string; route: string; live?: boolean; sticker?: boolean;
 }) {
   return (
     <Animated.View entering={stagger(index)} style={{ width }}>
-      <ScalePressable scaleTo={0.96} onPress={() => { lightHaptic(); router.push(route as Href); }}>
+      <ScalePressable scaleTo={0.96} onPress={() => { lightHaptic(); router.push(route as Href); }} accessibilityLabel={name}>
         <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: CARD_BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
-          <View style={{ height: 72, backgroundColor: rgba(color, 0.16), alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name={icon} size={32} color={shade(color, 0.5)} />
+          <View style={{ height: 74, backgroundColor: rgba(color, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+            <Image
+              source={illus}
+              contentFit="contain"
+              accessible={false}
+              style={{ width: 56, height: 56, transform: [{ rotate: `${tilt}deg` }] }}
+            />
           </View>
 
           {sticker && (
