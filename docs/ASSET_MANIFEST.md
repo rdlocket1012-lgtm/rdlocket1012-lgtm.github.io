@@ -136,7 +136,12 @@ All present. No action.
 
 ---
 
-## v1.1 asset quality pass (2026-07-10 → )
+## v1.1 asset quality pass (2026-07-10 → 2026-07-12) — ✅ COMPLETE
+
+**Rollup:** all 20 mascot animations resolved — **3 regenerated** (lo-kit-idle, lo-streak,
+kit-streak; user-picked C1 sticker style) + **17 re-converted** keeping original art at high
+quality. **2 new library illustrations** (`mascot/drawing.png`, `mascot/guessing.png`) for the
+Fun-hub Creative tiles. No outstanding asset work; on-device verify still pending before TestFlight.
 
 **Direction (clarified 2026-07-10): PER-ASSET user choice.** For each animation the user
 sees the regenerated candidate next to the original and picks one:
