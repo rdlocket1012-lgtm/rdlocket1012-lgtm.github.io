@@ -10,7 +10,7 @@ import { SwipeCard } from '@/components/game/SwipeCard';
 import MascotAnimation from '@/components/ui/mascot-animation';
 import { useLiveSession, type LiveEvent } from '@/hooks/useLiveSession';
 import { notifyPartner } from '@/lib/push';
-import { LIVE_PROMPTS, categoryIndices, categoryOfIndex, fillNames } from '@/constants/live-games';
+import { LIVE_PROMPTS, categoryIndices, categoryOfIndex, fillNames, CATEGORY_ILLUS } from '@/constants/live-games';
 
 const ROUNDS = 8;
 
@@ -375,6 +375,7 @@ export const LiveLayer = forwardRef<LiveHandle, {
                       name1={name1}
                       name2={name2}
                       disabled={false}
+                      illus={categoryOfIndex(order[round]) ? CATEGORY_ILLUS[categoryOfIndex(order[round])!.id] : undefined}
                       onChoose={(c) => choose(c)}
                     />
                   </View>

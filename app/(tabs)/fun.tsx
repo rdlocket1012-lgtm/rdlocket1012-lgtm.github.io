@@ -10,24 +10,15 @@ import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import MascotAnimation from '@/components/ui/mascot-animation';
-import { LIVE_CATEGORIES } from '@/constants/live-games';
+import { LIVE_CATEGORIES, CATEGORY_ILLUS } from '@/constants/live-games';
 import { BUCKET_CATEGORIES } from '@/constants/categories';
 import { useBucketList } from '@/hooks/useBucketList';
 import { useLiveLaunch } from '@/stores/live.store';
 
 const CARD_BORDER = 'rgba(42,33,26,0.12)';
 
-// Scrapbook stickers front each "This or That" deck — the kawaii illustration
-// set (§7), pasted with a tiny alternating tilt like photos in an album.
-// (Never emoji — §pre-delivery.)
-const DECK_ILLUS: Record<string, ReturnType<typeof require>> = {
-  cravings: require('../../assets/illustrations/love-cards/donut.png'),
-  wanderlust: require('../../assets/illustrations/milestones/trip.png'),
-  cozy: require('../../assets/illustrations/moods/cozy.png'),
-  who: require('../../assets/illustrations/moods/playful.png'),
-  heart: require('../../assets/illustrations/moods/grateful.png'),
-  'after-dark': require('../../assets/illustrations/moods/sleepy.png'),
-};
+// Scrapbook stickers front each "This or That" deck — shared with the live
+// game card via CATEGORY_ILLUS so tile and card carry the same sticker.
 
 // "Surprise me" draws from the everyday decks — After Dark stays a deliberate pick,
 // never a random surprise.
@@ -150,7 +141,7 @@ export default function FunScreen() {
               index={1 + i}
               width={cardW}
               color={cat.color}
-              illus={DECK_ILLUS[cat.id]}
+              illus={CATEGORY_ILLUS[cat.id]}
               tilt={i % 2 === 0 ? -4 : 4}
               name={cat.name}
               blurb={cat.blurb}

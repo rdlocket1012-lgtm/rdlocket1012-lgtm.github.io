@@ -1288,6 +1288,20 @@ export const LIVE_CATEGORIES: LiveCategory[] = [
 export const LIVE_PROMPTS: LivePrompt[] = LIVE_CATEGORIES.flatMap((c) => c.prompts);
 
 /**
+ * Scrapbook sticker per deck — the kawaii illustration (§7) that fronts each
+ * category on the Fun tab tiles AND on the live game card (§9.8). One map so
+ * the tile a couple taps and the card they play carry the same sticker.
+ */
+export const CATEGORY_ILLUS: Record<string, number> = {
+  cravings: require('../assets/illustrations/love-cards/donut.png'),
+  wanderlust: require('../assets/illustrations/milestones/trip.png'),
+  cozy: require('../assets/illustrations/moods/cozy.png'),
+  who: require('../assets/illustrations/moods/playful.png'),
+  heart: require('../assets/illustrations/moods/grateful.png'),
+  'after-dark': require('../assets/illustrations/moods/sleepy.png'),
+};
+
+/**
  * Indices into LIVE_PROMPTS for a given category (or the whole set if unknown).
  * When `level` is given (After Dark), only prompts at that exact spice tier are
  * returned — both phones stay in sync because the host shares the resulting

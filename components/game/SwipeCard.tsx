@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -10,24 +11,29 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { LK, tint, shade, theme } from '@/constants/theme';
+import { tap } from '@/lib/haptics';
 
 type Prompt = { q: string; a: string; b: string };
 
 const THRESHOLD = 60;
 const SPRING_BOUNCE = theme.spring.bounce;
+// §9.8 idle state: the card rests slightly askew, like a photo laid on the pile.
+const REST_ROT = 1;
 
 interface Props {
   prompt: Prompt;
   name1: string;
   name2: string;
   disabled: boolean;
+  /** Category's scrapbook sticker (§7) — same one as its Fun-tab tile. */
+  illus?: number;
   onChoose: (choice: 'a' | 'b') => void;
 }
 
-export function SwipeCard({ prompt, name1, name2, disabled, onChoose }: Props) {
+export function SwipeCard({ prompt, name1, name2, disabled, illus, onChoose }: Props) {
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
-  const rot = useSharedValue(0);
+  const rot = useSharedValue(REST_ROT);
 
   const fill = (s: string) =>
     s.replace(/\{p1\}/g, name1).replace(/\{p2\}/g, name2);
@@ -38,7 +44,7 @@ export function SwipeCard({ prompt, name1, name2, disabled, onChoose }: Props) {
       'worklet';
       tx.value = e.translationX * 0.7;
       ty.value = e.translationY * 0.15;
-      rot.value = e.translationX * 0.07;
+      rot.value = REST_ROT + e.translationX * 0.07;
     })
     .onEnd((e) => {
       'worklet';
@@ -48,11 +54,12 @@ export function SwipeCard({ prompt, name1, name2, disabled, onChoose }: Props) {
         ty.value = withSpring(e.translationY * 0.5, SPRING_BOUNCE);
         rot.value = withSpring(dir * 22, SPRING_BOUNCE);
         const choice: 'a' | 'b' = dir < 0 ? 'a' : 'b'; // left = A, right = B
+        runOnJS(tap)(); // §9.8: Light haptic confirms the committed swipe
         runOnJS(onChoose)(choice);
       } else {
         tx.value = withSpring(0, SPRING_BOUNCE);
         ty.value = withSpring(0, SPRING_BOUNCE);
-        rot.value = withSpring(0, SPRING_BOUNCE);
+        rot.value = withSpring(REST_ROT, SPRING_BOUNCE);
       }
     });
 
@@ -133,6 +140,16 @@ export function SwipeCard({ prompt, name1, name2, disabled, onChoose }: Props) {
             }]}
             pointerEvents="none"
           />
+
+          {/* Category sticker (§9.8 — kawaii illustration, 52pt, slight paste-tilt) */}
+          {illus != null && (
+            <Image
+              source={illus}
+              contentFit="contain"
+              accessible={false}
+              style={{ width: 52, height: 52, alignSelf: 'center', marginBottom: 10, transform: [{ rotate: '-5deg' }] }}
+            />
+          )}
 
           {/* Question */}
           <Text style={{
