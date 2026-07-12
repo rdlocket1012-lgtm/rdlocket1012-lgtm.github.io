@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView,
+  View, Text, Pressable, ScrollView,
   Platform, Animated, Image, Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -347,7 +347,7 @@ function PinDetailSheet({ pin, onClose, onEdit, catLabel }: {
   return (
     <View style={{ position: 'absolute', inset: 0 }}>
       <Animated.View style={{ flex: 1, backgroundColor: 'rgba(42,33,26,0.28)', opacity: backdropOpacity }}>
-        <TouchableOpacity style={{ flex: 1 }} onPress={dismiss} activeOpacity={1} />
+        <Pressable style={{ flex: 1 }} onPress={dismiss} accessibilityLabel="Close" />
       </Animated.View>
 
       <Animated.View style={{
@@ -414,15 +414,19 @@ function PinDetailSheet({ pin, onClose, onEdit, catLabel }: {
 
           {/* Website */}
           {pin.website && (
-            <TouchableOpacity
+            <ScalePressable
               onPress={() => Linking.openURL(pin.website!).catch(() => {})}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}
+              haptic={false}
+              accessibilityLabel="Open website"
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              containerStyle={{ marginTop: 10 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 32 }}
             >
               <Icon name="share" size={15} color={shade(LK.sky, 0.5)} />
               <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: shade(LK.sky, 0.5) }}>
                 {pin.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
               </Text>
-            </TouchableOpacity>
+            </ScalePressable>
           )}
 
           {pin.note && (
@@ -463,11 +467,13 @@ function FilterChips({ filter, setFilter, style }: {
       {chips.map((c) => {
         const active = filter === c.id;
         return (
-          <TouchableOpacity
+          <ScalePressable
             key={c.id}
             onPress={() => setFilter(c.id)}
+            scaleTo={0.95}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
+            accessibilityLabel={c.label}
             style={{
               height: 36, paddingHorizontal: 16, borderRadius: 99,
               alignItems: 'center', justifyContent: 'center',
@@ -479,7 +485,7 @@ function FilterChips({ filter, setFilter, style }: {
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: active ? '700' : '500', fontSize: 13, color: active ? LK.vellum : LK.espresso }}>
               {c.label}
             </Text>
-          </TouchableOpacity>
+          </ScalePressable>
         );
       })}
     </ScrollView>

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   Alert,
 } from 'react-native';
@@ -11,6 +10,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LK, theme } from '@/constants/theme';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { StationeryRules } from '@/components/ui/stationery-rules';
 import { usePrivateNotes, type NoteTag, NOTE_TAGS } from '@/hooks/usePrivateNotes';
 
@@ -96,28 +96,33 @@ export default function NoteComposeScreen() {
           justifyContent: 'space-between',
         }}
       >
-        <TouchableOpacity
+        <ScalePressable
           onPress={() => router.back()}
+          haptic={false}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
           accessibilityLabel="Dismiss"
+          style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}
         >
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 16, color: LK.sepia }}>
             Cancel
           </Text>
-        </TouchableOpacity>
+        </ScalePressable>
         <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 17, color: LK.espresso }}>
           {existing ? 'Edit note' : 'New note'}
         </Text>
-        <TouchableOpacity
+        <ScalePressable
           onPress={save}
           disabled={!canSave}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
           accessibilityLabel="Save note"
+          style={{ minHeight: 44, justifyContent: 'center', paddingLeft: 8 }}
         >
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: canSave ? LK.coral : LK.faded }}>
             Save
           </Text>
-        </TouchableOpacity>
+        </ScalePressable>
       </View>
 
       {/* keyboard-controller's KeyboardAvoidingView tracks the keyboard frame in
@@ -143,9 +148,10 @@ export default function NoteComposeScreen() {
             {NOTE_TAGS.map((t) => {
               const on = tag === t.id;
               return (
-                <TouchableOpacity
+                <ScalePressable
                   key={t.id}
                   onPress={() => handleTagChange(on ? null : t.id)}
+                  scaleTo={0.95}
                   style={{
                     backgroundColor: on ? t.color : 'rgba(42,33,26,0.06)',
                     borderRadius: 9999,
@@ -164,7 +170,7 @@ export default function NoteComposeScreen() {
                   >
                     {t.label}
                   </Text>
-                </TouchableOpacity>
+                </ScalePressable>
               );
             })}
           </ScrollView>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -8,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { LK, theme } from '@/constants/theme';
 import { Btn } from '@/components/ui/btn';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { AnimatedField } from '@/components/ui/AnimatedField';
 
 const schema = z.object({
@@ -36,9 +38,9 @@ export default function ForgotPasswordScreen() {
         <View style={{ flex: 1, padding: 30, justifyContent: 'center' }}>
 
           {/* Back */}
-          <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 32, alignSelf: 'flex-start', padding: 4 }}>
+          <ScalePressable onPress={() => router.back()} scaleTo={0.9} haptic={false} accessibilityLabel="Back" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} containerStyle={{ marginBottom: 32, alignSelf: 'flex-start' }} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="chevron-left" size={24} color={LK.espresso} />
-          </TouchableOpacity>
+          </ScalePressable>
 
           <View style={{ marginBottom: 36 }}>
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.espresso, letterSpacing: -1 }}>

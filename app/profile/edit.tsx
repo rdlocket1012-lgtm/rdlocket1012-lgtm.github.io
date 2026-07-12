@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
+  View, Text, TextInput, ScrollView,
   Alert, ActivityIndicator,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -136,22 +136,22 @@ export default function EditProfileScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 16, paddingBottom: 12 }}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <ScalePressable onPress={() => router.back()} haptic={false} accessibilityRole="button" accessibilityLabel="Cancel" style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-          </TouchableOpacity>
+          </ScalePressable>
           <Text numberOfLines={1} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso, maxWidth: 200 }}>
             {isMe ? 'Edit Profile' : `Ask ${partnerName}`}
           </Text>
           {isMe ? (
-            <TouchableOpacity onPress={handleSave} disabled={saving}>
+            <ScalePressable onPress={handleSave} disabled={saving} accessibilityRole="button" accessibilityLabel="Save profile" style={{ minHeight: 44, justifyContent: 'center', paddingLeft: 8 }}>
               {saving
                 ? <ActivityIndicator color={LK.espresso} />
                 : <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.espresso }}>Save</Text>}
-            </TouchableOpacity>
+            </ScalePressable>
           ) : (
-            <TouchableOpacity onPress={() => router.back()}>
+            <ScalePressable onPress={() => router.back()} haptic={false} accessibilityRole="button" accessibilityLabel="Done" style={{ minHeight: 44, justifyContent: 'center', paddingLeft: 8 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.espresso }}>Done</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           )}
         </View>
 
@@ -386,10 +386,11 @@ function ChipPicker({ options, value, onChange, multiSelect, allowOther }: {
         {options.map((opt) => {
           const active = selected.includes(opt);
           return (
-            <TouchableOpacity
+            <ScalePressable
               key={opt}
               onPress={() => toggle(opt)}
-              activeOpacity={0.75}
+              scaleTo={0.95}
+              accessibilityLabel={opt}
               style={{
                 paddingHorizontal: 14, paddingVertical: 8, borderRadius: 9999,
                 backgroundColor: active ? LK.espresso : LK.ivory,
@@ -400,13 +401,14 @@ function ChipPicker({ options, value, onChange, multiSelect, allowOther }: {
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 13, color: active ? '#fff' : LK.espresso }}>
                 {opt}
               </Text>
-            </TouchableOpacity>
+            </ScalePressable>
           );
         })}
         {allowOther && (
-          <TouchableOpacity
+          <ScalePressable
             onPress={() => setShowOther((s) => !s)}
-            activeOpacity={0.75}
+            scaleTo={0.95}
+            accessibilityLabel="Other"
             style={{
               paddingHorizontal: 14, paddingVertical: 8, borderRadius: 9999,
               backgroundColor: showOther ? tint(LK.marigold, 0.6) : LK.ivory,
@@ -417,7 +419,7 @@ function ChipPicker({ options, value, onChange, multiSelect, allowOther }: {
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 13, color: showOther ? shade(LK.marigold, 0.5) : LK.ink70 }}>
               Other…
             </Text>
-          </TouchableOpacity>
+          </ScalePressable>
         )}
       </View>
       {showOther && (
@@ -460,7 +462,7 @@ function ColorChipPicker({ colors, value, onChange, multiSelect }: {
         const active = selected.includes(c.label);
         const isLight = ['White', 'Nude', 'Yellow'].includes(c.label);
         return (
-          <TouchableOpacity key={c.label} onPress={() => toggle(c.label)} activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
+          <ScalePressable key={c.label} onPress={() => toggle(c.label)} scaleTo={0.92} accessibilityLabel={c.label} style={{ alignItems: 'center', gap: 4 }}>
             <View style={{
               width: 40, height: 40, borderRadius: 20,
               backgroundColor: c.hex,
@@ -473,7 +475,7 @@ function ColorChipPicker({ colors, value, onChange, multiSelect }: {
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 10, color: active ? LK.espresso : LK.ink70, fontWeight: active ? '700' : '400' }}>
               {c.label}
             </Text>
-          </TouchableOpacity>
+          </ScalePressable>
         );
       })}
     </View>

@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   FlatList,
   Alert,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { Image } from 'expo-image';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { StationeryRules } from '@/components/ui/stationery-rules';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -104,9 +104,10 @@ function NoteCard({
   const date = formatDate(note.created_at);
 
   return (
-    <TouchableOpacity
+    <ScalePressable
       onPress={onEdit}
-      activeOpacity={0.85}
+      scaleTo={0.98}
+      haptic={false}
       accessibilityLabel={`Note: ${preview}`}
     >
       <View
@@ -160,17 +161,19 @@ function NoteCard({
           </Text>
 
           {/* Delete button */}
-          <TouchableOpacity
+          <ScalePressable
             onPress={onDelete}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{ position: 'absolute', bottom: 14, right: 16 }}
+            scaleTo={0.88}
+            haptic={false}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            containerStyle={{ position: 'absolute', bottom: 14, right: 16 }}
             accessibilityLabel="Delete note"
           >
             <Icon name="trash" size={14} color={LK.faded} />
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
       </View>
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }
 
@@ -205,15 +208,16 @@ function EmptyState() {
           a private space for your thoughts
         </Text>
       </View>
-      <TouchableOpacity
+      <ScalePressable
         onPress={() => router.push('/notes/compose')}
+        scaleTo={0.97}
+        accessibilityLabel="Write something"
         style={{
           backgroundColor: LK.coral,
           borderRadius: 9999,
           paddingHorizontal: 32,
           paddingVertical: 14,
         }}
-        accessibilityLabel="Write a note"
       >
         <Text
           style={{
@@ -225,7 +229,7 @@ function EmptyState() {
         >
           Write something
         </Text>
-      </TouchableOpacity>
+      </ScalePressable>
     </View>
   );
 }

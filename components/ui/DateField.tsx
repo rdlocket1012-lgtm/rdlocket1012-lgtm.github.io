@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
+import { tick } from '@/lib/haptics';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -30,39 +32,47 @@ export function DateField({ value, onChange }: { value: string; onChange: (iso: 
   function Stepper({ label, onUp, onDown }: { label: string; onUp: () => void; onDown: () => void }) {
     return (
       <View style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-        <TouchableOpacity
-          onPress={onUp}
+        <ScalePressable
+          onPress={() => { tick(); onUp(); }}
+          scaleTo={0.9}
+          haptic={false}
+          accessibilityLabel={`Increase ${label}`}
           hitSlop={{ top: 10, bottom: 10, left: 14, right: 14 }}
           style={{ width: 40, height: 30, borderRadius: 9, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
         >
           <View style={{ transform: [{ rotate: '180deg' }] }}><Icon name="chevD" size={16} color={LK.ink70} /></View>
-        </TouchableOpacity>
+        </ScalePressable>
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 16, color: LK.espresso, paddingVertical: 4 }}>{label}</Text>
-        <TouchableOpacity
-          onPress={onDown}
+        <ScalePressable
+          onPress={() => { tick(); onDown(); }}
+          scaleTo={0.9}
+          haptic={false}
+          accessibilityLabel={`Decrease ${label}`}
           hitSlop={{ top: 10, bottom: 10, left: 14, right: 14 }}
           style={{ width: 40, height: 30, borderRadius: 9, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
         >
           <Icon name="chevD" size={16} color={LK.ink70} />
-        </TouchableOpacity>
+        </ScalePressable>
       </View>
     );
   }
 
   return (
     <View>
-      <TouchableOpacity
+      <ScalePressable
         onPress={() => setOpen((o) => !o)}
-        style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...theme.shadow.sm }}
+        scaleTo={0.98}
+        accessibilityLabel="Change date"
+        style={{ backgroundColor: LK.ivory, borderRadius: 16, borderCurve: 'continuous', padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', ...theme.shadow.sm }}
       >
         <Text style={{ fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso }}>
           {d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
         </Text>
         <Icon name="calendar" size={18} color={LK.ink70} />
-      </TouchableOpacity>
+      </ScalePressable>
 
       {open && (
-        <View style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, marginTop: 8, flexDirection: 'row', ...theme.shadow.sm }}>
+        <View style={{ backgroundColor: LK.ivory, borderRadius: 16, borderCurve: 'continuous', padding: 14, marginTop: 8, flexDirection: 'row', ...theme.shadow.sm }}>
           <Stepper
             label={MONTHS[month].slice(0, 3)}
             onUp={() => emit(year, (month + 11) % 12, day)}

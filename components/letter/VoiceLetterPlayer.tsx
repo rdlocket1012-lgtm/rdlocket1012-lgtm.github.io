@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { getVoiceLetterUrl, formatDuration } from '@/lib/audio-letter';
 
 /**
@@ -54,15 +55,17 @@ export function VoiceLetterPlayer({ audioPath, duration }: { audioPath: string; 
       marginBottom: 24, ...theme.shadow.sm,
     }}>
       {/* Play / pause */}
-      <TouchableOpacity
+      <ScalePressable
         onPress={toggle}
         disabled={!url}
+        scaleTo={0.92}
+        accessibilityLabel={playing ? 'Pause voice letter' : 'Play voice letter'}
         style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: LK.blush, alignItems: 'center', justifyContent: 'center' }}
       >
         {!url && !loadFailed
           ? <ActivityIndicator size="small" color={shade(LK.blush, 0.55)} />
           : <Icon name={playing ? 'pause' : 'play'} size={26} color={shade(LK.blush, 0.6)} />}
-      </TouchableOpacity>
+      </ScalePressable>
 
       {/* Waveform + progress */}
       <View style={{ flex: 1 }}>

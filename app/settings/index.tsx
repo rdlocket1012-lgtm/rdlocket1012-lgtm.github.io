@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { requestPermissions, scheduleOnThisDay } from '@/lib/notifications';
-import { View, Text, TouchableOpacity, ScrollView, Switch, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, Switch, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -228,9 +228,9 @@ export default function SettingsScreen() {
           </ScalePressable>
         )}
         {!partnerJoined && (
-          <TouchableOpacity onPress={handleEnterCode} style={{ alignSelf: 'center', paddingVertical: 12 }}>
+          <ScalePressable onPress={handleEnterCode} haptic={false} accessibilityRole="button" accessibilityLabel="Enter invite code" containerStyle={{ alignSelf: 'center' }} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: shade(LK.sky, 0.5) }}>Have an invite code? Tap to join</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         )}
 
         <SectionLabel>Subscription & Billing</SectionLabel>

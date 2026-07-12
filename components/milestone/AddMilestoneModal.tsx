@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Platform, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, Modal, Platform, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { MILESTONE_TYPES, TYPE_ICON, MilestoneTypeId } from '@/constants/milestone-types';
 import { useMilestones } from '@/hooks/useMilestones';
 import { useCouple } from '@/hooks/useCouple';
@@ -105,7 +106,7 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, justifyContent: 'flex-end' }}
       >
-      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={onClose} activeOpacity={1} />
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={onClose} accessibilityLabel="Close" />
       <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
         <View style={{ paddingTop: 14, paddingBottom: 6, alignItems: 'center' }}>
           <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
@@ -113,17 +114,18 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
 
         {/* Header row */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingBottom: 12 }}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <ScalePressable onPress={onClose} haptic={false} accessibilityRole="button" accessibilityLabel="Cancel" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-          </TouchableOpacity>
+          </ScalePressable>
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>{editing ? 'Edit milestone' : 'New milestone'}</Text>
-          <TouchableOpacity
+          <ScalePressable
             onPress={handleSave}
             disabled={!title.trim() || saving}
-            style={{ backgroundColor: title.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
+            accessibilityLabel="Save milestone"
+            style={{ backgroundColor: title.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, minHeight: 44, justifyContent: 'center' }}
           >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: title.trim() ? '#fff' : LK.ink70 }}>Save</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
@@ -134,20 +136,23 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
               const cc = catColor(id);
               const on = type === id;
               return (
-                <TouchableOpacity
+                <ScalePressable
                   key={id}
                   onPress={() => setType(id)}
+                  scaleTo={0.95}
+                  accessibilityLabel={label}
+                  containerStyle={{ width: '31.5%' }}
                   style={{
                     backgroundColor: on ? cc.base : tint(cc.base, 0.82),
-                    borderRadius: 16, paddingVertical: 13, paddingHorizontal: 6,
+                    borderRadius: 16, borderCurve: 'continuous', paddingVertical: 13, paddingHorizontal: 6,
                     alignItems: 'center', justifyContent: 'center', gap: 6,
-                    width: '31.5%', minHeight: 78,
+                    minHeight: 78,
                     borderWidth: on ? 2 : 0, borderColor: on ? cc.deep : 'transparent',
                   }}
                 >
                   <Icon name={TYPE_ICON[id] ?? 'star'} size={22} color={cc.deep} />
                   <Text numberOfLines={2} style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: cc.deep, textAlign: 'center', lineHeight: 15 }}>{label}</Text>
-                </TouchableOpacity>
+                </ScalePressable>
               );
             })}
           </View>
@@ -188,13 +193,16 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
               }}
             />
             {!isPremium && (
-              <TouchableOpacity
+              <ScalePressable
                 onPress={onPaywall}
-                style={{ position: 'absolute', inset: 0, borderRadius: 16, backgroundColor: rgba(LK.parchment, 0.4), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 } as any}
+                scaleTo={0.99}
+                accessibilityLabel="Rich notes are Premium"
+                containerStyle={{ position: 'absolute', inset: 0 } as any}
+                style={{ flex: 1, borderRadius: 16, borderCurve: 'continuous', backgroundColor: rgba(LK.parchment, 0.4), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 }}
               >
                 <Icon name="crown" size={16} color={shade(LK.marigold, 0.5)} />
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: shade(LK.marigold, 0.5) }}>Rich notes are Premium</Text>
-              </TouchableOpacity>
+              </ScalePressable>
             )}
           </View>
 
@@ -205,25 +213,29 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
               {photos.map((uri) => (
                 <View key={uri} style={{ width: 76, height: 76 }}>
                   <Image source={{ uri }} style={{ width: 76, height: 76, borderRadius: 14, backgroundColor: rgba(LK.espresso, 0.05) }} contentFit="cover" transition={150} />
-                  <TouchableOpacity
+                  <ScalePressable
                     onPress={() => removePhoto(uri)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    scaleTo={0.85}
+                    haptic={false}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                     accessibilityLabel="Remove photo"
-                    style={{ position: 'absolute', top: -6, right: -6, width: 24, height: 24, borderRadius: 12, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: LK.parchment }}
+                    containerStyle={{ position: 'absolute', top: -6, right: -6 }}
+                    style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: LK.parchment }}
                   >
                     <Icon name="x" size={12} color="#fff" strokeWidth={2.6} />
-                  </TouchableOpacity>
+                  </ScalePressable>
                 </View>
               ))}
               {photos.length < MAX_PHOTOS && (
-                <TouchableOpacity
+                <ScalePressable
                   onPress={addPhoto}
                   disabled={photoBusy}
+                  scaleTo={0.94}
                   accessibilityLabel="Add a photo"
-                  style={{ width: 76, height: 76, borderRadius: 14, backgroundColor: LK.ivory, borderWidth: 1.5, borderColor: 'rgba(42,33,26,0.15)', alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
+                  style={{ width: 76, height: 76, borderRadius: 14, borderCurve: 'continuous', backgroundColor: LK.ivory, borderWidth: 1.5, borderColor: 'rgba(42,33,26,0.15)', alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
                 >
                   {photoBusy ? <ActivityIndicator size="small" color={LK.sepia} /> : <Icon name="camera" size={22} color={LK.sepia} />}
-                </TouchableOpacity>
+                </ScalePressable>
               )}
             </View>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70, marginTop: 8 }}>

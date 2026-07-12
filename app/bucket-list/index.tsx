@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, KeyboardAvoidingView, Alert, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, KeyboardAvoidingView, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import * as Location from 'expo-location';
@@ -147,30 +147,33 @@ export default function BucketListScreen() {
             const on = catFilter === cat.id;
             const col = cat.id === 'all' ? LK.espresso : cat.color;
             return (
-              <TouchableOpacity
+              <ScalePressable
                 onPress={() => setCatFilter(cat.id)}
+                scaleTo={0.95}
+                accessibilityLabel={`Filter ${cat.label}`}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: on ? col : tint(col, 0.7), borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 9 }}
               >
                 <Icon name={cat.icon} size={13} color={on ? '#fff' : shade(col, 0.55)} />
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: on ? '#fff' : shade(col, 0.55) }}>{cat.label}</Text>
-              </TouchableOpacity>
+              </ScalePressable>
             );
           }}
         />
 
         {/* Scratch-Off mode toggle */}
         <View style={{ paddingHorizontal: 20, paddingBottom: 6 }}>
-          <TouchableOpacity
+          <ScalePressable
             onPress={() => setScratchMode((s) => !s)}
-            activeOpacity={0.85}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: scratchMode ? LK.espresso : tint(LK.lilac, 0.7), borderRadius: 16, paddingVertical: 12, paddingHorizontal: 15 }}
+            scaleTo={0.98}
+            accessibilityLabel="Toggle date idea scratch cards"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: scratchMode ? LK.espresso : tint(LK.lilac, 0.7), borderRadius: 16, borderCurve: 'continuous', paddingVertical: 12, paddingHorizontal: 15 }}
           >
             <Icon name="sparkle" size={18} color={scratchMode ? '#fff' : shade(LK.lilac, 0.5)} />
             <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14, color: scratchMode ? '#fff' : shade(LK.lilac, 0.55) }}>
               {scratchMode ? 'Back to your list' : 'Scratch-Off date ideas'}
             </Text>
             <Icon name="chevR" size={16} color={scratchMode ? 'rgba(255,255,255,0.7)' : shade(LK.lilac, 0.5)} />
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         {scratchMode && (
@@ -192,14 +195,15 @@ export default function BucketListScreen() {
               const label = k === 'todo' ? 'To Do' : 'Done';
               const count = k === 'todo' ? todo.length : done.length;
               return (
-                <TouchableOpacity
+                <ScalePressable
                   key={k}
                   onPress={() => setFilter(k)}
+                  scaleTo={0.96}
                   style={{ backgroundColor: filter === k ? LK.ivory : 'transparent', borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                 >
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: filter === k ? LK.espresso : LK.ink70 }}>{label}</Text>
                   <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70 }}>{count}</Text>
-                </TouchableOpacity>
+                </ScalePressable>
               );
             })}
           </View>
@@ -210,7 +214,7 @@ export default function BucketListScreen() {
 
         {/* Cap meter */}
         {!isPremium && items.length > 0 && (
-          <TouchableOpacity onPress={() => setSheet('paywall')} style={{ marginHorizontal: 20, marginBottom: 4, backgroundColor: LK.ivory, borderRadius: theme.radii.sm, padding: 14, ...theme.shadow.sm }}>
+          <ScalePressable onPress={() => setSheet('paywall')} scaleTo={0.98} accessibilityLabel="See Premium options" containerStyle={{ marginHorizontal: 20, marginBottom: 4 }} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', padding: 14, ...theme.shadow.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: atCap ? shade(LK.marigold, 0.5) : LK.espresso }}>
                 {atCap ? 'Free limit reached' : `${items.length} of ${FREE_LIMITS.BUCKET_LIST_ITEMS} on Free`}
@@ -223,7 +227,7 @@ export default function BucketListScreen() {
             <View style={{ height: 6, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.07)', overflow: 'hidden' }}>
               <View style={{ width: `${Math.min(100, items.length / FREE_LIMITS.BUCKET_LIST_ITEMS * 100)}%` as any, height: '100%', borderRadius: 9999, backgroundColor: atCap ? LK.marigold : LK.espresso }} />
             </View>
-          </TouchableOpacity>
+          </ScalePressable>
         )}
 
         {/* Items */}
@@ -257,9 +261,12 @@ export default function BucketListScreen() {
             const color = catDef?.color ?? LK.sky;
             return (
               <Animated.View key={it.id} entering={stagger(idx)} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 15, flexDirection: 'row', gap: 13, ...theme.shadow.card, opacity: it.is_done ? 0.92 : 1 }}>
-                <TouchableOpacity
+                <ScalePressable
                   onPress={() => toggleItem(it.id, !it.is_done)}
-                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -7 }}
+                  scaleTo={0.9}
+                  accessibilityLabel={it.is_done ? 'Mark as not done' : 'Mark as done'}
+                  containerStyle={{ flexShrink: 0, marginLeft: -7 }}
+                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <View style={{
                     width: 30, height: 30, borderRadius: 15,
@@ -269,8 +276,8 @@ export default function BucketListScreen() {
                   }}>
                     {it.is_done && <Icon name="check" size={18} color={shade(color, 0.55)} />}
                   </View>
-                </TouchableOpacity>
-                <TouchableOpacity activeOpacity={0.7} onPress={() => openEdit({ ...it })} style={{ flex: 1, minWidth: 0 }}>
+                </ScalePressable>
+                <ScalePressable scaleTo={0.99} haptic={false} onPress={() => openEdit({ ...it })} accessibilityLabel={`Edit ${it.title}`} containerStyle={{ flex: 1, minWidth: 0 }}>
                   <Text style={{
                     fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso, lineHeight: 22,
                     textDecorationLine: it.is_done ? 'line-through' : 'none',
@@ -297,7 +304,7 @@ export default function BucketListScreen() {
                       </Text>
                     )}
                   </View>
-                </TouchableOpacity>
+                </ScalePressable>
               </Animated.View>
             );
           })}
@@ -309,23 +316,24 @@ export default function BucketListScreen() {
       {sheet === 'add' && (
         <Modal animationType="slide" transparent>
           <KeyboardAvoidingView behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={closeSheet} activeOpacity={1} />
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={closeSheet} accessibilityLabel="Close" />
           <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30 }}>
             <View style={{ paddingTop: 14, alignItems: 'center' }}>
               <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 12 }}>
-              <TouchableOpacity onPress={closeSheet}>
+              <ScalePressable onPress={closeSheet} haptic={false} accessibilityRole="button" accessibilityLabel="Cancel" style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-              </TouchableOpacity>
+              </ScalePressable>
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>{editingId ? 'Edit item' : 'Add to list'}</Text>
-              <TouchableOpacity
+              <ScalePressable
                 onPress={handleAdd}
                 disabled={!newTitle.trim()}
-                style={{ backgroundColor: newTitle.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
+                accessibilityLabel={editingId ? 'Save item' : 'Add item'}
+                style={{ backgroundColor: newTitle.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, minHeight: 44, justifyContent: 'center' }}
               >
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: newTitle.trim() ? '#fff' : LK.ink70 }}>{editingId ? 'Save' : 'Add'}</Text>
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
             <View style={{ paddingHorizontal: 22, paddingBottom: 40 }}>
               <TextInput
@@ -351,14 +359,16 @@ export default function BucketListScreen() {
                 {BUCKET_CATEGORIES.map((cat) => {
                   const on = newCat === cat.id;
                   return (
-                    <TouchableOpacity
+                    <ScalePressable
                       key={cat.id}
                       onPress={() => setNewCat(cat.id)}
+                      scaleTo={0.95}
+                      accessibilityLabel={cat.label}
                       style={{ backgroundColor: on ? cat.color : tint(cat.color, 0.75), borderRadius: 9999, paddingHorizontal: 13, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                     >
                       <Icon name={cat.icon} size={15} color={shade(cat.color, 0.5)} />
                       <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: shade(cat.color, 0.5) }}>{cat.label}</Text>
-                    </TouchableOpacity>
+                    </ScalePressable>
                   );
                 })}
               </View>

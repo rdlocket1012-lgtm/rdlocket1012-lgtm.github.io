@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { View, Text, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { useWatchSession, type WatchEvent } from '@/hooks/useWatchSession';
 import { notifyPartner } from '@/lib/push';
 import { parseYouTubeId } from '@/utils/youtube';
@@ -179,7 +180,7 @@ export const WatchTogether = forwardRef<WatchHandle, {
       {/* Compose: paste a link */}
       <Modal visible={mode === 'compose'} transparent animationType="slide" onRequestClose={() => setMode('idle')}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.45)' }} activeOpacity={1} onPress={() => setMode('idle')} />
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.45)' }} onPress={() => setMode('idle')} accessibilityLabel="Close" />
           <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 34 }}>
             <View style={{ alignItems: 'center', marginBottom: 14 }}>
               <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
@@ -197,13 +198,16 @@ export const WatchTogether = forwardRef<WatchHandle, {
               autoCorrect={false}
               style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 15, color: LK.espresso, marginTop: 16, ...theme.shadow.sm }}
             />
-            <TouchableOpacity
+            <ScalePressable
               onPress={submitLink}
               disabled={!link.trim()}
-              style={{ backgroundColor: link.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingVertical: 15, alignItems: 'center', marginTop: 14 }}
+              scaleTo={0.97}
+              accessibilityLabel={`Invite ${partner} to watch`}
+              containerStyle={{ marginTop: 14 }}
+              style={{ backgroundColor: link.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingVertical: 15, alignItems: 'center' }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15.5, color: link.trim() ? '#fff' : LK.ink70 }}>Invite {partner} to watch</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -217,21 +221,21 @@ export const WatchTogether = forwardRef<WatchHandle, {
               <>
                 <Text style={H}>Waiting for {partner}…</Text>
                 <Text style={P}>We've sent an invite to watch together. Hang tight 💛</Text>
-                <TouchableOpacity onPress={quit} style={{ backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 14, alignItems: 'center', marginTop: 18 }}>
+                <ScalePressable onPress={quit} scaleTo={0.97} haptic={false} accessibilityLabel="Cancel" containerStyle={{ marginTop: 18 }} style={{ backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.ink70 }}>Cancel</Text>
-                </TouchableOpacity>
+                </ScalePressable>
               </>
             ) : (
               <>
                 <Text style={H}>{partner} wants to watch together</Text>
                 <Text style={P}>Press play at the same time and stay perfectly in sync.</Text>
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-                  <TouchableOpacity onPress={decline} style={{ flex: 1, backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
+                  <ScalePressable onPress={decline} scaleTo={0.97} haptic={false} accessibilityLabel="Not now" containerStyle={{ flex: 1 }} style={{ backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
                     <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.ink70 }}>Not now</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={accept} style={{ flex: 1.4, backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
+                  </ScalePressable>
+                  <ScalePressable onPress={accept} scaleTo={0.97} accessibilityLabel="Join watch session" containerStyle={{ flex: 1.4 }} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
                     <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, color: '#fff' }}>Join 🍿</Text>
-                  </TouchableOpacity>
+                  </ScalePressable>
                 </View>
               </>
             )}
@@ -249,9 +253,9 @@ export const WatchTogether = forwardRef<WatchHandle, {
                 Watching with {partner}
               </Text>
             </View>
-            <TouchableOpacity onPress={quit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <ScalePressable onPress={quit} scaleTo={0.9} haptic={false} accessibilityLabel="Stop watching" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="x" size={24} color="rgba(255,255,255,0.85)" />
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
 
           {videoId && (
@@ -273,13 +277,13 @@ export const WatchTogether = forwardRef<WatchHandle, {
           {role === 'host' ? (
             <View style={{ position: 'absolute', bottom: 70, left: 0, right: 0, alignItems: 'center', gap: 12 }}>
               <View style={{ flexDirection: 'row', gap: 14 }}>
-                <TouchableOpacity onPress={hostTogglePlay} style={ctrlBtn}>
+                <ScalePressable onPress={hostTogglePlay} scaleTo={0.92} accessibilityLabel={playing ? 'Pause' : 'Play'} style={ctrlBtn}>
                   <Icon name={playing ? 'pause' : 'play'} size={22} color={LK.espresso} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={hostResync} style={[ctrlBtn, { flexDirection: 'row', width: undefined, paddingHorizontal: 18, gap: 7 }]}>
+                </ScalePressable>
+                <ScalePressable onPress={hostResync} scaleTo={0.95} accessibilityLabel="Re-sync playback" style={[ctrlBtn, { flexDirection: 'row', width: undefined, paddingHorizontal: 18, gap: 7 }]}>
                   <Icon name="sync" size={18} color={LK.espresso} />
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14, color: LK.espresso }}>Re-sync</Text>
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: 'rgba(255,255,255,0.55)' }}>You're controlling playback</Text>
             </View>

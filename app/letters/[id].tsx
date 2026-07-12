@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActionSheetIOS, Alert, Platform, Share } from 'react-native';
+import { View, Text, ScrollView, ActionSheetIOS, Alert, Platform, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -7,6 +7,7 @@ import Transition from 'react-native-screen-transitions';
 import { EaseView } from 'react-native-ease';
 import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { RoundIcon } from '@/components/ui/round-icon';
 import { Avatar } from '@/components/ui/avatar';
 import { useLetters } from '@/hooks/useLetters';
@@ -229,10 +230,11 @@ export default function LetterReaderScreen() {
             {REACTIONS.map((emoji) => {
               const active = letter.reaction === emoji;
               return (
-                <TouchableOpacity
+                <ScalePressable
                   key={emoji}
                   onPress={() => react(emoji)}
-                  activeOpacity={0.7}
+                  scaleTo={0.85}
+                  accessibilityLabel={`React ${emoji}`}
                   style={{
                     width: 44, height: 44, borderRadius: 22,
                     alignItems: 'center', justifyContent: 'center',
@@ -240,7 +242,7 @@ export default function LetterReaderScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 24, opacity: active || !letter.reaction ? 1 : 0.45 }}>{emoji}</Text>
-                </TouchableOpacity>
+                </ScalePressable>
               );
             })}
           </View>

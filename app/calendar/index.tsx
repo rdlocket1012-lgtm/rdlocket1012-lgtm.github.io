@@ -1,9 +1,10 @@
 ﻿import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 import { DateField } from '@/components/ui/DateField';
@@ -137,20 +138,22 @@ export default function CalendarScreen() {
           onBack={() => router.back()}
           right={
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
+              <ScalePressable
                 onPress={syncAll}
+                scaleTo={0.92}
                 accessibilityLabel="Add upcoming events to phone calendar"
                 style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tint(LK.sky, 0.6), alignItems: 'center', justifyContent: 'center' }}
               >
                 <Icon name="calendar" size={20} color={shade(LK.sky, 0.5)} />
-              </TouchableOpacity>
-              <TouchableOpacity
+              </ScalePressable>
+              <ScalePressable
                 onPress={() => openAdd()}
+                scaleTo={0.92}
                 accessibilityLabel="Add an event"
                 style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: LK.espresso, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
               >
                 <Icon name="plus" size={22} color="#fff" />
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
           }
         />
@@ -160,15 +163,15 @@ export default function CalendarScreen() {
           <View style={{ marginHorizontal: 20, marginTop: 14, backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 16, ...theme.shadow.card }}>
             {/* Month nav */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <TouchableOpacity onPress={() => shiftMonth(-1)} style={navBtn}>
+              <ScalePressable onPress={() => shiftMonth(-1)} scaleTo={0.9} accessibilityLabel="Previous month" style={navBtn}>
                 <Icon name="chevL" size={20} color={LK.espresso} />
-              </TouchableOpacity>
+              </ScalePressable>
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, color: LK.espresso }}>
                 {MONTHS[viewMonth]} {viewYear}
               </Text>
-              <TouchableOpacity onPress={() => shiftMonth(1)} style={navBtn}>
+              <ScalePressable onPress={() => shiftMonth(1)} scaleTo={0.9} accessibilityLabel="Next month" style={navBtn}>
                 <Icon name="chevR" size={20} color={LK.espresso} />
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
 
             {/* Weekday header */}
@@ -186,10 +189,13 @@ export default function CalendarScreen() {
                 const isToday = cell.dateStr === todayStr;
                 const isSelected = cell.dateStr === selectedDay;
                 return (
-                  <TouchableOpacity
+                  <ScalePressable
                     key={cell.dateStr}
                     onPress={() => setSelectedDay(cell.dateStr)}
-                    style={{ width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' }}
+                    scaleTo={0.9}
+                    haptic={false}
+                    containerStyle={{ width: `${100 / 7}%`, aspectRatio: 1 }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
                   >
                     <View style={{
                       width: 36, height: 36, borderRadius: 18,
@@ -211,7 +217,7 @@ export default function CalendarScreen() {
                         <View key={j} style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: isSelected ? '#fff' : e.color }} />
                       ))}
                     </View>
-                  </TouchableOpacity>
+                  </ScalePressable>
                 );
               })}
             </View>
@@ -225,14 +231,16 @@ export default function CalendarScreen() {
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 17, color: LK.espresso }}>
                 {new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
               </Text>
-              <TouchableOpacity
+              <ScalePressable
                 onPress={() => openAdd(selectedDay)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                scaleTo={0.94}
+                accessibilityLabel="Add event on this day"
+                hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(42,33,26,0.06)', borderRadius: 9999, paddingHorizontal: 11, paddingVertical: 7 }}
               >
                 <Icon name="plus" size={14} color={LK.ink70} />
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: LK.ink70 }}>Add</Text>
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
             {selectedEvents.length > 0 ? (
               <View style={{ gap: 8 }}>
@@ -269,23 +277,24 @@ export default function CalendarScreen() {
       {addOpen && (
         <Modal animationType="slide" transparent onRequestClose={() => setAddOpen(false)}>
           <KeyboardAvoidingView behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
-            <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} activeOpacity={1} onPress={() => setAddOpen(false)} />
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={() => setAddOpen(false)} accessibilityLabel="Close" />
             <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '90%' }}>
               <View style={{ paddingTop: 14, alignItems: 'center' }}>
                 <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 12 }}>
-                <TouchableOpacity onPress={() => setAddOpen(false)}>
+                <ScalePressable onPress={() => setAddOpen(false)} haptic={false} accessibilityRole="button" accessibilityLabel="Cancel" style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}>
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-                </TouchableOpacity>
+                </ScalePressable>
                 <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 18, color: LK.espresso }}>Add an event</Text>
-                <TouchableOpacity
+                <ScalePressable
                   onPress={handleAddEvent}
                   disabled={!evTitle.trim() || saving}
-                  style={{ backgroundColor: evTitle.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10 }}
+                  accessibilityLabel="Save event"
+                  style={{ backgroundColor: evTitle.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 18, minHeight: 44, justifyContent: 'center' }}
                 >
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: evTitle.trim() ? '#fff' : LK.ink70 }}>Save</Text>
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
@@ -298,14 +307,17 @@ export default function CalendarScreen() {
                     const on = evKind === k;
                     const col = k === 'birthday' ? LK.lilac : LK.coral;
                     return (
-                      <TouchableOpacity
+                      <ScalePressable
                         key={k}
                         onPress={() => { setEvKind(k); }}
-                        style={{ flex: 1, backgroundColor: on ? tint(col, 0.6) : LK.ivory, borderRadius: 14, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7, borderWidth: on ? 2 : 0, borderColor: on ? col : 'transparent', ...theme.shadow.sm }}
+                        scaleTo={0.97}
+                        accessibilityLabel={label}
+                        containerStyle={{ flex: 1 }}
+                        style={{ backgroundColor: on ? tint(col, 0.6) : LK.ivory, borderRadius: 14, borderCurve: 'continuous', paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 7, borderWidth: on ? 2 : 0, borderColor: on ? col : 'transparent', ...theme.shadow.sm }}
                       >
                         <Icon name={icon} size={15} color={on ? shade(col, 0.5) : LK.sepia} />
                         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: on ? shade(col, 0.5) : LK.espresso }}>{label}</Text>
-                      </TouchableOpacity>
+                      </ScalePressable>
                     );
                   })}
                 </View>
@@ -329,22 +341,27 @@ export default function CalendarScreen() {
                   {EVENT_EMOJIS.map((em) => {
                     const on = evEmoji === em;
                     return (
-                      <TouchableOpacity
+                      <ScalePressable
                         key={em}
                         onPress={() => setEvEmoji(em)}
-                        style={{ width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? tint(LK.marigold, 0.6) : LK.ivory, borderWidth: on ? 2 : 0, borderColor: on ? LK.marigold : 'transparent', ...theme.shadow.sm }}
+                        scaleTo={0.9}
+                        accessibilityLabel={`Emoji ${em}`}
+                        style={{ width: 46, height: 46, borderRadius: 14, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? tint(LK.marigold, 0.6) : LK.ivory, borderWidth: on ? 2 : 0, borderColor: on ? LK.marigold : 'transparent', ...theme.shadow.sm }}
                       >
                         <Text style={{ fontSize: 22 }}>{em}</Text>
-                      </TouchableOpacity>
+                      </ScalePressable>
                     );
                   })}
                 </View>
 
                 {/* Yearly toggle */}
-                <TouchableOpacity
+                <ScalePressable
                   onPress={() => setEvYearly((y) => !y)}
-                  activeOpacity={0.85}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: LK.ivory, borderRadius: 16, padding: 16, ...theme.shadow.sm }}
+                  scaleTo={0.98}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: evYearly }}
+                  accessibilityLabel="Repeats every year"
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: LK.ivory, borderRadius: 16, borderCurve: 'continuous', padding: 16, ...theme.shadow.sm }}
                 >
                   <View style={{ flex: 1, paddingRight: 12 }}>
                     <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.espresso }}>Repeats every year</Text>
@@ -355,7 +372,7 @@ export default function CalendarScreen() {
                   <View style={{ width: 50, height: 30, borderRadius: 15, backgroundColor: evYearly ? LK.espresso : 'rgba(42,33,26,0.18)', padding: 3, justifyContent: 'center' }}>
                     <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', alignSelf: evYearly ? 'flex-end' : 'flex-start' }} />
                   </View>
-                </TouchableOpacity>
+                </ScalePressable>
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
@@ -383,10 +400,11 @@ const navBtn = {
 
 function EventRow({ event, dateLabel, onPress, onSync }: { event: CalEvent; dateLabel: string | null; onPress: () => void; onSync?: () => void }) {
   return (
-    <TouchableOpacity
+    <ScalePressable
       onPress={onPress}
-      activeOpacity={0.8}
-      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: LK.ivory, borderRadius: theme.radii.sm, overflow: 'hidden', ...theme.shadow.sm }}
+      scaleTo={0.98}
+      accessibilityLabel={event.title}
+      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', overflow: 'hidden', ...theme.shadow.sm }}
     >
       {/* 4px left accent bar per §13.24 spec */}
       <View style={{ width: 4, alignSelf: 'stretch', backgroundColor: event.color }} />
@@ -408,16 +426,18 @@ function EventRow({ event, dateLabel, onPress, onSync }: { event: CalEvent; date
           </View>
         )}
         {onSync && (
-          <TouchableOpacity
+          <ScalePressable
             onPress={onSync}
+            scaleTo={0.9}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="Add to phone calendar"
-            style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: tint(LK.sky, 0.6), alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            containerStyle={{ flexShrink: 0 }}
+            style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: tint(LK.sky, 0.6), alignItems: 'center', justifyContent: 'center' }}
           >
             <Icon name="plus" size={17} color={shade(LK.sky, 0.5)} />
-          </TouchableOpacity>
+          </ScalePressable>
         )}
       </View>
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }

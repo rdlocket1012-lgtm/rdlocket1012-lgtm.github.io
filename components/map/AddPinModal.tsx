@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
+  View, Text, TextInput, Pressable, ScrollView,
   Modal, KeyboardAvoidingView, Platform, Alert,
   ActivityIndicator, Image,
 } from 'react-native';
 import { LK, tint, shade, catColor, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { PIN_CATEGORIES } from '@/constants/categories';
 import { PIN_ICON } from '@/constants/milestone-types';
 import { useMap } from '@/hooks/useMap';
@@ -177,10 +178,10 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, justifyContent: 'flex-end' }}
       >
-        <TouchableOpacity
+        <Pressable
           style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }}
           onPress={onClose}
-          activeOpacity={1}
+          accessibilityLabel="Close"
         />
         <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
           {/* Handle */}
@@ -190,25 +191,26 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
 
           {/* Header */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingBottom: 12 }}>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <ScalePressable onPress={onClose} haptic={false} accessibilityRole="button" accessibilityLabel="Cancel" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-            </TouchableOpacity>
+            </ScalePressable>
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>
               {editing ? 'Edit pin' : 'Add a pin'}
             </Text>
-            <TouchableOpacity
+            <ScalePressable
               onPress={handleSave}
               disabled={!name.trim() || saving || autoFilling}
+              accessibilityLabel="Save pin"
               style={{
                 backgroundColor: name.trim() && !autoFilling ? LK.espresso : 'rgba(42,33,26,0.15)',
-                borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 10,
+                borderRadius: 9999, paddingHorizontal: 18, minHeight: 44, justifyContent: 'center',
               }}
             >
               {saving
                 ? <ActivityIndicator size="small" color="#fff" />
                 : <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: name.trim() && !autoFilling ? '#fff' : LK.ink70 }}>Save</Text>
               }
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
 
           <ScrollView
@@ -311,9 +313,11 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
                 const cc = catColor(cat.id);
                 const on = category === cat.id;
                 return (
-                  <TouchableOpacity
+                  <ScalePressable
                     key={cat.id}
                     onPress={() => setCategory(cat.id)}
+                    scaleTo={0.95}
+                    accessibilityLabel={cat.label}
                     style={{
                       flexDirection: 'row', alignItems: 'center', gap: 6,
                       backgroundColor: on ? cc.base : tint(cc.base, 0.82),
@@ -324,7 +328,7 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
                     <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: cc.deep }}>
                       {cat.label}
                     </Text>
-                  </TouchableOpacity>
+                  </ScalePressable>
                 );
               })}
             </View>

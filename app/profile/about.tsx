@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { RoundIcon } from '@/components/ui/round-icon';
 import { Avatar } from '@/components/ui/avatar';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -119,10 +120,11 @@ function ProfileCard({ initial, avatarUrl, color, name, subtitle, details, onPre
   const allRows = [...rows, ...customRows];
 
   return (
-    <TouchableOpacity
+    <ScalePressable
       onPress={onPress}
-      activeOpacity={0.85}
-      style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 18, marginBottom: 14, ...theme.shadow.card }}
+      scaleTo={0.98}
+      containerStyle={{ marginBottom: 14 }}
+      style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', padding: 18, ...theme.shadow.card }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 }}>
         {avatarUrl ? (
@@ -155,6 +157,6 @@ function ProfileCard({ initial, avatarUrl, color, name, subtitle, details, onPre
           </View>
         ))}
       </View>
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }

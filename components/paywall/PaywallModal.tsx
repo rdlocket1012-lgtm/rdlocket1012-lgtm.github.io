@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, Pressable, ScrollView, Modal, ActivityIndicator, Alert, Linking } from 'react-native';
 import { EaseView } from 'react-native-ease';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -102,7 +102,7 @@ export function PaywallModal({ onClose }: Props) {
 
   return (
     <Modal animationType="slide" transparent>
-      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={onClose} activeOpacity={1} />
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(20,15,10,0.4)' }} onPress={onClose} accessibilityLabel="Close" />
       <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '88%' }}>
         <View style={{ padding: '14px 0 6px' as any, paddingTop: 14, paddingBottom: 6, alignItems: 'center' }}>
           <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)' }} />
@@ -204,17 +204,19 @@ export function PaywallModal({ onClose }: Props) {
             )}
           </ScalePressable>
 
-          <TouchableOpacity
+          <ScalePressable
             onPress={handleRestore}
             disabled={restoring}
-            style={{ alignItems: 'center', paddingVertical: 14 }}
+            haptic={false}
+            accessibilityLabel="Restore purchases"
+            style={{ alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
           >
             {restoring ? (
               <ActivityIndicator color={LK.ink70} size="small" />
             ) : (
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.ink70 }}>Restore Purchases</Text>
             )}
-          </TouchableOpacity>
+          </ScalePressable>
 
           <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, textAlign: 'center', lineHeight: 18 }}>
             Cancel anytime. No hostile fine print, ever.
@@ -228,13 +230,13 @@ export function PaywallModal({ onClose }: Props) {
             purchase confirmation. Manage or cancel anytime in your App Store account settings.
           </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 8 }}>
-            <TouchableOpacity onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/Locket/terms-of-service.md')}>
+            <ScalePressable onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/Locket/terms-of-service.md')} haptic={false} accessibilityRole="link" accessibilityLabel="Terms of Service" hitSlop={{ top: 14, bottom: 14, left: 6, right: 6 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '700', color: shade(LK.marigold, 0.5) }}>Terms of Service</Text>
-            </TouchableOpacity>
+            </ScalePressable>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, color: LK.ink70 }}>·</Text>
-            <TouchableOpacity onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/Locket/privacy-policy.md')}>
+            <ScalePressable onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/Locket/privacy-policy.md')} haptic={false} accessibilityRole="link" accessibilityLabel="Privacy Policy" hitSlop={{ top: 14, bottom: 14, left: 6, right: 6 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '700', color: shade(LK.marigold, 0.5) }}>Privacy Policy</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         </ScrollView>
       </View>

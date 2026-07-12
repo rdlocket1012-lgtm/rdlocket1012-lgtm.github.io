@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, ActivityIndicator, Animated, Easing } from 'react-native';
+import { View, Text, TextInput, Pressable, Modal, ScrollView, ActivityIndicator, Animated, Easing } from 'react-native';
 import { KeyboardProvider, KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Chip } from '@/components/ui/chip';
 import { useLetters } from '@/hooks/useLetters';
 import { useAuth } from '@/hooks/useAuth';
@@ -166,9 +167,9 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1, backgroundColor: LK.ivory }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 56, paddingBottom: 6 }}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <ScalePressable onPress={onClose} haptic={false} accessibilityRole="button" accessibilityLabel="Cancel" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-          </TouchableOpacity>
+          </ScalePressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             {text.length > 0 && (
               draftSaved
@@ -187,15 +188,16 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
               handleSendCard;
             const label = mode === 'card' ? 'Send with love' : 'Seal & send';
             return (
-              <TouchableOpacity
+              <ScalePressable
                 onPress={onPress}
                 disabled={!canSend || saving}
-                style={{ backgroundColor: canSend ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 20, paddingVertical: 10, minWidth: 96, alignItems: 'center' }}
+                accessibilityLabel={label}
+                style={{ backgroundColor: canSend ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 20, minHeight: 44, minWidth: 96, alignItems: 'center', justifyContent: 'center' }}
               >
                 {saving
                   ? <ActivityIndicator size="small" color="#fff" />
                   : <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: canSend ? '#fff' : LK.ink70 }}>{label}</Text>}
-              </TouchableOpacity>
+              </ScalePressable>
             );
           })()}
         </View>
@@ -207,9 +209,10 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
             { id: 'voice', icon: 'mic', label: 'Voice' },
             { id: 'card', icon: 'heart', label: 'Love Card' },
           ] as const).map((m) => (
-            <TouchableOpacity
+            <ScalePressable
               key={m.id}
               onPress={() => setMode(m.id)}
+              scaleTo={0.96}
               style={{
                 flexDirection: 'row', alignItems: 'center', gap: 6,
                 backgroundColor: mode === m.id ? LK.ivory : 'transparent',
@@ -220,29 +223,37 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: mode === m.id ? LK.espresso : LK.ink70 }}>
                 {m.label}
               </Text>
-            </TouchableOpacity>
+            </ScalePressable>
           ))}
         </View>
 
         {/* Toolbar — only shown in text mode */}
         <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center' }}>
-          <TouchableOpacity
+          <ScalePressable
             onPress={() => wrapSelection('**', '**')}
+            scaleTo={0.9}
+            haptic={false}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
             accessibilityLabel="Bold"
           >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 18, color: LK.espresso }}>B</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </ScalePressable>
+          <ScalePressable
             onPress={() => wrapSelection('_', '_')}
+            scaleTo={0.9}
+            haptic={false}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
             accessibilityLabel="Italic"
           >
             <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.espresso }}>i</Text>
-          </TouchableOpacity>
+          </ScalePressable>
           <View style={{ flex: 1 }} />
-          <TouchableOpacity
+          <ScalePressable
             onPress={() => isPremium ? setSealedOpen(true) : onPaywall()}
+            scaleTo={0.95}
+            accessibilityLabel="Seal until a date"
             style={{
               backgroundColor: sealedDate ? LK.marigold : 'rgba(42,33,26,0.06)',
               borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 9,
@@ -254,7 +265,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
               {sealedLabel ?? 'Sealed until'}
             </Text>
             {!isPremium && <Icon name="crown" size={13} color={LK.ink70} />}
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         {/* Editor */}
@@ -294,7 +305,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
         {/* Seal until picker */}
         {sealedOpen && (
           <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(20,15,10,0.4)', justifyContent: 'flex-end' } as any}>
-            <TouchableOpacity style={{ flex: 1 }} onPress={() => setSealedOpen(false)} />
+            <Pressable style={{ flex: 1 }} onPress={() => setSealedOpen(false)} accessibilityLabel="Close" />
             <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40 }}>
               <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)', alignSelf: 'center', marginBottom: 18 }} />
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 23, color: LK.espresso }}>Seal until…</Text>
@@ -407,9 +418,10 @@ function VoiceRecorderPanel({ recorder, partnerFirstName }: {
       {/* Record / stop button */}
       {state !== 'done' ? (
         <Animated.View style={{ transform: [{ scale: state === 'recording' ? pulse : 1 }] }}>
-          <TouchableOpacity
+          <ScalePressable
             onPress={state === 'recording' ? stop : start}
-            activeOpacity={0.85}
+            scaleTo={0.94}
+            accessibilityLabel={state === 'recording' ? 'Stop recording' : 'Start recording'}
             style={{
               width: 96, height: 96, borderRadius: 48,
               backgroundColor: state === 'recording' ? LK.coral : LK.blush,
@@ -419,7 +431,7 @@ function VoiceRecorderPanel({ recorder, partnerFirstName }: {
             }}
           >
             <Icon name={state === 'recording' ? 'pause' : 'mic'} size={40} color={shade(state === 'recording' ? LK.coral : LK.blush, 0.55)} />
-          </TouchableOpacity>
+          </ScalePressable>
         </Animated.View>
       ) : (
         <View style={{ alignItems: 'center', gap: 16 }}>
@@ -429,10 +441,10 @@ function VoiceRecorderPanel({ recorder, partnerFirstName }: {
               Recorded · {formatDuration(seconds)}
             </Text>
           </View>
-          <TouchableOpacity onPress={reset} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 14 }}>
+          <ScalePressable onPress={reset} haptic={false} accessibilityLabel="Re-record" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14 }}>
             <Icon name="sync" size={15} color={LK.ink70} />
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: LK.ink70 }}>Re-record</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
       )}
 
@@ -572,9 +584,10 @@ function LoveCardCompose({
         {LOVE_CARD_ILLUSTRATIONS.map((illus) => {
           const active = illus.key === selectedIllus;
           return (
-            <TouchableOpacity
+            <ScalePressable
               key={illus.key}
               onPress={() => onSelectIllus(illus.key)}
+              scaleTo={0.93}
               style={{
                 width: 72,
                 alignItems: 'center',
@@ -606,7 +619,7 @@ function LoveCardCompose({
                   opacity: active ? 1 : 0.35,
                 }}
               />
-            </TouchableOpacity>
+            </ScalePressable>
           );
         })}
       </ScrollView>

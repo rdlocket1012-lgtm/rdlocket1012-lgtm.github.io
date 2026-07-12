@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, Modal, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { SwipeCard } from '@/components/game/SwipeCard';
 import MascotAnimation from '@/components/ui/mascot-animation';
 import { useLiveSession, type LiveEvent } from '@/hooks/useLiveSession';
@@ -267,13 +268,13 @@ export const LiveLayer = forwardRef<LiveHandle, {
               You're both online 💞
             </Text>
             {onWatch && (
-              <TouchableOpacity onPress={() => { tap(); onWatch(); }} style={[styles.bannerBtn, { backgroundColor: tint(LK.coral, 0.5) }]}>
+              <ScalePressable onPress={() => { tap(); onWatch(); }} haptic={false} scaleTo={0.94} accessibilityLabel="Watch together" style={[styles.bannerBtn, { backgroundColor: tint(LK.coral, 0.5) }]}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 12.5, color: shade(LK.coral, 0.55) }}>Watch</Text>
-              </TouchableOpacity>
+              </ScalePressable>
             )}
-            <TouchableOpacity onPress={() => invite()} style={styles.bannerBtn}>
+            <ScalePressable onPress={() => invite()} scaleTo={0.94} accessibilityLabel="Play a game" style={styles.bannerBtn}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 12.5, color: '#fff' }}>Play</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         </View>
       )}
@@ -284,12 +285,12 @@ export const LiveLayer = forwardRef<LiveHandle, {
         <Text style={styles.p}>Pick a level — you'll both get questions at exactly that heat.</Text>
         <View style={{ gap: 10, marginTop: 16 }}>
           {([1, 2, 3] as const).map((lvl) => (
-            <TouchableOpacity
+            <ScalePressable
               key={lvl}
               onPress={() => pickSpice(lvl)}
-              activeOpacity={0.85}
+              scaleTo={0.97}
               accessibilityLabel={`${SPICE[lvl].name} — level ${lvl}`}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: tint(LK.coral, lvl === 1 ? 0.6 : lvl === 2 ? 0.42 : 0.26), borderRadius: 16, padding: 14 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: tint(LK.coral, lvl === 1 ? 0.6 : lvl === 2 ? 0.42 : 0.26), borderRadius: 16, borderCurve: 'continuous', padding: 14 }}
             >
               <Text style={{ fontSize: 18 }}>{'🌶️'.repeat(lvl)}</Text>
               <View style={{ flex: 1 }}>
@@ -297,7 +298,7 @@ export const LiveLayer = forwardRef<LiveHandle, {
                 <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>{SPICE[lvl].blurb}</Text>
               </View>
               <Icon name="chevR" size={18} color={shade(LK.coral, 0.5)} />
-            </TouchableOpacity>
+            </ScalePressable>
           ))}
         </View>
         <View style={{ marginTop: 14 }}>
@@ -350,9 +351,9 @@ export const LiveLayer = forwardRef<LiveHandle, {
                 {round + 1} of {order.length}
               </Text>
             </View>
-            <TouchableOpacity onPress={quit} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(42,33,26,0.07)', alignItems: 'center', justifyContent: 'center' }}>
+            <ScalePressable onPress={quit} scaleTo={0.9} haptic={false} accessibilityLabel="Quit game" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(42,33,26,0.07)', alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="x" size={18} color={LK.sepia} />
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
 
           {/* Game area */}
@@ -443,14 +444,17 @@ export const LiveLayer = forwardRef<LiveHandle, {
                       </View>
                     </>
                   )}
-                  <TouchableOpacity
+                  <ScalePressable
                     onPress={next}
-                    style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 32, paddingVertical: 14, marginTop: 8, ...theme.shadow.sm }}
+                    scaleTo={0.97}
+                    accessibilityLabel={round + 1 >= order.length ? 'See results' : 'Next card'}
+                    containerStyle={{ marginTop: 8 }}
+                    style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 32, paddingVertical: 14, ...theme.shadow.sm }}
                   >
                     <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, color: '#fff' }}>
                       {round + 1 >= order.length ? 'See results →' : 'Next card →'}
                     </Text>
-                  </TouchableOpacity>
+                  </ScalePressable>
                 </View>
               );
             })()}
@@ -508,16 +512,16 @@ function CenterModal({ visible, children }: { visible: boolean; children: React.
 }
 function SolidBtn({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <TouchableOpacity onPress={onPress} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
+    <ScalePressable onPress={onPress} scaleTo={0.97} accessibilityLabel={label} style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
       <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, color: '#fff' }}>{label}</Text>
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }
 function GhostBtn({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <TouchableOpacity onPress={onPress} style={{ backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
+    <ScalePressable onPress={onPress} scaleTo={0.97} haptic={false} accessibilityLabel={label} style={{ backgroundColor: 'rgba(42,33,26,0.07)', borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}>
       <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.ink70 }}>{label}</Text>
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }
 

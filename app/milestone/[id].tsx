@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -112,7 +112,7 @@ export default function MilestoneDetailScreen() {
       {/* Confirm delete sheet */}
       {confirmDelete && (
         <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(20,15,10,0.4)', justifyContent: 'flex-end' } as any}>
-          <TouchableOpacity style={{ flex: 1 }} onPress={() => setConfirmDelete(false)} />
+          <Pressable style={{ flex: 1 }} onPress={() => setConfirmDelete(false)} accessibilityLabel="Close" />
           <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 26, paddingBottom: 40 }}>
             <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)', alignSelf: 'center', marginBottom: 18 }} />
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 23, color: LK.espresso, textAlign: 'center' }}>Delete this milestone?</Text>
@@ -120,12 +120,12 @@ export default function MilestoneDetailScreen() {
               It'll be recoverable for 30 days before it's gone for good.
             </Text>
             <View style={{ gap: 10, marginTop: 22 }}>
-              <TouchableOpacity onPress={handleDelete} style={{ backgroundColor: LK.danger, borderRadius: 9999, padding: 16, alignItems: 'center' }}>
+              <ScalePressable onPress={handleDelete} scaleTo={0.97} accessibilityLabel="Delete milestone" style={{ backgroundColor: LK.danger, borderRadius: 9999, padding: 16, alignItems: 'center' }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Delete</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setConfirmDelete(false)} style={{ backgroundColor: 'rgba(42,33,26,0.08)', borderRadius: 9999, padding: 16, alignItems: 'center' }}>
+              </ScalePressable>
+              <ScalePressable onPress={() => setConfirmDelete(false)} scaleTo={0.97} haptic={false} accessibilityLabel="Cancel" style={{ backgroundColor: 'rgba(42,33,26,0.08)', borderRadius: 9999, padding: 16, alignItems: 'center' }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: LK.espresso }}>Cancel</Text>
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
           </View>
         </View>
