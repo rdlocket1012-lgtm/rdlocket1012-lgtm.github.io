@@ -14,10 +14,21 @@ import { Avatar } from '@/components/ui/avatar';
 import { RoundIcon } from '@/components/ui/round-icon';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
+import { DoodleBackground } from '@/components/ui/doodle-background';
 import { pickAndUploadCoverPhoto } from '@/lib/cover-photo';
 
 const COVER_FALLBACK = require('../../assets/illustrations/mascot/holding-hands.png');
 const BORDER = 'rgba(42,33,26,0.15)';
+
+// §13.16 feature-card illustrations — kawaii stickers (§7) instead of line icons.
+const FEATURE_ILLUS: Record<string, number> = {
+  letters: require('../../assets/illustrations/mascot/holding-letter.png'),
+  coupons: require('../../assets/illustrations/milestones/custom.png'),
+  map: require('../../assets/illustrations/empty-states/no-map-pins.png'),
+  calendar: require('../../assets/illustrations/empty-states/no-milestones.png'),
+  notes: require('../../assets/illustrations/moods/calm.png'),
+  about: require('../../assets/illustrations/mascot/waving.png'),
+};
 
 type Feature = { key: string; title: string; icon: string; color: string; route: string; badge?: boolean };
 
@@ -139,11 +150,16 @@ function FeatureCard({ feature, width }: { feature: Feature; width: number }) {
       style={{ width, aspectRatio: 1 / 1.15 }}
     >
       <View style={{ flex: 1, backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', borderWidth: 1.5, borderColor: BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
-        {/* Illustration zone (top 60%) */}
+        {/* Faint accent-tinted ink layer under the sticker (§13.16) */}
+        <DoodleBackground group="general" density="light" color={feature.color} />
+        {/* Illustration zone (top 60%) — 72pt kawaii sticker per spec */}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: feature.color, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name={feature.icon} size={28} color={shade(feature.color, 0.55)} />
-          </View>
+          <Image
+            source={FEATURE_ILLUS[feature.key]}
+            contentFit="contain"
+            accessible={false}
+            style={{ width: 72, height: 72 }}
+          />
         </View>
         {/* Title */}
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso, paddingHorizontal: 16, paddingBottom: 16 }}>
