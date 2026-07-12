@@ -8,6 +8,7 @@ import Mapbox, {
   MapView, Camera, PointAnnotation, UserLocation,
 } from '@rnmapbox/maps';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { useMap } from '@/hooks/useMap';
 import { useCouple } from '@/hooks/useCouple';
@@ -32,6 +33,9 @@ import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 // Default camera: centered roughly on Europe / world overview
 const DEFAULT_CENTER: [number, number] = [2.3522, 48.8566]; // [lng, lat]
 const DEFAULT_ZOOM = 2;
+
+// §13.15 list-view empty — kawaii map illustration (§7) instead of a line-icon chip.
+const EMPTY_MAP_ILLUS = require('../../assets/illustrations/empty-states/no-map-pins.png');
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -216,15 +220,18 @@ export default function MapScreen() {
                 ))}
               </View>
             ) : pins.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingTop: 60, gap: 12 }}>
-                <IconChip color={LK.lilac} size={64}>
-                  <Icon name="mapPin" size={30} color={shade(LK.lilac, 0.5)} />
-                </IconChip>
+              <View style={{ alignItems: 'center', paddingTop: 48, gap: 12 }}>
+                <ExpoImage
+                  source={EMPTY_MAP_ILLUS}
+                  style={{ width: 128, height: 128 }}
+                  contentFit="contain"
+                  accessible={false}
+                />
                 <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>
                   No places pinned yet
                 </Text>
-                <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, textAlign: 'center', maxWidth: 240, lineHeight: 21 }}>
-                  Switch to the map and tap ＋ to drop your first pin.
+                <Text style={{ fontFamily: theme.fonts.hand, fontSize: 18, color: LK.sepia, textAlign: 'center', maxWidth: 260, lineHeight: 24 }}>
+                  every pin a place that means something
                 </Text>
               </View>
             ) : visiblePins.length === 0 ? (

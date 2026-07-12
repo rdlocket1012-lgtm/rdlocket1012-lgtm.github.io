@@ -25,6 +25,9 @@ import { iGifted, useCouponsStore, type Coupon } from '@/stores/coupons.store';
 
 const firstName = () => (useAuthStore.getState().profile?.display_name || 'Your partner').split(' ')[0];
 
+// §13.22 empty state — kawaii gift-box sticker (§7) instead of a line-icon chip.
+const EMPTY_COUPON_ILLUS = require('../../assets/illustrations/milestones/custom.png');
+
 const COLORS: Record<string, string> = {
   pink: LK.blush, coral: LK.coral, lilac: LK.lilac,
   gold: LK.marigold, mint: LK.success, sky: LK.sky, amber: LK.warning,
@@ -295,12 +298,17 @@ export default function CouponsScreen() {
           {tabList.length === 0 ? (
             !hasAnything ? (
               <View style={{ alignItems: 'center', paddingTop: 30, gap: 12 }}>
-                <IconChip color={LK.marigold} size={66}><Icon name="receipt" size={30} color={shade(LK.marigold, 0.5)} /></IconChip>
+                <Image
+                  source={EMPTY_COUPON_ILLUS}
+                  style={{ width: 120, height: 120 }}
+                  contentFit="contain"
+                  accessible={false}
+                />
                 <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 23, color: LK.espresso, textAlign: 'center' }}>
                   Gift the first coupon
                 </Text>
-                <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, textAlign: 'center', maxWidth: 260, lineHeight: 21 }}>
-                  Create a little favour for your partner — a meal, a back rub, control of the remote.
+                <Text style={{ fontFamily: theme.fonts.hand, fontSize: 18, color: LK.sepia, textAlign: 'center', maxWidth: 280, lineHeight: 24 }}>
+                  a little favour, wrapped up just for them
                 </Text>
                 <ScalePressable
                   scaleTo={0.97}

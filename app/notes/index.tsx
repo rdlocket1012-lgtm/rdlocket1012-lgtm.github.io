@@ -19,7 +19,9 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { usePrivateNotes, type PrivateNote } from '@/hooks/usePrivateNotes';
 import { useAuthStore } from '@/stores/auth.store';
 
-const EMPTY_ILLUS = require('../../assets/illustrations/empty-states/no-letters.png');
+// §13.25 empty — calm sticker matches the Us-hub Notes identity (a private, restful space),
+// not the letters/envelope art this borrowed before.
+const EMPTY_ILLUS = require('../../assets/illustrations/moods/calm.png');
 
 function formatDate(iso: string): string {
   const d = new Date(iso);

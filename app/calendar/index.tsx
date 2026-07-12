@@ -1,6 +1,7 @@
 ﻿import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, Alert, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -14,6 +15,9 @@ import { useAuthStore } from '@/stores/auth.store';
 import { addEventToPhoneCalendar, addAllToPhoneCalendar } from '@/lib/calendar-sync';
 
 const EVENT_EMOJIS = ['🎂', '🎉', '🎁', '💍', '✈️', '🏠', '🍾', '⭐', '❤️', '🌹', '🍰', '📅'];
+
+// §13.24 "Coming up" empty — kawaii calendar sticker (§7) for the scrapbook feel.
+const EMPTY_CAL_ILLUS = require('../../assets/illustrations/empty-states/no-milestones.png');
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -260,9 +264,26 @@ export default function CalendarScreen() {
         <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso, marginBottom: 12 }}>Coming up</Text>
           {upcoming.length === 0 ? (
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, lineHeight: 21 }}>
-              No upcoming dates yet. Add a milestone or set a target date on a bucket-list item.
-            </Text>
+            <View style={{ alignItems: 'center', paddingTop: 12, gap: 12 }}>
+              <Image
+                source={EMPTY_CAL_ILLUS}
+                style={{ width: 110, height: 110 }}
+                contentFit="contain"
+                accessible={false}
+              />
+              <Text style={{ fontFamily: theme.fonts.hand, fontSize: 18, color: LK.sepia, textAlign: 'center', maxWidth: 260, lineHeight: 24 }}>
+                nothing planned yet — pencil something in
+              </Text>
+              <ScalePressable
+                onPress={() => openAdd()}
+                scaleTo={0.97}
+                accessibilityLabel="Add a date"
+                style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 13, marginTop: 2, flexDirection: 'row', gap: 8, alignItems: 'center', ...theme.shadow.sm }}
+              >
+                <Icon name="plus" size={17} color="#fff" />
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: '#fff' }}>Add a date</Text>
+              </ScalePressable>
+            </View>
           ) : (
             <View style={{ gap: 8 }}>
               {upcoming.map((e) => (
