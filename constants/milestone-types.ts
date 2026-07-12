@@ -48,6 +48,29 @@ export const TYPE_ICON: Record<string, string> = {
   anniversary: 'cake', proposal: 'ring', other: 'leaf',
 };
 
+/**
+ * Category object-mascot per milestone type (§7 / §13.14) — the kawaii sticker
+ * shown on Timeline cards. Types without a dedicated illustration borrow the
+ * closest one; unknown types fall back to the gift box.
+ */
+export const MILESTONE_ILLUS: Record<string, number> = {
+  firstDate: require('../assets/illustrations/milestones/first-date.png'),
+  trip: require('../assets/illustrations/milestones/trip.png'),
+  moveIn: require('../assets/illustrations/milestones/moved-in.png'),
+  engagement: require('../assets/illustrations/milestones/engagement.png'),
+  wedding: require('../assets/illustrations/milestones/engagement.png'),
+  proposal: require('../assets/illustrations/milestones/engagement.png'),
+  pet: require('../assets/illustrations/milestones/pet.png'),
+  job: require('../assets/illustrations/milestones/achievement.png'),
+  newHome: require('../assets/illustrations/milestones/new-home.png'),
+  anniversary: require('../assets/illustrations/milestones/anniversary.png'),
+  achievement: require('../assets/illustrations/milestones/achievement.png'),
+  firstTime: require('../assets/illustrations/milestones/custom.png'),
+  loss: require('../assets/illustrations/milestones/loss.png'),
+  custom: require('../assets/illustrations/milestones/custom.png'),
+  other: require('../assets/illustrations/milestones/custom.png'),
+};
+
 export const PIN_ICON: Record<string, string> = {
   restaurant: 'fork', trip: 'plane', home: 'house',
   firstTime: 'sparkle', hiddenGem: 'gem', other: 'mapPin',

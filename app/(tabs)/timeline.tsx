@@ -10,7 +10,7 @@ import { LK, shade, catColor, theme, rgba } from '@/constants/theme';
 import { useMilestones } from '@/hooks/useMilestones';
 import { useCouple } from '@/hooks/useCouple';
 import { FREE_LIMITS } from '@/constants/free-limits';
-import { TYPE_ICON, MILESTONE_FILTERS, typeGroup, type MilestoneFilterId } from '@/constants/milestone-types';
+import { MILESTONE_ILLUS, MILESTONE_FILTERS, typeGroup, type MilestoneFilterId } from '@/constants/milestone-types';
 import { RoundIcon } from '@/components/ui/round-icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { ScalePressable } from '@/components/ui/scale-pressable';
@@ -205,10 +205,13 @@ function MilestoneCard({ milestone: m, animIndex }: { milestone: Milestone; anim
           {/* 4px category accent bar */}
           <View style={{ width: 4, backgroundColor: c.base }} />
           <View style={{ flex: 1, padding: 16 }}>
-            {/* Category marker (top-right) */}
-            <View style={{ position: 'absolute', top: 14, right: 14 }}>
-              <IconChip color={c.base} size={44}><Icon name={TYPE_ICON[m.type] ?? 'star'} size={21} color={c.deep} /></IconChip>
-            </View>
+            {/* Category sticker (top-right) — kawaii object-mascot per §13.14 */}
+            <Image
+              source={MILESTONE_ILLUS[m.type] ?? MILESTONE_ILLUS.custom}
+              contentFit="contain"
+              accessible={false}
+              style={{ position: 'absolute', top: 12, right: 12, width: 48, height: 48, transform: [{ rotate: '4deg' }] }}
+            />
             <Text numberOfLines={2} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso, lineHeight: 23, paddingRight: 52 }}>
               {m.title}
             </Text>
