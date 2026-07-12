@@ -5,10 +5,11 @@ import { useQuizStreak, addDays, todayISO } from '@/hooks/useQuizStreak';
  * Determines whether a streak restore coupon can currently be gifted.
  *
  * The streak is considered "broken" when current === 0 and there was a prior
- * run (lastCompletionDate exists). The gifting window is 48 h from the moment
- * the streak actually broke, which happens on `lastCompletionDate + 2 days`
- * (1 natural miss + the 1 automatic freeze day). That makes the deadline
- * `lastCompletionDate + 4 days`.
+ * run (lastCompletionDate exists). Because of the automatic freeze, `current`
+ * only reads 0 once TWO days have been missed — i.e. from `lastCompletionDate + 3`
+ * (miss on +1 is bridged by the freeze, +2 is the breaking miss, and the
+ * backward walk first returns 0 on the following day, +3). A true 48 h gifting
+ * window from that moment therefore ends at `lastCompletionDate + 5`.
  *
  * On redemption the gifter calls `addStreakRestoreCoupon` in coupons.store,
  * which inserts override rows for each missed date so the streak is
@@ -32,9 +33,9 @@ export function useStreakRestore() {
       };
     }
 
-    // Streak broke on day lastCompletionDate+2 (0-indexed missed days: +1 grace, +2 break).
-    // 48 h from that = lastCompletionDate+4.
-    const deadlineStr = addDays(lastCompletionDate, 4);
+    // `current` first reads 0 on lastCompletionDate+3 (+1 grace freeze, +2 break,
+    // +3 is when the backward walk returns 0). A full 48 h from that = +5.
+    const deadlineStr = addDays(lastCompletionDate, 5);
     const deadlineMs = new Date(deadlineStr + 'T00:00:00').getTime();
     const nowMs = Date.now();
     const canRestore = nowMs < deadlineMs;

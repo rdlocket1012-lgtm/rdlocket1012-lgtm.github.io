@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 import { useChallengesStore } from '@/stores/challenges.store';
+import { useStreakPauseStore } from '@/stores/streak-pause.store';
 import { computeStreak, todayISO, addDays, type StreakInfo } from '@/utils/streak';
 
 /** A quiz day counts when BOTH partners have fully answered. */
@@ -32,6 +33,7 @@ export type QuizStreakInfo = StreakInfo & {
 export function useQuizStreak(): QuizStreakInfo {
   const coupleId = useAuthStore((s) => s.profile?.couple_id);
   const completedPeriods = useChallengesStore((s) => s.completedPeriods);
+  const pausePeriods = useStreakPauseStore((s) => s.pausePeriods);
 
   const [completedDates, setCompletedDates] = useState<string[]>([]);
   const [overrideDates, setOverrideDates] = useState<string[]>([]);
@@ -84,8 +86,8 @@ export function useQuizStreak(): QuizStreakInfo {
 
   const today = todayISO();
   const info = useMemo(
-    () => computeStreak(completedDates, today, overrideDates, completedPeriods),
-    [completedDates, today, overrideDates, completedPeriods],
+    () => computeStreak(completedDates, today, overrideDates, completedPeriods, pausePeriods),
+    [completedDates, today, overrideDates, completedPeriods, pausePeriods],
   );
 
   const lastCompletionDate = useMemo(() => {

@@ -2924,6 +2924,13 @@ Three screens receive a background treatment beyond the standard Parchment + sca
 - Streak flame: Reanimated shimmer (§10) in Marigold, scales slightly on increase
 - Forgiven state (§1 principles): no "streak broken" screen. If the couple misses a day, the streak quietly resets to 0 with no notification and no guilt copy. The empty state just shows "start a new streak today"
 
+**Streak mechanics (implemented — `utils/streak.ts`, gentle by design).** A day counts when BOTH partners complete that day's Daily Match. Layered protections, in order:
+- **Auto-freeze:** one missed day is bridged automatically; two misses in a row ends the run. Today never counts against you until it ends.
+- **Weekly challenge bridge (§12 challenges):** completing the week's shared challenge marks every day in that week as done, even quiz days you missed.
+- **Streak rescue coupon:** once broken, either partner can gift a Streak Rescue from Coupons within **48 h** of the break (`useStreakRestore` — break registers at `lastCompletion + 3` days; window ends `+5`). Restores instantly for both and stays as a keepsake.
+- **Manual pause (fixed-duration):** either partner can pause the run for **3 / 7 / 14 days** from the streak screen (`streak_pauses` table, migration 014). Paused days are *held* — they neither break nor grow the streak — and it auto-resumes at the window's end; either partner can resume early. Distinct from the freeze: no misses are "spent," the count simply holds.
+- **Best-ever** is the longest strict run (a rescue/challenge day counts; a paused gap does not inflate it).
+
 **Four states.**
 - Loading: skeleton shimmer of the quiz card including question text and two answer pills
 - Empty (no question today / question bank exhausted): "No quiz today — check back tomorrow" + Shantell "little moments, every day"

@@ -29,6 +29,7 @@ import { StatusBubble } from '@/components/home/StatusBubble';
 import { usePartner } from '@/hooks/usePartner';
 import { usePartnerTime } from '@/hooks/usePartnerTime';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
+import { useStreakPause } from '@/hooks/useStreakPause';
 import { shareInvite } from '@/lib/invite';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { syncWidget } from '@/lib/widget-bridge';
@@ -69,6 +70,7 @@ export default function HomeScreen() {
   const streak = useQuizStreak();
   const badge = useBadgeCelebration(streak.best, !streak.loading);
   const challenge = useChallenges();
+  useStreakPause(); // keep pause windows loaded so the streak math holds during a pause
   const counts = useUnseenStore((s) => s.counts);
   const hasUnread = (counts.letters + counts.coupons) > 0;
   const partnerFirst = (partner?.display_name || 'Partner').split(' ')[0];
@@ -90,6 +92,15 @@ export default function HomeScreen() {
       partnerStatusEmoji: (partner as any)?.status_emoji ?? null,
     });
   }, [dayCount, couple?.start_date, couple?.nickname, partner?.display_name, (partner as any)?.status_emoji]);
+
+  // When the daily quiz completes (either partner, via the quiz realtime feed),
+  // recount the weekly challenge right away. Home doesn't refocus while the quiz
+  // card is answered in-place, so the focus-refresh in useChallenges won't fire.
+  const quizChallengeSignal = streak.loading ? null : `${streak.todayDone}|${streak.current}`;
+  useEffect(() => {
+    if (quizChallengeSignal != null) challenge.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizChallengeSignal]);
 
   // Widget "Add to Home Screen" CTA — iOS only (the widget is an apple-target),
   // dismiss-once, gone forever.
@@ -308,7 +319,7 @@ export default function HomeScreen() {
                   {streak.current}
                 </Text>
                 <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.sepia, flex: 1 }}>
-                  {streak.current === 0 ? 'start a new streak today' : 'day streak'}
+                  {streak.pausedActive ? 'streak paused' : streak.current === 0 ? 'start a new streak today' : 'day streak'}
                 </Text>
                 {streak.best > 0 && (
                   <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '700', color: LK.faded }}>

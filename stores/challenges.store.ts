@@ -22,8 +22,15 @@ async function fetchProgress(
   start: string,
   end: string,
 ): Promise<number> {
-  const startTs = `${start}T00:00:00.000Z`;
-  const endTs = `${end}T23:59:59.999Z`;
+  // `start`/`end` are LOCAL calendar dates (Mon/Sun of the local week). Build the
+  // matching UTC instants for those local day boundaries so timestamp-column
+  // queries (letters/drawings/bucket) count activity by the couple's local week —
+  // a naive `${start}T00:00:00Z` would shift the window by the UTC offset and drop
+  // late-Sunday activity for western timezones.
+  const [sy, sm, sd] = start.split('-').map(Number);
+  const [ey, em, ed] = end.split('-').map(Number);
+  const startTs = new Date(sy, sm - 1, sd, 0, 0, 0, 0).toISOString();
+  const endTs = new Date(ey, em - 1, ed, 23, 59, 59, 999).toISOString();
 
   if (def.activity === 'quiz_both_answered') {
     // Count daily_quiz rows where both partners fully answered.

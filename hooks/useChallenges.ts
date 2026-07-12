@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/stores/auth.store';
 import { useChallengesStore } from '@/stores/challenges.store';
 
@@ -18,6 +19,15 @@ export function useChallenges() {
     const unsub = subscribe(coupleId);
     return unsub;
   }, [coupleId]);
+
+  // Re-count progress whenever the screen regains focus — challenge-relevant
+  // actions (letters, drawings, bucket ticks) happen on other screens and don't
+  // touch the couple_challenges realtime channel, so returning here recomputes.
+  useFocusEffect(
+    useCallback(() => {
+      if (coupleId) refreshProgress(coupleId);
+    }, [coupleId]),
+  );
 
   const isComplete = !!(current?.completed_at);
 

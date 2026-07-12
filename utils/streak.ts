@@ -20,6 +20,8 @@ export type StreakInfo = {
   todayDone: boolean;
   /** A freeze is currently holding the run together (a recent day was missed). */
   freezeActive: boolean;
+  /** A manual pause window currently covers today (streak is held, not counting). */
+  pausedActive: boolean;
 };
 
 /** Parse YYYY-MM-DD as a LOCAL date (avoids UTC-midnight day shifts). */
@@ -69,6 +71,8 @@ export function computeStreak(
   overrideDates?: string[],
   /** Date ranges of completed weekly challenges — all days inside are treated as quiz-done. */
   completedChallengePeriods?: Array<{ start: string; end: string }>,
+  /** Date ranges of manual pauses — all days inside are "held" (skipped, not counted). */
+  pausePeriods?: Array<{ start: string; end: string }>,
 ): StreakInfo {
   const set = new Set(completedDates);
 
@@ -80,6 +84,16 @@ export function computeStreak(
     let cursor = start;
     while (cursor <= end && cursor <= today) {
       set.add(cursor);
+      cursor = addDays(cursor, 1);
+    }
+  }
+
+  // Build the set of manually paused days (capped at today).
+  const paused = new Set<string>();
+  for (const { start, end } of pausePeriods ?? []) {
+    let cursor = start;
+    while (cursor <= end && cursor <= today) {
+      paused.add(cursor);
       cursor = addDays(cursor, 1);
     }
   }
@@ -98,6 +112,9 @@ export function computeStreak(
     if (set.has(cursor)) {
       current++;
       cursor = addDays(cursor, -1);
+    } else if (paused.has(cursor)) {
+      // Held day: bridge over it without counting or spending the freeze.
+      cursor = addDays(cursor, -1);
     } else if (freezeLeft > 0) {
       freezeLeft--;
       countAtFreeze = current;
@@ -110,6 +127,7 @@ export function computeStreak(
   // The freeze only "saved" the streak if it bridged a gap to MORE completed
   // days — not if it merely walked off the start of history.
   const freezeActive = current > 0 && countAtFreeze >= 0 && current > countAtFreeze;
+  const pausedActive = paused.has(today) && !todayDone;
 
-  return { current, best: longestRun(set), todayDone, freezeActive };
+  return { current, best: longestRun(set), todayDone, freezeActive, pausedActive };
 }

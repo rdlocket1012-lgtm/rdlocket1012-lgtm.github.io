@@ -1,16 +1,20 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { StreakMascot } from '@/components/ui/streak-mascot';
 import { ChallengeCard } from '@/components/ui/ChallengeCard';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
+import { useStreakPause } from '@/hooks/useStreakPause';
 import { useChallengesStore } from '@/stores/challenges.store';
+import { addDays } from '@/utils/streak';
 import { STREAK_BADGES, nextBadge, unlockedCount, type StreakBadge } from '@/constants/streak-achievements';
 
 const BADGE_COL_GAP = 12;
@@ -118,6 +122,50 @@ function InfoCard({ icon, accent, title, children }: {
 
 export default function StreakScreen() {
   const streak = useQuizStreak();
+  const { activePause, pause, resume } = useStreakPause();
+
+  // Streak pause — fixed-duration hold, either partner, auto-resumes.
+  const resumeLabel = activePause
+    ? new Date(addDays(activePause.end_date, 1) + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+    : '';
+
+  async function doPause(days: number) {
+    try {
+      await pause(days);
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
+    } catch (e: any) {
+      Alert.alert('Could not pause', e?.message ?? 'Please try again.');
+    }
+  }
+
+  function openPausePicker() {
+    Alert.alert(
+      'Pause your streak',
+      'Your run will hold — no breaks — until the pause ends, then pick right back up. Either of you can resume early.',
+      [
+        { text: '3 days', onPress: () => doPause(3) },
+        { text: '1 week', onPress: () => doPause(7) },
+        { text: '2 weeks', onPress: () => doPause(14) },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  }
+
+  function confirmResume() {
+    Alert.alert(
+      'Resume your streak?',
+      'Your streak starts counting again from today.',
+      [
+        { text: 'Not yet', style: 'cancel' },
+        {
+          text: 'Resume',
+          onPress: async () => {
+            try { await resume(); } catch (e: any) { Alert.alert('Could not resume', e?.message ?? 'Please try again.'); }
+          },
+        },
+      ],
+    );
+  }
 
   // This week's challenge — read from the already-subscribed store (Home keeps it
   // fresh) instead of re-subscribing, to avoid an extra realtime channel.
@@ -206,6 +254,76 @@ export default function StreakScreen() {
             </View>
           </FadeSlideIn>
 
+          {/* ── Streak pause ───────────────────────────────────────────────── */}
+          <FadeSlideIn delay={90}>
+            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
+              {activePause ? (
+                <View
+                  style={{
+                    backgroundColor: rgba(LK.sky, 0.1),
+                    borderRadius: 20,
+                    borderCurve: 'continuous',
+                    borderWidth: 1.5,
+                    borderColor: rgba(LK.sky, 0.32),
+                    padding: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 13,
+                  }}
+                >
+                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: rgba(LK.sky, 0.18), alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="pause" size={19} color={shade(LK.sky, 0.4)} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 16, color: LK.espresso }}>
+                      Streak paused
+                    </Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 2 }}>
+                      Held safe · resumes {resumeLabel}
+                    </Text>
+                  </View>
+                  <ScalePressable
+                    onPress={confirmResume}
+                    scaleTo={0.96}
+                    accessibilityLabel="Resume your streak now"
+                    style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 16, minHeight: 40, justifyContent: 'center', ...theme.shadow.sm }}
+                  >
+                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: '#fff' }}>Resume</Text>
+                  </ScalePressable>
+                </View>
+              ) : (
+                <ScalePressable
+                  onPress={openPausePicker}
+                  scaleTo={0.98}
+                  accessibilityLabel="Pause your streak"
+                  style={{
+                    backgroundColor: LK.ivory,
+                    borderRadius: 20,
+                    borderCurve: 'continuous',
+                    padding: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 13,
+                    boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
+                  } as any}
+                >
+                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: rgba(LK.sky, 0.14), alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="pause" size={19} color={shade(LK.sky, 0.4)} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 16, color: LK.espresso }}>
+                      Going away?
+                    </Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 2 }}>
+                      Pause your streak so a break won't cost your run
+                    </Text>
+                  </View>
+                  <Icon name="chevR" size={18} color={LK.ink45} />
+                </ScalePressable>
+              )}
+            </View>
+          </FadeSlideIn>
+
           {/* ── Next badge progress ────────────────────────────────────────── */}
           {goal && (
             <FadeSlideIn delay={110}>
@@ -284,6 +402,9 @@ export default function StreakScreen() {
                 </InfoCard>
                 <InfoCard icon="shield" accent={LK.sky} title="One free freeze">
                   Miss a single day and an automatic freeze quietly bridges the gap, keeping your run alive. Two missed days in a row is what ends a streak.
+                </InfoCard>
+                <InfoCard icon="pause" accent={LK.sky} title="Pause for a trip">
+                  Heading somewhere without signal? Either of you can pause the streak for a few days up above — it holds steady and picks right back up when the pause ends. No rescue needed.
                 </InfoCard>
                 <InfoCard icon="palette" accent={LK.lilac} title="Weekly challenges">
                   Each week brings a shared goal — answer quizzes, send letters or drawings, tick off a bucket-list dream. Complete it and the whole week counts toward your streak, even days you missed the quiz.
