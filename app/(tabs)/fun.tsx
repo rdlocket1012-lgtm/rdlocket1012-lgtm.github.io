@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInUp, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
@@ -16,14 +17,16 @@ import { useLiveLaunch } from '@/stores/live.store';
 
 const CARD_BORDER = 'rgba(42,33,26,0.12)';
 
-// Which Icon (never emoji — §pre-delivery) fronts each live "This or That" deck.
-const DECK_ICON: Record<string, string> = {
-  cravings: 'fork',
-  wanderlust: 'plane',
-  cozy: 'house',
-  who: 'user',
-  heart: 'chat',
-  'after-dark': 'moon',
+// Scrapbook stickers front each "This or That" deck — the kawaii illustration
+// set (§7), pasted with a tiny alternating tilt like photos in an album.
+// (Never emoji — §pre-delivery.)
+const DECK_ILLUS: Record<string, ReturnType<typeof require>> = {
+  cravings: require('../../assets/illustrations/love-cards/donut.png'),
+  wanderlust: require('../../assets/illustrations/milestones/trip.png'),
+  cozy: require('../../assets/illustrations/moods/cozy.png'),
+  who: require('../../assets/illustrations/moods/playful.png'),
+  heart: require('../../assets/illustrations/moods/grateful.png'),
+  'after-dark': require('../../assets/illustrations/moods/sleepy.png'),
 };
 
 // "Surprise me" draws from the everyday decks — After Dark stays a deliberate pick,
@@ -147,7 +150,8 @@ export default function FunScreen() {
               index={1 + i}
               width={cardW}
               color={cat.color}
-              icon={DECK_ICON[cat.id] ?? 'sparkle'}
+              illus={DECK_ILLUS[cat.id]}
+              tilt={i % 2 === 0 ? -4 : 4}
               name={cat.name}
               blurb={cat.blurb}
               onPress={() => startGame(cat.id)}
@@ -233,19 +237,25 @@ function SectionEyebrow({ label, trailing, handTrailing }: { label: string; trai
   );
 }
 
-/** Shared card shell — Ivory, tinted illustration zone up top, press scale + stagger. */
+/** Deck card — Ivory shell with a kawaii sticker pasted (slightly tilted) on the
+ *  category-tinted zone; scrapbook album feel per §7 + user direction. */
 function DeckBlock({
-  index, width, color, icon, name, blurb, onPress,
+  index, width, color, illus, tilt, name, blurb, onPress,
 }: {
-  index: number; width: number; color: string; icon: string;
-  name: string; blurb: string; onPress: () => void;
+  index: number; width: number; color: string; illus: ReturnType<typeof require>;
+  tilt: number; name: string; blurb: string; onPress: () => void;
 }) {
   return (
     <Animated.View entering={stagger(index)} style={{ width }}>
-      <ScalePressable scaleTo={0.96} onPress={onPress}>
+      <ScalePressable scaleTo={0.96} onPress={onPress} accessibilityLabel={`Play ${name}`}>
         <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: CARD_BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
-          <View style={{ height: 66, backgroundColor: rgba(color, 0.14), alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name={icon} size={30} color={shade(color, 0.45)} />
+          <View style={{ height: 74, backgroundColor: rgba(color, 0.14), alignItems: 'center', justifyContent: 'center' }}>
+            <Image
+              source={illus}
+              contentFit="contain"
+              accessible={false}
+              style={{ width: 56, height: 56, transform: [{ rotate: `${tilt}deg` }] }}
+            />
           </View>
           <View style={{ padding: 12, paddingTop: 10 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso }}>{name}</Text>
