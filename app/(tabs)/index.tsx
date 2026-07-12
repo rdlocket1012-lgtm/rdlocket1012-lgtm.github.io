@@ -16,6 +16,7 @@ import { RoundIcon } from '@/components/ui/round-icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
+import { DoodleBackground } from '@/components/ui/doodle-background';
 import { TYPE_ICON } from '@/constants/milestone-types';
 import { DailyQuizCard } from '@/components/quiz/DailyQuizCard';
 import { ChallengeCard } from '@/components/ui/ChallengeCard';
@@ -208,7 +209,9 @@ export default function HomeScreen() {
         <FadeSlideIn delay={60} fromY={10}>
           <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 6 }}>
             <ScalePressable scaleTo={0.985} onPress={() => router.push('/(tabs)/timeline')} accessibilityLabel="Open timeline">
-              <View style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.lg, borderCurve: 'continuous', paddingTop: 18, paddingBottom: widgetCtaVisible ? 0 : 22, alignItems: 'center', ...theme.shadow.card }}>
+              <View style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.lg, borderCurve: 'continuous', paddingTop: 18, paddingBottom: widgetCtaVisible ? 0 : 22, alignItems: 'center', overflow: 'hidden', ...theme.shadow.card }}>
+                {/* §13.13 Zone A: decorative ink layer — the scrapbook page under the counter */}
+                <DoodleBackground group="general" density="medium" />
                 <MascotAnimation name={isAnniversary ? 'anniversary' : 'lo-kit-idle'} size={104} />
                 <Animated.View style={pulseStyle}>
                   <CountUp
