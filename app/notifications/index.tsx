@@ -1,15 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { useConnectionCalendar } from '@/hooks/useConnectionCalendar';
-import { useLetters } from '@/hooks/useLetters';
-import { useAuth } from '@/hooks/useAuth';
+import { useActivityFeed } from '@/hooks/useActivityFeed';
+import { useUnseenStore } from '@/stores/unseen.store';
 import { parseLocalDate } from '@/utils/date';
 
 type Feed = {
@@ -18,6 +17,7 @@ type Feed = {
   color: string;
   title: string;
   subtitle: string;
+  unseen?: boolean;
   onPress: () => void;
 };
 
@@ -42,18 +42,20 @@ function untilLabel(dateStr: string): string {
 }
 
 export default function NotificationsScreen() {
-  const { upcoming } = useConnectionCalendar();
-  const { letters } = useLetters();
-  const { profile } = useAuth();
+  // Freeze the seen marker as it was when this screen opened, then mark the
+  // activity seen. Order matters: marking seen clears the Home bell dot and the
+  // app-icon badge, but the rows must keep showing which items are new for as
+  // long as the user is looking at them.
+  const [seenAtOnEntry] = useState(() => useUnseenStore.getState().activitySeenAt);
+  const { items, upcoming } = useActivityFeed(seenAtOnEntry);
 
-  // Letters my partner sent me, newest first.
-  const received = useMemo(
-    () =>
-      letters
-        .filter((l) => l.sender_id && l.sender_id !== profile?.id)
-        .sort((a, b) => (b.sent_at ?? '').localeCompare(a.sent_at ?? ''))
-        .slice(0, 6),
-    [letters, profile?.id],
+  // Opening the feed is the "I've seen what's new" signal. It deliberately does
+  // NOT mark letters or coupons themselves as read — those clear on their own
+  // screens, so a letter you never opened still reads as unread there.
+  useFocusEffect(
+    useCallback(() => {
+      void useUnseenStore.getState().markActivitySeen();
+    }, []),
   );
 
   const comingUp: Feed[] = upcoming.slice(0, 5).map((e) => ({
@@ -65,13 +67,14 @@ export default function NotificationsScreen() {
     onPress: () => router.push('/calendar'),
   }));
 
-  const recent: Feed[] = received.map((l) => ({
-    id: `lt-${l.id}`,
-    icon: 'envelope',
-    color: LK.gold,
-    title: 'New letter from your partner',
-    subtitle: l.sent_at ? relativePast(l.sent_at) : 'Recently',
-    onPress: () => router.push(`/letters/${l.id}`),
+  const recent: Feed[] = items.map((a) => ({
+    id: a.id,
+    icon: a.icon,
+    color: a.color,
+    title: a.title,
+    subtitle: relativePast(a.at),
+    unseen: a.unseen,
+    onPress: () => router.push(a.href as never),
   }));
 
   const isEmpty = comingUp.length === 0 && recent.length === 0;
@@ -90,7 +93,7 @@ export default function NotificationsScreen() {
               You're all caught up
             </Text>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, textAlign: 'center', maxWidth: 250, lineHeight: 21 }}>
-              New letters and upcoming dates will show up here.
+              Letters, coupons, drawings and memories from your partner will show up here.
             </Text>
           </View>
         ) : (
@@ -138,6 +141,9 @@ function FeedRow({ item }: { item: Feed }) {
         <Text numberOfLines={1} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 15.5, color: LK.espresso }}>{item.title}</Text>
         <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.sepia, marginTop: 2 }}>{item.subtitle}</Text>
       </View>
+      {item.unseen && (
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LK.coral, flexShrink: 0 }} />
+      )}
       <Icon name="chevR" size={18} color={LK.ink70} />
     </ScalePressable>
   );

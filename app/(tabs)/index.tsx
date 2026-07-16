@@ -72,8 +72,11 @@ export default function HomeScreen() {
   const badge = useBadgeCelebration(streak.best, !streak.loading);
   const challenge = useChallenges();
   useStreakPause(); // keep pause windows loaded so the streak math holds during a pause
-  const counts = useUnseenStore((s) => s.counts);
-  const hasUnread = (counts.letters + counts.coupons) > 0;
+  // The bell reflects everything in the Activity feed — letters, coupons,
+  // memories and drawings — not just letters+coupons, and it clears when the
+  // feed is opened rather than only when each feature screen is visited.
+  const activityCount = useUnseenStore((s) => s.activityCount);
+  const hasUnread = activityCount > 0;
   const partnerFirst = (partner?.display_name || 'Partner').split(' ')[0];
   const feisty = useBiteFx((s) => s.feisty);
 

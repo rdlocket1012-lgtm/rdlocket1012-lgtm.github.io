@@ -11,7 +11,10 @@ function ensureHandler() {
       shouldShowBanner: true,
       shouldShowList: true,
       shouldPlaySound: true,
-      shouldSetBadge: false,
+      // Must match lib/notifications.ts — whichever handler is installed last
+      // wins globally, so a mismatch here would silently disable app-icon
+      // badges for partner pushes.
+      shouldSetBadge: true,
     }),
   });
 }

@@ -26,7 +26,9 @@ Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    // Apply the `badge` the notify Edge Function sends, so the app-icon count
+    // stays right even for pushes that land while the app is foregrounded.
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
