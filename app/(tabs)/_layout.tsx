@@ -4,6 +4,7 @@ import { withLayoutContext } from 'expo-router';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { LK } from '@/constants/theme';
 import { useUnseen } from '@/hooks/useUnseen';
+import { useCoupons } from '@/hooks/useCoupons';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
 import { useLiveLaunch } from '@/stores/live.store';
@@ -22,6 +23,9 @@ const SwipeTabs = withLayoutContext(Navigator);
 export default function TabsLayout() {
   // Keep unread counts live for the whole app (the tab bar reads them for badges).
   useUnseen();
+  // Keep coupon rows loaded app-wide so Home can surface redeem/approval banners
+  // (shares one realtime channel with the Coupons screen via ref-counting).
+  useCoupons();
 
   const { profile } = useAuth();
   const { partner } = usePartner();

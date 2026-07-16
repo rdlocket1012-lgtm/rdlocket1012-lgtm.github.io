@@ -55,6 +55,10 @@ type CouponsState = {
   subscribe: (coupleId: string) => () => void;
 };
 
+// Shared realtime channel + reference count (see `subscribe` below).
+let couponsChannel: ReturnType<typeof supabase.channel> | null = null;
+let couponsSubCount = 0;
+
 export const useCouponsStore = create<CouponsState>((set, get) => ({
   coupons: [],
   loading: false,
@@ -211,12 +215,28 @@ export const useCouponsStore = create<CouponsState>((set, get) => ({
   },
 
   subscribe: (coupleId) => {
-    const channel = supabase
-      .channel(`coupons:${coupleId}:${Math.random().toString(36).slice(2)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'coupons', filter: `couple_id=eq.${coupleId}` }, () => {
-        get().fetchCoupons(coupleId);
-      })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    // Ref-counted: home (via the tabs layout) and the Coupons screen both want
+    // live coupon rows, but we keep ONE realtime channel between them. Extra
+    // per-client channels were what tripped Supabase's rate limit and broke the
+    // live-game channel, so multiple callers share a single subscription here.
+    couponsSubCount += 1;
+    if (!couponsChannel) {
+      couponsChannel = supabase
+        .channel(`coupons:${coupleId}:${Math.random().toString(36).slice(2)}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'coupons', filter: `couple_id=eq.${coupleId}` }, () => {
+          get().fetchCoupons(coupleId);
+        })
+        .subscribe();
+    }
+    return () => {
+      couponsSubCount -= 1;
+      if (couponsSubCount <= 0) {
+        couponsSubCount = 0;
+        if (couponsChannel) {
+          void supabase.removeChannel(couponsChannel);
+          couponsChannel = null;
+        }
+      }
+    };
   },
 }));

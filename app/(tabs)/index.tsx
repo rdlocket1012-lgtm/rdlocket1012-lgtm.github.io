@@ -26,6 +26,7 @@ import { useChallenges } from '@/hooks/useChallenges';
 import { useBadgeCelebration } from '@/hooks/useBadgeCelebration';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 import { StatusBubble } from '@/components/home/StatusBubble';
+import { CouponActivityBanners } from '@/components/home/CouponActivityBanners';
 import { usePartner } from '@/hooks/usePartner';
 import { usePartnerTime } from '@/hooks/usePartnerTime';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
@@ -289,6 +290,9 @@ export default function HomeScreen() {
             </ScalePressable>
           </View>
         )}
+
+        {/* ── Coupon activity: redeem requests (approve) + recent redemptions ── */}
+        {partnerJoined && <CouponActivityBanners partnerName={partnerFirst} />}
 
         {/* ── Zone B: Daily quiz ───────────────────────────────────────────── */}
         <FadeSlideIn delay={120}>
