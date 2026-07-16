@@ -292,7 +292,7 @@ function LoveCardsGrid({
             scaleTo={0.97}
             key={card.id}
             style={{ width: cardW }}
-            accessibilityLabel={`Love card: ${payload.message}`}
+            accessibilityLabel={`Love card: ${illus.setup} ${illus.punchline}${payload.message.trim() ? `. ${payload.message}` : ''}`}
           >
             <View
               style={{
@@ -311,22 +311,34 @@ function LoveCardsGrid({
             >
               {/* Inner border */}
               <View style={{ position: 'absolute', inset: 10, borderRadius: 4, borderWidth: 1, borderColor: LK.espresso }} pointerEvents="none" />
-              <Image source={illus.source} style={{ width: '55%', aspectRatio: 1 }} contentFit="contain" />
-              <Text
-                numberOfLines={3}
-                style={{
-                  fontFamily: theme.fonts.serif,
-                  fontStyle: 'italic',
-                  fontSize: 13,
-                  color: LK.espresso,
-                  textAlign: 'center',
-                  paddingHorizontal: 18,
-                  marginTop: 10,
-                  lineHeight: 19,
-                }}
-              >
-                {payload.message}
+              <Image source={illus.source} style={{ width: '48%', aspectRatio: 1 }} contentFit="contain" />
+              {/* Pun greeting — the hero content (§8.1.4) */}
+              <Text style={{ fontFamily: theme.fonts.hand, fontSize: 12, color: LK.espresso, textAlign: 'center', marginTop: 8 }}>
+                {illus.setup}
               </Text>
+              <Text
+                numberOfLines={2}
+                style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, lineHeight: 22, color: illus.accentColor, textAlign: 'center', paddingHorizontal: 12, marginTop: 1 }}
+              >
+                {illus.punchline}
+              </Text>
+              {payload.message.trim() ? (
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    fontFamily: theme.fonts.serif,
+                    fontStyle: 'italic',
+                    fontSize: 12,
+                    color: LK.sepia,
+                    textAlign: 'center',
+                    paddingHorizontal: 16,
+                    marginTop: 8,
+                    lineHeight: 17,
+                  }}
+                >
+                  {payload.message}
+                </Text>
+              ) : null}
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '500', color: LK.faded, marginTop: 8 }}>
                 {fromMe ? `You → ${partnerName}` : `${partnerName} → You`}
               </Text>

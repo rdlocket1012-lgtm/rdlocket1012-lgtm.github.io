@@ -133,7 +133,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
   }
 
   async function handleSendCard() {
-    if (!cardMessage.trim() || !couple?.id || !profile?.id) return;
+    if (!couple?.id || !profile?.id) return;
     setSaving(true);
     try {
       await sendLetter({
@@ -181,7 +181,9 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
             const canSend =
               mode === 'text' ? !!text.trim() :
               mode === 'voice' ? recorder.state === 'done' && !!recorder.audioUri :
-              !!cardMessage.trim();
+              // Love Card: the pun is the message, so an illustration alone is
+              // enough — the note is optional.
+              true;
             const onPress =
               mode === 'text' ? handleSend :
               mode === 'voice' ? handleSendVoice :
@@ -514,46 +516,59 @@ function LoveCardCompose({
           />
           <Image
             source={selected.source}
-            style={{ width: '60%', aspectRatio: 1 }}
+            style={{ width: '55%', aspectRatio: 1 }}
             contentFit="contain"
           />
+          {/* Pun greeting — the hero content (§8.1.4) */}
+          <Text
+            style={{
+              fontFamily: theme.fonts.hand,
+              fontSize: 16,
+              color: LK.espresso,
+              textAlign: 'center',
+              marginTop: 10,
+            }}
+          >
+            {selected.setup}
+          </Text>
+          <Text
+            style={{
+              fontFamily: theme.fonts.heading,
+              fontWeight: '800',
+              fontSize: 28,
+              lineHeight: 32,
+              color: selected.accentColor,
+              textAlign: 'center',
+              paddingHorizontal: 16,
+              marginTop: 2,
+            }}
+            numberOfLines={2}
+          >
+            {selected.punchline}
+          </Text>
           {message.trim() ? (
             <Text
               style={{
                 fontFamily: theme.fonts.serif,
                 fontStyle: 'italic',
-                fontSize: 15,
-                color: LK.espresso,
+                fontSize: 14,
+                color: LK.sepia,
                 textAlign: 'center',
-                paddingHorizontal: 20,
+                paddingHorizontal: 24,
                 marginTop: 12,
               }}
               numberOfLines={3}
             >
               {message}
             </Text>
-          ) : (
-            <Text
-              style={{
-                fontFamily: theme.fonts.serif,
-                fontStyle: 'italic',
-                fontSize: 14,
-                color: 'rgba(42,33,26,0.30)',
-                textAlign: 'center',
-                paddingHorizontal: 20,
-                marginTop: 12,
-              }}
-            >
-              your message here…
-            </Text>
-          )}
+          ) : null}
           <Text
             style={{
               fontFamily: theme.fonts.body,
               fontSize: 12,
               fontWeight: '500',
               color: LK.faded,
-              marginTop: 10,
+              marginTop: 12,
             }}
           >
             for {partnerFirstName}
@@ -638,14 +653,14 @@ function LoveCardCompose({
           marginBottom: 10,
         }}
       >
-        Message
+        Add a note (optional)
       </Text>
       <TextInput
         value={message}
         onChangeText={onMessageChange}
         multiline
         maxLength={120}
-        placeholder={`Something sweet for ${partnerFirstName}…`}
+        placeholder={`a little something extra for ${partnerFirstName}…`}
         placeholderTextColor="rgba(42,33,26,0.30)"
         style={{
           marginHorizontal: 20,
