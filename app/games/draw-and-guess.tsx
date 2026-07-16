@@ -180,9 +180,19 @@ export default function DrawAndGuessScreen() {
   const [revealWord, setRevealWord] = useState('');
   const [partnerDrawing, setPartnerDrawing] = useState(false);
 
+  // Skribbl-style word hint for the guesser: array of template chars — '_' for a
+  // still-hidden letter, the actual letter once revealed, and spaces/hyphens shown
+  // from the start. The drawer owns the reveal schedule (see scheduleReveals).
+  const [hint, setHint] = useState<string[]>([]);
+
   // Timer
   const timerProgress = useSharedValue(1);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Whole-second countdown shown as a numeric clock alongside the progress bar.
+  const [secondsLeft, setSecondsLeft] = useState(ROUND_DURATION / 1000);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Pending letter-reveal timeouts (drawer only) — cleared when the round ends.
+  const revealTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // Drawing tool state (drawer only)
   const [drawColor, setDrawColor] = useState<string>(LK.espresso);
@@ -195,6 +205,12 @@ export default function DrawAndGuessScreen() {
   function startTimer(word: string) {
     timerProgress.value = 1;
     timerProgress.value = withTiming(0, { duration: ROUND_DURATION, easing: Easing.linear });
+    // Numeric countdown — both roles run it; only the drawer fires time_up.
+    setSecondsLeft(ROUND_DURATION / 1000);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      setSecondsLeft((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
     timerRef.current = setTimeout(() => {
       if (roleRef.current === 'drawer') {
         send({ type: 'time_up', word });
@@ -206,6 +222,51 @@ export default function DrawAndGuessScreen() {
   function clearTimer() {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = null;
+    revealTimersRef.current.forEach(clearTimeout);
+    revealTimersRef.current = [];
+  }
+
+  // ── Word-hint mask & progressive reveal (skribbl-style) ────────────────
+
+  /** Template shown to the guesser: letters → '_', spaces/hyphens kept as-is. */
+  function buildMask(word: string): string {
+    return word.replace(/[a-z]/gi, '_');
+  }
+
+  function applyReveal(index: number, letter: string) {
+    setHint((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const next = [...prev];
+      next[index] = letter;
+      return next;
+    });
+  }
+
+  /**
+   * Drawer only: schedule a handful of letters to reveal over the back half of
+   * the round, staggered so hints appear "as the clock ticks down". Reveals ~35%
+   * of the letters (never leaving fewer than two hidden), at random positions.
+   */
+  function scheduleReveals(word: string) {
+    const letterIdx: number[] = [];
+    for (let i = 0; i < word.length; i++) {
+      if (/[a-z]/i.test(word[i])) letterIdx.push(i);
+    }
+    const count = Math.min(Math.floor(letterIdx.length * 0.35), Math.max(0, letterIdx.length - 2));
+    if (count <= 0) return;
+    const chosen = [...letterIdx].sort(() => Math.random() - 0.5).slice(0, count);
+    chosen.forEach((idx, j) => {
+      // Spread reveals between ~40% and ~90% of the round elapsed.
+      const frac = 0.4 + 0.5 * ((j + 1) / (count + 1));
+      const t = setTimeout(() => {
+        const letter = word[idx];
+        applyReveal(idx, letter);
+        send({ type: 'reveal', index: idx, letter });
+      }, Math.round(ROUND_DURATION * frac));
+      revealTimersRef.current.push(t);
+    });
   }
 
   const timerBarStyle = useAnimatedStyle(() => ({
@@ -241,6 +302,7 @@ export default function DrawAndGuessScreen() {
           setGuesses([]);
           setGuessInput('');
           setRevealWord('');
+          setHint([]);
           setPhase('word_pick');
           break;
         }
@@ -249,9 +311,14 @@ export default function DrawAndGuessScreen() {
           // roleRef (not role state) — this can arrive in the same tick as
           // round_start, before the role state has committed.
           if (roleRef.current === 'guesser') {
+            setHint(e.mask ? e.mask.split('') : []);
             setPhase('drawing');
             startTimer(''); // guesser never broadcasts time_up; drawer owns the word
           }
+          break;
+        }
+        case 'reveal': {
+          applyReveal(e.index, e.letter);
           break;
         }
         case 'stroke': {
@@ -349,6 +416,7 @@ export default function DrawAndGuessScreen() {
     setGuesses([]);
     setGuessInput('');
     setRevealWord('');
+    setHint([]);
     setPhase('word_pick');
 
     send(event);
@@ -356,9 +424,12 @@ export default function DrawAndGuessScreen() {
 
   function pickWord(word: string) {
     setChosenWord(word);
+    const mask = buildMask(word);
+    setHint(mask.split(''));
     setPhase('drawing');
-    send({ type: 'word_picked' });
+    send({ type: 'word_picked', mask });
     startTimer(word);
+    scheduleReveals(word);
   }
 
   function handleStroke(stroke: Stroke) {
@@ -429,12 +500,77 @@ export default function DrawAndGuessScreen() {
     router.back();
   }
 
+  // Belt-and-braces: clear all timers/reveals if the screen unmounts some other
+  // way than quit() (hardware back, navigation), so nothing fires after teardown.
+  useEffect(() => clearTimer, []);
+
   // ── Render helpers ──────────────────────────────────────────────────
 
   function renderTimerBar() {
     return (
       <View style={{ height: 4, backgroundColor: 'rgba(42,33,26,0.08)', width: '100%' }}>
         <Animated.View style={[{ height: 4, borderRadius: 2 }, timerBarStyle]} />
+      </View>
+    );
+  }
+
+  function renderCountdown() {
+    const urgent = secondsLeft <= 15;
+    return (
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 5,
+          backgroundColor: urgent ? 'rgba(229,112,95,0.14)' : 'rgba(42,33,26,0.06)',
+          borderRadius: 9999,
+          borderCurve: 'continuous',
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+        }}
+        accessibilityLabel={`${secondsLeft} seconds left`}
+      >
+        <Icon name="clockTab" size={14} color={urgent ? LK.danger : LK.sepia} strokeWidth={2.2} />
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontWeight: '700',
+            fontSize: 14,
+            color: urgent ? LK.danger : LK.espresso,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
+          {secondsLeft}s
+        </Text>
+      </View>
+    );
+  }
+
+  // Skribbl-style masked word: a slot per letter (underscore until revealed),
+  // spaces render as gaps, punctuation (e.g. the hyphen in "yo-yo") shows up front.
+  function renderHintBar() {
+    if (!hint.length) return null;
+    const letterCount = hint.filter((c) => c === '_' || /[a-z]/i.test(c)).length;
+    return (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-end', gap: 6 }}>
+        {hint.map((ch, i) => {
+          if (ch === ' ') return <View key={i} style={{ width: 12 }} />;
+          const hidden = ch === '_';
+          const isLetterSlot = hidden || /[a-z]/i.test(ch);
+          return (
+            <View key={i} style={{ alignItems: 'center', width: 15 }}>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, lineHeight: 23, color: LK.espresso }}>
+                {hidden ? ' ' : ch.toUpperCase()}
+              </Text>
+              {isLetterSlot && (
+                <View style={{ width: 13, height: 2.5, borderRadius: 2, backgroundColor: hidden ? 'rgba(42,33,26,0.28)' : LK.coral }} />
+              )}
+            </View>
+          );
+        })}
+        <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 11, color: LK.faded, marginLeft: 3, marginBottom: 1 }}>
+          {letterCount}
+        </Text>
       </View>
     );
   }
@@ -599,28 +735,32 @@ export default function DrawAndGuessScreen() {
     return (
       <View style={{ flex: 1 }}>
         {renderTimerBar()}
-        {/* Word pill */}
-        <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-          <View
-            style={{
-              backgroundColor: LK.espresso,
-              borderRadius: 9999,
-              paddingHorizontal: 18,
-              paddingVertical: 7,
-            }}
-          >
-            <Text
+        {/* Word pill + countdown */}
+        <View style={{ alignItems: 'center', paddingVertical: 10, gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View
               style={{
-                fontFamily: theme.fonts.body,
-                fontWeight: '700',
-                fontSize: 14,
-                color: LK.vellum,
+                backgroundColor: LK.espresso,
+                borderRadius: 9999,
+                borderCurve: 'continuous',
+                paddingHorizontal: 18,
+                paddingVertical: 7,
               }}
             >
-              {chosenWord}
-            </Text>
+              <Text
+                style={{
+                  fontFamily: theme.fonts.body,
+                  fontWeight: '700',
+                  fontSize: 14,
+                  color: LK.vellum,
+                }}
+              >
+                {chosenWord}
+              </Text>
+            </View>
+            {renderCountdown()}
           </View>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: partnerOnline ? LK.sepia : LK.danger, marginTop: 4 }}>
+          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: partnerOnline ? LK.sepia : LK.danger }}>
             {partnerOnline ? `${partnerName} is watching` : `${partnerName} left — waiting…`}
           </Text>
         </View>
@@ -653,6 +793,11 @@ export default function DrawAndGuessScreen() {
     return (
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         {renderTimerBar()}
+        {/* Countdown + skribbl-style word hint */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
+          {renderCountdown()}
+          <View style={{ flex: 1 }}>{renderHintBar()}</View>
+        </View>
         {/* Canvas — upper ~65% */}
         <DrawCanvas
           mode="watch"

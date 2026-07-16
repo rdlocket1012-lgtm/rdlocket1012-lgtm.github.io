@@ -7,7 +7,14 @@ export type DrawGameEvent =
   // `round` is optional for backwards compatibility with peers on builds that
   // don't broadcast it yet — receivers must guard before using it.
   | { type: 'round_start'; roundId: string; drawerUserId: string; options: [string, string, string]; round?: number }
-  | { type: 'word_picked' }
+  // `mask` is the skribbl-style word template the guesser renders: letters become
+  // '_', while spaces and hyphens are shown as-is. Optional for backwards compat
+  // with peers on builds that don't send it (the guesser just shows no hint).
+  | { type: 'word_picked'; mask?: string }
+  // Drawer-owned progressive hint: reveal the letter at `index` in the template
+  // as the round timer ticks down. The actual letters never hit the wire until
+  // their scheduled reveal, so the guesser can't read the word off the channel.
+  | { type: 'reveal'; index: number; letter: string }
   | { type: 'stroke'; stroke: Stroke }
   | { type: 'guess'; text: string }
   | { type: 'correct'; word: string }
