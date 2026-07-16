@@ -152,13 +152,13 @@ function FeatureCard({ feature, width }: { feature: Feature; width: number }) {
       <View style={{ flex: 1, backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', borderWidth: 1.5, borderColor: BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
         {/* Faint accent-tinted ink layer under the sticker (§13.16) */}
         <DoodleBackground group="general" density="light" color={feature.color} />
-        {/* Illustration zone (top 60%) — 72pt kawaii sticker per spec */}
+        {/* Illustration zone (top 60%) — kawaii sticker, sized up for presence */}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Image
             source={FEATURE_ILLUS[feature.key]}
             contentFit="contain"
             accessible={false}
-            style={{ width: 72, height: 72 }}
+            style={{ width: 84, height: 84 }}
           />
         </View>
         {/* Title */}

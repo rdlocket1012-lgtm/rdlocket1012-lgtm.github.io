@@ -49,9 +49,9 @@ const SAGE_MEDIUM: Mark[] = [
 
 // General group: light scatter — wavy-line · dot-trio · star-cluster
 const GENERAL_MEDIUM: Mark[] = [
-  { source: require('@/assets/doodles/wavy-line.svg'), left: '72%', top: '5%', size: 28, rotate: 10, opacity: 0.12 },
-  { source: require('@/assets/doodles/dot-trio.svg'), left: '6%', top: '75%', size: 18, rotate: 0, opacity: 0.10 },
-  { source: require('@/assets/doodles/star-cluster.svg'), left: '80%', top: '62%', size: 22, rotate: -8, opacity: 0.12 },
+  { source: require('@/assets/doodles/wavy-line.svg'), left: '72%', top: '5%', size: 32, rotate: 10, opacity: 0.24 },
+  { source: require('@/assets/doodles/dot-trio.svg'), left: '6%', top: '75%', size: 20, rotate: 0, opacity: 0.20 },
+  { source: require('@/assets/doodles/star-cluster.svg'), left: '80%', top: '62%', size: 26, rotate: -8, opacity: 0.26 },
 ];
 
 function getMarks(group: DoodleGroup, density: Density): Mark[] {

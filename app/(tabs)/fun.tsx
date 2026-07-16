@@ -240,12 +240,12 @@ function DeckBlock({
     <Animated.View entering={stagger(index)} style={{ width }}>
       <ScalePressable scaleTo={0.96} onPress={onPress} accessibilityLabel={`Play ${name}`}>
         <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: CARD_BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
-          <View style={{ height: 74, backgroundColor: rgba(color, 0.14), alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ height: 80, backgroundColor: rgba(color, 0.14), alignItems: 'center', justifyContent: 'center' }}>
             <Image
               source={illus}
               contentFit="contain"
               accessible={false}
-              style={{ width: 56, height: 56, transform: [{ rotate: `${tilt}deg` }] }}
+              style={{ width: 64, height: 64, transform: [{ rotate: `${tilt}deg` }] }}
             />
           </View>
           <View style={{ padding: 12, paddingTop: 10 }}>
@@ -269,12 +269,12 @@ function CreativeBlock({
     <Animated.View entering={stagger(index)} style={{ width }}>
       <ScalePressable scaleTo={0.96} onPress={() => { lightHaptic(); router.push(route as Href); }} accessibilityLabel={name}>
         <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: CARD_BORDER, overflow: 'hidden', ...theme.shadow.sm }}>
-          <View style={{ height: 74, backgroundColor: rgba(color, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ height: 80, backgroundColor: rgba(color, 0.16), alignItems: 'center', justifyContent: 'center' }}>
             <Image
               source={illus}
               contentFit="contain"
               accessible={false}
-              style={{ width: 56, height: 56, transform: [{ rotate: `${tilt}deg` }] }}
+              style={{ width: 64, height: 64, transform: [{ rotate: `${tilt}deg` }] }}
             />
           </View>
 
