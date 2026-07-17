@@ -1,7 +1,6 @@
 -- v1.1 Cozy Scrapbook: activity-feed seen marker.
--- ADDITIVE ONLY — adds one nullable column to profiles. No existing data is
--- touched; a NULL marker simply means "has never opened the Activity screen",
--- which the client treats as "everything is unseen".
+-- ADDITIVE ONLY — adds one column to profiles. No existing table or column is
+-- modified or dropped.
 --
 -- Powers:
 --   * the coral dot on the Home bell
@@ -13,3 +12,14 @@
 -- read — you saw that it arrived, you didn't read it. Two markers, two jobs.
 
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS activity_seen_at TIMESTAMPTZ;
+
+-- Seed existing profiles to now(). The client reads NULL as "has never opened
+-- the feed → everything is unseen", so without this backfill every live couple
+-- would be badged with their ENTIRE history on the release that ships this.
+-- Seeding makes existing users start caught-up; only new activity counts.
+UPDATE profiles SET activity_seen_at = now() WHERE activity_seen_at IS NULL;
+
+-- Match the convention already used by the other *_seen_at columns, so a newly
+-- created profile also starts caught-up rather than seeing its own backlog.
+ALTER TABLE profiles ALTER COLUMN activity_seen_at SET DEFAULT now();
+ALTER TABLE profiles ALTER COLUMN activity_seen_at SET NOT NULL;
