@@ -883,7 +883,7 @@ eas update --branch production                    # OTA for JS-only changes
 
 [spec: `docs/DESIGN.md §13.32` (Activity screen), `§12.19` (date reminders), `§13.28` (Settings toggles)]
 
-> **Status (2026-07-17):** ✅ shipped. OTA `b67bf717` (commit `6b9ea16`) = feed + bell + badge — **user-confirmed working on device 2026-07-16**. OTA `4cba960d` (commit `5179149`) = bucket list + dismissals + date reminders — **device-UNVERIFIED**. Migrations 015 + 016 applied to prod; `notify` Edge Function v4 deployed. ⚠️ `git push` has been blocked every attempt — commits may be local-only.
+> **Status (2026-07-17):** ✅ **shipped and device-verified.** OTA `b67bf717` (commit `6b9ea16`) = feed + bell + badge — user-confirmed on device 2026-07-16. OTA `4cba960d` (commit `5179149`) = bucket list + dismissals + date reminders — user-confirmed on device 2026-07-17. Migrations 015 + 016 applied to prod; `notify` Edge Function v4 deployed. ⚠️ `git push` has been blocked every attempt — commits may be local-only.
 
 ### 21.1 Activity seen marker + badge — ✅ DONE
 - Migration 015: `profiles.activity_seen_at`, **backfilled to `now()` + `NOT NULL DEFAULT now()`**.
@@ -907,17 +907,17 @@ eas update --branch production                    # OTA for JS-only changes
 - `components/ui/dismissible-row.tsx` — swipe **left only** (right is the iOS back gesture).
 - Insert with `ignoreDuplicates: true`; a plain `.upsert()` compiles to `ON CONFLICT DO UPDATE` and needs an UPDATE policy 016 withholds.
 
-### 21.5 Date reminders — ✅ DONE (device-unverified)
+### 21.5 Date reminders — ✅ DONE
 - `lib/date-reminders.ts` + `hooks/useDateReminders.ts` + `stores/prefs.store.ts`; Settings toggle (§13.28).
 - Local `DATE` triggers at 9am day-before + day-of; matching in-app row on the day.
 - **Fixed two landmines:** `scheduleOnThisDay` called `cancelAllScheduledNotificationsAsync()` (toggling On This Day would have wiped every date reminder — now cancels by identifier); `scheduleBirthdayReminder` was dead code, replaced.
 - `useConnectionCalendar` aggregation extracted to a pure `buildCalendarEvents()` so the scheduler reads already-subscribed stores. **Never mount `useConnectionCalendar` in the tabs layout** — the tab bar is a swipe pager, all four tabs mount at once, and each caller of the non-refcounted `useMilestones`/`useBucketList` opens its own channel.
 
 ### 21.6 Remaining
-- ⏳ Device-verify OTA `4cba960d`: swipe threshold vs. back gesture, 9am reminder fires, bucket rows appear.
 - ⏳ `git push origin v1.1-cozy-scrapbook` (blocked for the agent every attempt).
 - ⏳ Optional: additive `bucket_list_items.completed_by` to make completions attributable.
 - ⏳ Refcount `useMilestones`/`useBucketList`/`useCalendarEvents` channels the way `coupons.store` already does — would remove the duplicate-channel trap for good.
+- ⏳ The **day-of 9am reminder** is the one path that can only prove itself when a real event date arrives; day-before + scheduling were verified. If one ever no-shows, check for a stray `cancelAllScheduledNotificationsAsync()` first.
 
 ---
 
