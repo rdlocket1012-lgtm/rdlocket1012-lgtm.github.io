@@ -5,6 +5,8 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import { LK } from '@/constants/theme';
 import { useUnseen } from '@/hooks/useUnseen';
 import { useCoupons } from '@/hooks/useCoupons';
+import { useDateReminders } from '@/hooks/useDateReminders';
+import { useDismissalsStore } from '@/stores/activity-dismissals.store';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
 import { useLiveLaunch } from '@/stores/live.store';
@@ -26,10 +28,15 @@ export default function TabsLayout() {
   // Keep coupon rows loaded app-wide so Home can surface redeem/approval banners
   // (shares one realtime channel with the Coupons screen via ref-counting).
   useCoupons();
+  // Keep OS-scheduled birthday/anniversary reminders in step with the calendar.
+  useDateReminders();
 
   const { profile } = useAuth();
   const { partner } = usePartner();
   const partnerTime = usePartnerTime();
+
+  // Load this user's dismissed Activity rows once, so the feed can filter them.
+  useEffect(() => { void useDismissalsStore.getState().fetch(); }, [profile?.id]);
 
   // ── This or That live layer ────────────────────────────────────────────────
   // Mounted here so the invite, "both online" banner, and game overlay appear

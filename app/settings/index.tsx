@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
-import { requestPermissions, scheduleOnThisDay } from '@/lib/notifications';
+import { requestPermissions, scheduleOnThisDay, cancelOnThisDay } from '@/lib/notifications';
+import { usePrefsStore } from '@/stores/prefs.store';
 import { View, Text, ScrollView, Switch, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -30,19 +30,22 @@ export default function SettingsScreen() {
   const [notifOTD, setNotifOTD] = useState(true);
   const [notifLetters, setNotifLetters] = useState(true);
   const [analytics, setAnalytics] = useState(true);
+  const [notifDates, setNotifDates] = useState(true);
   const [nudgeHaptics, setNudgeHaptics] = useState(profile?.nudge_haptics !== false);
 
   // Load persisted preferences. Defaults stay `true` when nothing is stored yet.
   useEffect(() => {
     (async () => {
-      const [otd, letters, stats] = await Promise.all([
+      const [otd, letters, stats, dates] = await Promise.all([
         AsyncStorage.getItem('pref_notif_otd'),
         AsyncStorage.getItem('pref_notif_letters'),
         AsyncStorage.getItem('pref_analytics'),
+        AsyncStorage.getItem('pref_notif_dates'),
       ]);
       if (otd != null) setNotifOTD(otd === '1');
       if (letters != null) setNotifLetters(letters === '1');
       if (stats != null) setAnalytics(stats === '1');
+      if (dates != null) setNotifDates(dates === '1');
     })();
   }, []);
 
@@ -60,10 +63,33 @@ export default function SettingsScreen() {
         }
         await scheduleOnThisDay();
       } else {
-        await Notifications.cancelAllScheduledNotificationsAsync();
+        // Cancel only the On This Day reminder — this used to cancel ALL
+        // scheduled notifications, which also silently wiped every scheduled
+        // birthday and anniversary alert.
+        await cancelOnThisDay();
       }
     } catch {
       // Best-effort (e.g. Expo Go limitations) — the preference is still saved.
+    }
+  }
+
+  async function toggleDates(on: boolean) {
+    setNotifDates(on);
+    try {
+      if (on) {
+        const granted = await requestPermissions();
+        if (!granted) {
+          setNotifDates(false);
+          await usePrefsStore.getState().setDateReminders(false);
+          Alert.alert('Notifications off', 'Enable notifications for Locket in your device Settings to get birthday and anniversary reminders.');
+          return;
+        }
+      }
+      // Writing the pref is enough: useDateReminders watches it and re-schedules
+      // (or cancels) from the live calendar.
+      await usePrefsStore.getState().setDateReminders(on);
+    } catch {
+      // Best-effort — the preference is still saved.
     }
   }
 
@@ -242,6 +268,7 @@ export default function SettingsScreen() {
         <SectionLabel>Notifications</SectionLabel>
         <SGroup>
           <SRow icon="sparkle" color={LK.warning} title="On This Day" toggle value={notifOTD} onToggle={toggleOTD} />
+          <SRow icon="cake" color={LK.lilac} title="Birthdays & anniversaries" sub="A nudge the day before, and on the day" toggle value={notifDates} onToggle={toggleDates} />
           <SRow icon="envelope" color={LK.blush} title="Letters from partner" toggle value={notifLetters} onToggle={toggleLetters} last />
         </SGroup>
 

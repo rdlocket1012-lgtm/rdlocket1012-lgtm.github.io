@@ -4,12 +4,22 @@ import { TYPE_ICON } from '@/constants/milestone-types';
 import { useAuth } from '@/hooks/useAuth';
 import { useLetters } from '@/hooks/useLetters';
 import { useCoupons } from '@/hooks/useCoupons';
-import { useConnectionCalendar } from '@/hooks/useConnectionCalendar';
+import { useConnectionCalendar, eventsToday } from '@/hooks/useConnectionCalendar';
 import { useDrawStore } from '@/stores/draw.store';
 import { useMilestonesStore } from '@/stores/milestones.store';
+import { useBucketListStore } from '@/stores/bucket-list.store';
 import { useUnseenStore } from '@/stores/unseen.store';
+import { useDismissalsStore } from '@/stores/activity-dismissals.store';
+import { parseLocalDate } from '@/utils/date';
 
-export type ActivityKind = 'letter' | 'coupon' | 'coupon_request' | 'milestone' | 'drawing';
+export type ActivityKind =
+  | 'letter'
+  | 'coupon'
+  | 'coupon_request'
+  | 'milestone'
+  | 'drawing'
+  | 'bucket'
+  | 'date';
 
 export type ActivityItem = {
   id: string;
@@ -21,6 +31,12 @@ export type ActivityItem = {
   at: string;
   unseen: boolean;
   href: string;
+  /**
+   * Whether the user can swipe this row away. Dated events (today's birthday or
+   * anniversary) are not dismissible — they're the day itself, not a piece of
+   * activity, and they age out on their own at midnight.
+   */
+  dismissible: boolean;
 };
 
 /**
@@ -46,14 +62,17 @@ export function useActivityFeed(since?: string | null) {
 
   const { letters } = useLetters();
   const { coupons } = useCoupons();
-  const { upcoming } = useConnectionCalendar();
+  const { events, upcoming } = useConnectionCalendar();
   const { milestones } = useMilestonesFromCalendar();
+  // useConnectionCalendar already mounts useBucketList, so read the store.
+  const bucketItems = useBucketListStore((s) => s.items);
 
   const drawings = useDrawStore((s) => s.received);
   const fetchDrawings = useDrawStore((s) => s.fetchDrawings);
 
   const liveSeenAt = useUnseenStore((s) => s.activitySeenAt);
   const activityCount = useUnseenStore((s) => s.activityCount);
+  const dismissed = useDismissalsStore((s) => s.dismissed);
   const seenAt = since === undefined ? liveSeenAt : since;
 
   // Letters, coupons and milestones each carry their own realtime subscription
@@ -90,6 +109,22 @@ export function useActivityFeed(since?: string | null) {
         at,
         unseen: mark(at, l.sender_id),
         href: `/letters/${l.id}`,
+        dismissible: true,
+      });
+    }
+
+    for (const b of bucketItems) {
+      if (b.deleted_at || !b.added_by || b.added_by === myId) continue;
+      out.push({
+        id: `bk-${b.id}`,
+        kind: 'bucket',
+        icon: 'list',
+        color: LK.success,
+        title: `Added to your bucket list: ${b.title}`,
+        at: b.created_at,
+        unseen: mark(b.created_at, b.added_by),
+        href: '/bucket-list',
+        dismissible: true,
       });
     }
 
@@ -108,6 +143,7 @@ export function useActivityFeed(since?: string | null) {
           at: c.created_at,
           unseen: mark(c.created_at, c.created_by),
           href: '/coupons',
+          dismissible: true,
         });
       }
       if (c.redeem_requested_at && c.created_by === myId && !c.redeemed_at) {
@@ -121,6 +157,7 @@ export function useActivityFeed(since?: string | null) {
           // The requester is the partner, so pass null-safe non-me owner.
           unseen: mark(c.redeem_requested_at, null),
           href: '/coupons',
+          dismissible: true,
         });
       }
     }
@@ -136,6 +173,7 @@ export function useActivityFeed(since?: string | null) {
         at: m.created_at,
         unseen: mark(m.created_at, m.created_by),
         href: '/(tabs)/timeline',
+        dismissible: true,
       });
     }
 
@@ -149,11 +187,33 @@ export function useActivityFeed(since?: string | null) {
         at: d.created_at,
         unseen: mark(d.created_at, d.sender_id),
         href: '/draw',
+        dismissible: true,
       });
     }
 
-    return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 40);
-  }, [letters, coupons, milestones, drawings, myId, seenAt]);
+    // Dated events that land TODAY get an in-app row to match the 9am push.
+    // Their `at` is local midnight, so they sort to the top of today and read as
+    // unseen for anyone who last opened the feed yesterday or earlier.
+    for (const e of eventsToday(events)) {
+      const at = parseLocalDate(e.date).toISOString();
+      out.push({
+        id: `dt-${e.id}`,
+        kind: 'date',
+        icon: e.icon,
+        color: e.color,
+        title: e.kind === 'anniversary' ? `Today is your ${e.title}` : `Today: ${e.title}`,
+        at,
+        unseen: mark(at, null),
+        href: '/calendar',
+        dismissible: false, // the day itself, not activity — it ages out at midnight
+      });
+    }
+
+    return out
+      .filter((i) => !(i.dismissible && dismissed.has(i.id)))
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 40);
+  }, [letters, coupons, milestones, drawings, bucketItems, events, myId, seenAt, dismissed]);
 
   return { items, upcoming };
 }

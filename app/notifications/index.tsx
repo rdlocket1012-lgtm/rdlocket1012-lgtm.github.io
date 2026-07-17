@@ -9,6 +9,8 @@ import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { useUnseenStore } from '@/stores/unseen.store';
+import { useDismissalsStore } from '@/stores/activity-dismissals.store';
+import { DismissibleRow } from '@/components/ui/dismissible-row';
 import { parseLocalDate } from '@/utils/date';
 
 type Feed = {
@@ -18,6 +20,7 @@ type Feed = {
   title: string;
   subtitle: string;
   unseen?: boolean;
+  dismissible?: boolean;
   onPress: () => void;
 };
 
@@ -72,8 +75,9 @@ export default function NotificationsScreen() {
     icon: a.icon,
     color: a.color,
     title: a.title,
-    subtitle: relativePast(a.at),
+    subtitle: a.kind === 'date' ? 'Today' : relativePast(a.at),
     unseen: a.unseen,
+    dismissible: a.dismissible,
     onPress: () => router.push(a.href as never),
   }));
 
@@ -100,7 +104,15 @@ export default function NotificationsScreen() {
           <>
             {recent.length > 0 && (
               <Section title="Recent">
-                {recent.map((f) => <FeedRow key={f.id} item={f} />)}
+                {recent.map((f) => (
+                  <DismissibleRow
+                    key={f.id}
+                    enabled={f.dismissible !== false}
+                    onDismiss={() => void useDismissalsStore.getState().dismiss(f.id)}
+                  >
+                    <FeedRow item={f} />
+                  </DismissibleRow>
+                ))}
               </Section>
             )}
             {comingUp.length > 0 && (

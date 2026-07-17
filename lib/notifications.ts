@@ -17,6 +17,7 @@ function routeFromNotificationData(data: unknown): void {
     else if (type === 'draw_invite') router.navigate('/games/draw-and-guess');
     else if (type === 'partner_draw') router.navigate('/draw');
     else if (type === 'letter') router.navigate('/letters');
+    else if (type === 'calendar_event') router.navigate('/calendar');
   } catch {
     // navigation not ready — best effort
   }
@@ -86,9 +87,17 @@ export async function requestPermissions(): Promise<boolean> {
   return status === 'granted';
 }
 
+/** Stable identifier for the daily On This Day reminder. */
+export const OTD_NOTIFICATION_ID = 'otd-daily';
+
 export async function scheduleOnThisDay(hour = 9, minute = 0): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // Cancel ONLY this reminder, by id. This used to call
+  // cancelAllScheduledNotificationsAsync(), which also wiped the date reminders
+  // in lib/date-reminders.ts — toggling On This Day silently killed every
+  // birthday and anniversary alert.
+  await cancelOnThisDay();
   await Notifications.scheduleNotificationAsync({
+    identifier: OTD_NOTIFICATION_ID,
     content: {
       title: 'On this day…',
       body: 'A memory from your past is waiting for you.',
@@ -101,21 +110,10 @@ export async function scheduleOnThisDay(hour = 9, minute = 0): Promise<void> {
   });
 }
 
-export async function scheduleBirthdayReminder(
-  name: string,
-  birthdayDate: Date,
-): Promise<void> {
-  const reminderDate = new Date(birthdayDate);
-  reminderDate.setDate(reminderDate.getDate() - 7);
-  if (reminderDate <= new Date()) return;
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: `${name}'s birthday is in one week`,
-      body: "Time to plan something special.",
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: reminderDate,
-    },
-  });
+export async function cancelOnThisDay(): Promise<void> {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(OTD_NOTIFICATION_ID);
+  } catch {
+    // never scheduled — nothing to cancel
+  }
 }

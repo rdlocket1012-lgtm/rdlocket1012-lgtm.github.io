@@ -22,6 +22,7 @@ const ACTIVITY_TABLES: Array<{ table: string; ownerCol: string; softDelete: bool
   { table: 'coupons', ownerCol: 'created_by', softDelete: true },
   { table: 'milestones', ownerCol: 'created_by', softDelete: true },
   { table: 'partner_drawings', ownerCol: 'sender_id', softDelete: false },
+  { table: 'bucket_list_items', ownerCol: 'added_by', softDelete: true },
 ];
 
 const json = (status: number, body: Record<string, unknown>) =>

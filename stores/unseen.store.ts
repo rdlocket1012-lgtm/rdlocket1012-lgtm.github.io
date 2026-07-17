@@ -41,11 +41,21 @@ type UnseenState = {
 const FEATURES: Feature[] = ['letters', 'coupons', 'milestones'];
 
 /**
- * Tables watched for realtime activity. `partner_drawings` has no `deleted_at`
- * column (see migration 012), so it is counted separately from FEATURES rather
- * than folded into the soft-delete-aware query below.
+ * Every table that backs the Activity feed, with the column naming the person
+ * who created the row. These don't share a convention (`sender_id` vs
+ * `created_by` vs `added_by`), and `partner_drawings` has no `deleted_at` at
+ * all (migration 012), so each one is described explicitly.
+ *
+ * Keep in sync with `supabase/functions/notify/index.ts`, which computes the
+ * same count server-side for the push badge.
  */
-const ACTIVITY_TABLES = [...FEATURES, 'partner_drawings'] as const;
+const ACTIVITY_TABLES: Array<{ table: string; ownerCol: string; softDelete: boolean }> = [
+  { table: 'letters', ownerCol: 'sender_id', softDelete: true },
+  { table: 'coupons', ownerCol: 'created_by', softDelete: true },
+  { table: 'milestones', ownerCol: 'created_by', softDelete: true },
+  { table: 'partner_drawings', ownerCol: 'sender_id', softDelete: false },
+  { table: 'bucket_list_items', ownerCol: 'added_by', softDelete: true },
+];
 
 export const useUnseenStore = create<UnseenState>((set, get) => ({
   counts: { letters: 0, coupons: 0, milestones: 0 },
@@ -112,14 +122,13 @@ export const useUnseenStore = create<UnseenState>((set, get) => ({
     let activityCount = 0;
     if (hasActivityCol) {
       const perTable = await Promise.all(
-        ACTIVITY_TABLES.map(async (t) => {
-          const ownerCol = t === 'partner_drawings' ? 'sender_id' : OWNER_COL[t as Feature];
+        ACTIVITY_TABLES.map(async ({ table, ownerCol, softDelete }) => {
           let q = supabase
-            .from(t)
+            .from(table)
             .select('id', { count: 'exact', head: true })
             .eq('couple_id', coupleId)
             .neq(ownerCol, myId);
-          if (t !== 'partner_drawings') q = q.is('deleted_at', null);
+          if (softDelete) q = q.is('deleted_at', null);
           if (activitySeenAt) q = q.gt('created_at', activitySeenAt);
           const { count } = await q;
           return count ?? 0;
@@ -173,8 +182,8 @@ export const useUnseenStore = create<UnseenState>((set, get) => ({
     // us under Supabase's per-client realtime rate limit (the join/presence
     // burst from too many channels was destabilising the live-game channel).
     const channel = supabase.channel(`unseen:${coupleId}:${Math.random().toString(36).slice(2)}`);
-    for (const t of ACTIVITY_TABLES) {
-      channel.on('postgres_changes', { event: '*', schema: 'public', table: t, filter: `couple_id=eq.${coupleId}` }, () => {
+    for (const { table } of ACTIVITY_TABLES) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `couple_id=eq.${coupleId}` }, () => {
         get().fetch(coupleId);
       });
     }

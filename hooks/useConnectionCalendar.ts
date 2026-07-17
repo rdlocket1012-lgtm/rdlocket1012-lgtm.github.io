@@ -42,7 +42,47 @@ export function useConnectionCalendar() {
   const { couple } = useCouple();
   const { events: customEvents } = useCalendarEvents();
 
-  const events = useMemo<CalEvent[]>(() => {
+  const events = useMemo<CalEvent[]>(
+    () => buildCalendarEvents({ milestones, bucketItems, couple, customEvents }),
+    [milestones, bucketItems, couple?.start_date, customEvents],
+  );
+
+  /** Events occurring on a specific YYYY-MM-DD. */
+  const eventsOnDay = (dateStr: string) => events.filter((e) => e.date === dateStr);
+
+  /** Map of YYYY-MM-DD → events, for fast day-cell dot lookups. */
+  const eventsByDay = useMemo(() => {
+    const map: Record<string, CalEvent[]> = {};
+    for (const e of events) {
+      (map[e.date] ??= []).push(e);
+    }
+    return map;
+  }, [events]);
+
+  const upcoming = useMemo(() => collapseUpcoming(events), [events]);
+
+  return { events, eventsOnDay, eventsByDay, upcoming };
+}
+
+/**
+ * Pure aggregation, split out from the hook so callers that only need the event
+ * list (e.g. lib/date-reminders via hooks/useDateReminders) can reuse it while
+ * reading already-subscribed stores — instead of calling the hook and opening a
+ * duplicate realtime channel per store. The tab bar is a swipe pager, so all
+ * four tab screens are mounted at once and those duplicates add up fast; too
+ * many channels per client is what tripped Supabase's rate limit before.
+ */
+export function buildCalendarEvents({
+  milestones,
+  bucketItems,
+  couple,
+  customEvents,
+}: {
+  milestones: { id: string; type: string; title: string; milestone_date: string }[];
+  bucketItems: { id: string; title: string; target_date: string | null }[];
+  couple: { start_date?: string | null } | null | undefined;
+  customEvents: { id: string; kind: string; title: string; event_date: string; emoji: string; recurring: boolean }[];
+}): CalEvent[] {
     const out: CalEvent[] = [];
     const thisYear = new Date().getFullYear();
     const YEAR_WINDOW = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2];
@@ -143,43 +183,35 @@ export function useConnectionCalendar() {
     }
 
     return out.sort((a, b) => a.date.localeCompare(b.date));
-  }, [milestones, bucketItems, couple?.start_date, customEvents]);
+}
 
-  /** Events occurring on a specific YYYY-MM-DD. */
-  const eventsOnDay = (dateStr: string) => events.filter((e) => e.date === dateStr);
+/**
+ * Upcoming events from today forward. Recurring events are expanded across
+ * several years for the calendar grid, so here we collapse each series to its
+ * single next occurrence — otherwise a yearly birthday/anniversary would show
+ * once per year in the "Coming up" list (and would schedule 4 years of
+ * duplicate reminders).
+ */
+export function collapseUpcoming(events: CalEvent[]): CalEvent[] {
+  const today = ymd(new Date());
+  const seen = new Set<string>();
+  const out: CalEvent[] = [];
+  for (const e of events) { // events are sorted ascending by date
+    if (e.date < today) continue;
+    const seriesKey = e.recurring
+      ? (e.kind === 'anniversary' ? 'anniv' : `series-${e.sourceId ?? e.title}`)
+      : e.id;
+    if (seen.has(seriesKey)) continue;
+    seen.add(seriesKey);
+    out.push(e);
+  }
+  return out.slice(0, 30);
+}
 
-  /** Map of YYYY-MM-DD → events, for fast day-cell dot lookups. */
-  const eventsByDay = useMemo(() => {
-    const map: Record<string, CalEvent[]> = {};
-    for (const e of events) {
-      (map[e.date] ??= []).push(e);
-    }
-    return map;
-  }, [events]);
-
-  /**
-   * Upcoming events from today forward. Recurring events are expanded across
-   * several years for the calendar grid, so here we collapse each series to its
-   * single next occurrence — otherwise a yearly birthday/anniversary would show
-   * once per year in the "Coming up" list.
-   */
-  const upcoming = useMemo(() => {
-    const today = ymd(new Date());
-    const seen = new Set<string>();
-    const out: CalEvent[] = [];
-    for (const e of events) { // events are sorted ascending by date
-      if (e.date < today) continue;
-      const seriesKey = e.recurring
-        ? (e.kind === 'anniversary' ? 'anniv' : `series-${e.sourceId ?? e.title}`)
-        : e.id;
-      if (seen.has(seriesKey)) continue;
-      seen.add(seriesKey);
-      out.push(e);
-    }
-    return out.slice(0, 30);
-  }, [events]);
-
-  return { events, eventsOnDay, eventsByDay, upcoming };
+/** Events occurring today, local time. Used for the day-of Activity feed row. */
+export function eventsToday(events: CalEvent[]): CalEvent[] {
+  const today = ymd(new Date());
+  return events.filter((e) => e.date === today);
 }
 
 function ordinal(n: number): string {
