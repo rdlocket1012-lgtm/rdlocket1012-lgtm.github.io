@@ -19,7 +19,7 @@
 10. [Motion & micro-interactions](#10-motion--micro-interactions) — ✅ locked
 11. [Backgrounds & texture](#11-backgrounds--texture) — ✅ locked
 12. [Features](#12-features) — ✅ locked (§12.1–§12.18)
-13. [Screen-by-screen application](#13-screen-by-screen-application) — ✅ locked (§13.0–§13.31)
+13. [Screen-by-screen application](#13-screen-by-screen-application) — ✅ locked (§13.0–§13.32)
 
 ---
 
@@ -1633,7 +1633,8 @@ The emotional centrepiece of the app. Every visit should feel like opening a war
 **Header (special case — no Bricolage title; the day counter is the title):**
 - Left: overlapping avatars (mine 38px + partner 38px, −12px overlap, 2.5px Parchment ring), `StatusBubble` on mine, `BiteAvatarFx` on partner · couple nickname (Jakarta 17/700/Espresso) + optional Premium pill · **presence line** below the name
 - **Partner presence line** (the "Partner presence" zone — folded into the header, not a card): partner local time + context ("probably asleep" with `moon.fill` when 22:00–06:00, "likely at work", etc.) + timezone-diff eyebrow ("+3h ahead"). Hidden when no partner or diff = 0.
-- Right: one icon button 40×40px — `bell.fill` → notifications. **No** games shortcut, **no** settings gear (Settings lives in Us; Games is the Fun tab).
+- Right: one icon button 40×40px — `bell.fill` → Activity (§13.32). **No** games shortcut, **no** settings gear (Settings lives in Us; Games is the Fun tab).
+  - **Unread dot:** 9px Coral, 1.5px Parchment ring, top-right. Driven by `unseen.store.activityCount` (**all** partner activity — not just letters+coupons) and cleared by opening Activity, which also clears the app-icon badge. Never wire this to a per-feature count: it then only clears by visiting each feature screen, which is the bug it replaced.
 - Avatars tap → About Us (`profile/about`). Nudging is no longer triggered from the header — it lives in the FAB overlay.
 
 **Zone A — Hero counter card:** Vellum `#FFFDF7`, 28px radius, Level 2 shadow, DoodleBackground medium. Contents top→bottom: small Lo & Kit idle mascot (`<MascotAnimation name="lo-kit-idle" />`, ~72px) · day number (Bricolage 84/800, 72 on <390px width, tabular-nums, **Espresso** — Marigold reserved for the anniversary-pulse accent) · "days together" warm line (Shantell 17/500/Sepia — **not** Newsreader) · "since [date]" caption (Jakarta 12/500/Faded) · Hairline divider · widget CTA pill. Tap card → Timeline. **Anniversary day** (month+day = today): number pulses `spring.bounce` 1.0→1.12→1.0 once and the `anniversary` mascot WebP plays above (animated WebP, **not** Lottie).
@@ -3597,6 +3598,34 @@ Start screen → word assignment → [Drawer screen / Guesser screen] → reveal
 
 ---
 
+### 12.19 Date reminders (birthdays & anniversaries)
+
+**Purpose.** The dates in §12.10 are only useful if they reach you on the day. A birthday you forgot is the exact failure this app exists to prevent.
+
+**Why local, not push.** These are **local scheduled notifications** (`expo-notifications` `DATE` trigger), not server pushes. The date is known on-device far in advance, so the OS can fire it with the app closed and no network. A server push would need a cron plus per-timezone scheduling to do the same job worse.
+
+**Schedule.** Two per event, both **9am local** (matching the On This Day default hour):
+- **Day before** — "…is tomorrow. Last chance to plan something."
+- **Day of** — "Today is your 3rd Anniversary 💕"
+
+Copy varies by `CalEvent.kind` (anniversary / birthday / bucket / milestone).
+
+**In-app counterpart.** On the day, the event also appears as a row in the Activity feed (§13.32), so the reminder is still there if the push was missed or dismissed.
+
+**Files.**
+- `lib/date-reminders.ts` — `syncDateReminders(events)`, `cancelDateReminders()`
+- `hooks/useDateReminders.ts` — mounted once in `app/(tabs)/_layout.tsx`
+- `stores/prefs.store.ts` — reactive `dateReminders` toggle (AsyncStorage alone can't re-run a scheduler mounted on another screen)
+
+**Rules — each one cost a bug:**
+- **Identifier-scoped cancels only** (`date:<eventId>:day|pre`). `cancelAllScheduledNotificationsAsync()` from any other feature wipes these.
+- **Re-schedule from scratch**, never diff. A stale "Today is your anniversary" on a date the user edited is far worse than a few redundant OS calls.
+- **Cap at 24 events** (48 notifications). iOS silently drops past 64 pending, and On This Day needs a slot.
+- **Collapse recurring series first** (`collapseUpcoming`) — the calendar expands birthdays across a 4-year window, which would otherwise schedule 4 duplicate reminders each.
+- **Read stores, don't mount `useConnectionCalendar`.** The tab bar is a swipe pager, so all four tabs are mounted at once; calling the hook in the layout opens a duplicate realtime channel per store, and too many channels per client trips Supabase's rate limit (it previously broke the live-game channel). Use the pure `buildCalendarEvents()` instead.
+
+**Premium.** Free — never gate a date you'd be hurt to miss.
+
 ---
 
 ## 13. Screen-by-screen application
@@ -4858,9 +4887,13 @@ Settings groups (Ivory cards, 20px R, Level 1 shadow, per §9.7 spec):
 
 **NOTIFICATIONS**
 - Push notifications (Switch) — links to system settings
+- On This Day (Switch) — daily 9am local reminder
+- Birthdays & anniversaries (Switch) — sub "A nudge the day before, and on the day" (§12.19)
 - Letter received (Switch)
 - Quiz ready (Switch)
 - Nudges (Switch)
+
+> **Cancel by identifier, never `cancelAllScheduledNotificationsAsync()`.** Each toggle owns its own notification ids (`otd-daily`, `date:<eventId>:day|pre`). A blanket cancel from one toggle silently wipes every other feature's scheduled alerts — this shipped as a real bug and was fixed in Phase 21.
 
 **ACCOUNT**
 - Email row → copy
@@ -4960,5 +4993,70 @@ Quiz history item (Ivory card, 20px R, Level 1 shadow):
 - Empty received: Lo illustration with blank canvas + S/16/Sepia "waiting for a drawing from [partner]"
 - Empty sent: J/14/Sepia "draw them something little" + coral CTA
 - Content: 2-column grid
+
+---
+
+### 13.32 Activity (notification feed)
+
+**Route:** `app/notifications/index.tsx` — pushed from the Home bell (§13.13).
+**Purpose:** One place answering "what happened while I was away?"
+
+**Header:** `ScreenHeader` eyebrow "What's new" · title "Activity" · back chevron.
+
+#### What belongs here
+
+Everything **partner-initiated** and persisted, newest first:
+
+| Row | Source table | Owner column | Route |
+|---|---|---|---|
+| New letter / voice letter | `letters` | `sender_id` | `/letters/[id]` |
+| Coupon gifted | `coupons` | `created_by` | `/coupons` |
+| Redeem request | `coupons` (`redeem_requested_at`) | — (partner asked) | `/coupons` |
+| Added a memory | `milestones` | `created_by` | `/(tabs)/timeline` |
+| Sent you a drawing | `partner_drawings` | `sender_id` | `/draw` |
+| Added to bucket list | `bucket_list_items` | `added_by` | `/bucket-list` |
+| Today: birthday / anniversary | derived (§13.24 calendar) | — | `/calendar` |
+
+**Permanently excluded — do not "fix" these:**
+- **Private Notes** — RLS is owner-only (migration 010). A partner's notes are unreadable by design; surfacing them here is a privacy break, not a missing feature.
+- **Nudges, bites, thumb kisses** — ephemeral realtime broadcasts with no table. Nothing exists to show once the moment passes.
+- **Bucket-list completions** — `bucket_list_items` has `is_done`/`completed_at` but **no `completed_by`**, so there is no way to attribute a tick to a person. Needs an additive column before it can ever appear.
+
+#### Two seen markers — keep them separate
+
+| Marker | Drives | Clears when |
+|---|---|---|
+| `profiles.activity_seen_at` | Home bell dot + **app-icon badge** | Activity screen opens |
+| `letters_seen_at` / `coupons_seen_at` / `milestones_seen_at` | per-item **NEW** tags on feature screens | that feature screen opens |
+
+> **Never collapse these into one.** Seeing that a letter *arrived* is not reading it — a shared marker would mark unopened letters read from the feed.
+
+**Rollout rule for any new seen-marker column:** `NOT NULL DEFAULT now()` **plus a backfill** of existing rows. The client reads NULL as "never opened → everything unseen"; without the backfill every existing couple is badged with their entire history on release (measured: up to 15 for a real user).
+
+#### Rows
+
+- Base card spec (§Cards): Ivory, `theme.radii.sm`, Level 1 shadow, 13px padding, 12px gap
+- Left: 42px circle, `tint(color, 0.6)` fill, 20px icon in `shade(color, 0.5)`
+- Body: title B/15.5/700/Espresso (1 line) · subtitle J/12.5/Sepia — relative ("Today", "3d ago"); dated rows always read "Today"
+- Right: 8px **Coral dot** when unseen · `chevR` 18px/Ink70
+- Unseen is judged against the marker **frozen at screen entry** — the screen also marks activity seen on focus, so reading the live marker would clear every dot before the user saw it
+
+#### Dismissal
+
+- **Swipe left only** (`DismissibleRow`, threshold 96px or velocity < −800). Right-swipe is the iOS interactive back gesture — never compete with it.
+- Reveals a Danger `x` + "Dismiss"; row fades as it travels; `tick()` haptic on commit
+- Per-user and server-backed (`activity_dismissals`, migration 016). Owner-only RLS: **dismissing never affects what the partner sees.**
+- Insert with `ignoreDuplicates: true` — a plain upsert compiles to `ON CONFLICT DO UPDATE` and needs an UPDATE policy 016 deliberately withholds
+- **Dated rows are not dismissible** — they're the day itself, and age out at midnight
+
+#### Coming up
+
+Future dated events (§13.24), collapsed to one row per recurring series. Not dismissible, no dots.
+
+**Four states:**
+- Loading: rows render as data arrives (stores are already warm from the tabs layout)
+- Empty: `bell` in a Sage `IconChip` 64px + B/22/700 "You're all caught up" + J/14/Ink70 "Letters, coupons, drawings and memories from your partner will show up here."
+- Content: "Recent" section, then "Coming up"
+- Error: silent — every source is best-effort
 
 ---

@@ -538,7 +538,7 @@ Same card spec as 9.1 (§9.6b / §13.16b):
 [skill: `ios-accessibility/`]
 
 ### 17.1 4-states audit (every screen)
-For each of the 32 screens in §13.0–§13.31, verify all four states are designed and functional:
+For each of the 33 screens in §13.0–§13.32, verify all four states are designed and functional:
 - **Loading:** skeleton cards or `lo-kit-idle.json` Lottie (80×80, loop)
 - **Empty:** Lo+Kit illustration + encouraging copy + CTA
 - **Content:** happy path
@@ -877,6 +877,50 @@ eas update --branch production                    # OTA for JS-only changes
 
 ---
 
+## Phase 21 — Activity Feed, Badges & Date Reminders
+
+*Makes "what happened while I was away?" answerable. The Activity screen existed but only ever read letters + calendar dates, so coupons, memories, drawings and bucket items never appeared; nothing marked the feed seen; and the app-icon badge was switched off app-wide. Shipped as two OTAs to `production` (runtime 1.1.0) — pure JS, no native deps.*
+
+[spec: `docs/DESIGN.md §13.32` (Activity screen), `§12.19` (date reminders), `§13.28` (Settings toggles)]
+
+> **Status (2026-07-17):** ✅ shipped. OTA `b67bf717` (commit `6b9ea16`) = feed + bell + badge — **user-confirmed working on device 2026-07-16**. OTA `4cba960d` (commit `5179149`) = bucket list + dismissals + date reminders — **device-UNVERIFIED**. Migrations 015 + 016 applied to prod; `notify` Edge Function v4 deployed. ⚠️ `git push` has been blocked every attempt — commits may be local-only.
+
+### 21.1 Activity seen marker + badge — ✅ DONE
+- Migration 015: `profiles.activity_seen_at`, **backfilled to `now()` + `NOT NULL DEFAULT now()`**.
+- `stores/unseen.store.ts`: `activitySeenAt` + `activityCount` + `markActivitySeen()`; `ACTIVITY_TABLES` is now an explicit `{table, ownerCol, softDelete}` descriptor list (the tables share no column convention and `partner_drawings` has no `deleted_at`).
+- `lib/badge.ts` (`syncAppBadge`/`clearAppBadge`) + `shouldSetBadge: true`.
+- `hooks/useUnseen.ts`: re-fetch on AppState `active` — realtime drops while backgrounded, which is the most common way a new item goes unnoticed.
+
+> **The backfill is the whole ballgame.** The client reads a NULL marker as "never opened → everything unseen". Measured against prod: without it, 4 profiles had history and one would have opened the app to a **badge of 15**. Any future seen-marker column: `NOT NULL DEFAULT now()` + backfill, always.
+
+### 21.2 Full feed — ✅ DONE
+- `hooks/useActivityFeed.ts` aggregates letters, coupons (gifted + redeem requests), milestones, `partner_drawings`, `bucket_list_items`, plus today's dated events.
+- Excluded **by design, permanently**: `private_notes` (owner-only RLS — unreadable by the partner), nudges/bites (ephemeral, no table), bucket completions (no `completed_by` column to attribute them).
+- Unseen is judged against a marker **frozen at screen entry** — the screen marks seen on focus, so the live marker would wipe every dot before the user saw it.
+
+### 21.3 Server-computed badge — ✅ DONE
+- `supabase/functions/notify/index.ts` **v4** (vendored into the repo — it previously existed ONLY as deployed code). Sends `badge` = recipient's unseen count across all 5 tables, so the badge is right when the app is backgrounded or killed.
+- Keep `ACTIVITY_TABLES` in sync with `stores/unseen.store.ts`.
+
+### 21.4 Dismissals — ✅ DONE
+- Migration 016 `activity_dismissals` (owner-only RLS, verified: 3 policies, all `user_id = auth.uid()`). Dismissing never affects the partner's feed.
+- `components/ui/dismissible-row.tsx` — swipe **left only** (right is the iOS back gesture).
+- Insert with `ignoreDuplicates: true`; a plain `.upsert()` compiles to `ON CONFLICT DO UPDATE` and needs an UPDATE policy 016 withholds.
+
+### 21.5 Date reminders — ✅ DONE (device-unverified)
+- `lib/date-reminders.ts` + `hooks/useDateReminders.ts` + `stores/prefs.store.ts`; Settings toggle (§13.28).
+- Local `DATE` triggers at 9am day-before + day-of; matching in-app row on the day.
+- **Fixed two landmines:** `scheduleOnThisDay` called `cancelAllScheduledNotificationsAsync()` (toggling On This Day would have wiped every date reminder — now cancels by identifier); `scheduleBirthdayReminder` was dead code, replaced.
+- `useConnectionCalendar` aggregation extracted to a pure `buildCalendarEvents()` so the scheduler reads already-subscribed stores. **Never mount `useConnectionCalendar` in the tabs layout** — the tab bar is a swipe pager, all four tabs mount at once, and each caller of the non-refcounted `useMilestones`/`useBucketList` opens its own channel.
+
+### 21.6 Remaining
+- ⏳ Device-verify OTA `4cba960d`: swipe threshold vs. back gesture, 9am reminder fires, bucket rows appear.
+- ⏳ `git push origin v1.1-cozy-scrapbook` (blocked for the agent every attempt).
+- ⏳ Optional: additive `bucket_list_items.completed_by` to make completions attributable.
+- ⏳ Refcount `useMilestones`/`useBucketList`/`useCalendarEvents` channels the way `coupons.store` already does — would remove the duplicate-channel trap for good.
+
+---
+
 ## Appendix A — Key file map
 
 | What | File |
@@ -890,6 +934,15 @@ eas update --branch production                    # OTA for JS-only changes
 | Press primitive (scale + haptic) | `components/ui/scale-pressable.tsx` |
 | Shimmer skeleton primitive | `components/ui/Skeleton.tsx` (create — Phase 18.3) |
 | Haptic vocabulary | `lib/haptics.ts` |
+| Swipe-to-dismiss row | `components/ui/dismissible-row.tsx` (Phase 21.4) |
+| Unread counts / bell dot / badge count | `stores/unseen.store.ts` (Phase 21.1) |
+| App-icon badge | `lib/badge.ts` (Phase 21.1) |
+| Activity feed aggregation | `hooks/useActivityFeed.ts` (Phase 21.2) |
+| Activity dismissals | `stores/activity-dismissals.store.ts` (Phase 21.4) |
+| Date reminders (local scheduled) | `lib/date-reminders.ts` + `hooks/useDateReminders.ts` (Phase 21.5) |
+| Device-local reactive prefs | `stores/prefs.store.ts` (Phase 21.5) |
+| Partner push (server, sends badge) | `supabase/functions/notify/index.ts` (v4, Phase 21.3) |
+| Calendar event aggregation (pure) | `buildCalendarEvents()` in `hooks/useConnectionCalendar.ts` |
 | Declarative animations (entrances, color/border/shadow) | `react-native-ease` `<EaseView>` (adopt — Phase 18.5) |
 | Shared-element screen transitions | `components/navigation/transition-stack.tsx` + `react-native-screen-transitions` (Phase 19) |
 | Draw canvas | `components/draw/DrawCanvas.tsx` |
@@ -949,3 +1002,10 @@ eas update --branch production                    # OTA for JS-only changes
 - Never use `ScrollView` for lists ≥10 items
 - Never grade or guilt the couple (no "streak broken", no "score dropped")
 - Never hardcode hex values — always use design tokens from `constants/theme.ts`
+- Never call `cancelAllScheduledNotificationsAsync()` — cancel by identifier. One feature's toggle silently wipes every other feature's scheduled alerts (Phase 21.5)
+- Never add a `*_seen_at` column without `NOT NULL DEFAULT now()` **and a backfill** — NULL reads as "everything unseen" and badges every existing user with their whole history (Phase 21.1)
+- Never mount `useConnectionCalendar` (or any non-refcounted store hook) in `app/(tabs)/_layout.tsx` — the tab bar is a swipe pager, so all four tabs are already mounted; read the stores + `buildCalendarEvents()` instead (Phase 21.5)
+- Never surface `private_notes` in any shared/partner-facing view — RLS is owner-only by design (§12.11, Phase 21.2)
+- Never use `.upsert()` on a table without an UPDATE policy — it compiles to `ON CONFLICT DO UPDATE`; use `ignoreDuplicates: true` (Phase 21.4)
+- Never let `lib/notifications.ts` and `lib/notify.ts` disagree on `shouldSetBadge` — the last `setNotificationHandler` installed wins globally
+- Never trust an `Icon` `name` — the prop is typed `string`, so a wrong name renders blank with no tsc error. Check `components/ui/Icon.tsx`

@@ -94,6 +94,7 @@ Full wireframes in `docs/DESIGN.md §9`. Quick reference:
 - **Us (§9.6):** Cover photo hero card (180pt) → 2-column 3×2 feature grid (Letters · Coupons · Map · Calendar · Notes · About Us). Milestones NOT here. Badges: coral dot only. Settings via header gear icon.
 - **Map (§9.4):** Full-bleed MapView · floating filter chips top · pin FAB bottom-right · pin detail as bottom sheet. Opened from Us.
 - **Settings (§9.7):** Profile card → grouped rows in Ivory cards · destructive zone separated.
+- **Activity (§13.32):** Pushed from the Home bell. "Recent" (all partner activity — letters, coupons, memories, drawings, bucket items, today's dates) → "Coming up" (future dates). Rows swipe **left** to dismiss (per-user, server-backed); dated rows don't. Opening it clears the bell dot + app-icon badge, but NOT per-feature NEW tags — two separate seen markers, never collapse them.
 - **Game / This or That (§9.8):** Live session via Supabase Realtime · swipe card mechanic (Pan gesture, Tinder-style) · per-card reveal (match = mascot WebP + streak) · end screen = match % + celebrate WebP. No timer bar. Tab bar hidden during play.
 - **Onboarding (§9.9):** Illustration → headline → warm line → input → flex spacer → CTA thumb zone → progress dots.
 - **Auth (§9.10):** Onboarding shell · Apple sign-in above primary CTA.
@@ -176,6 +177,10 @@ Apply on every screen. Complement (not override) `docs/DESIGN.md`.
 - Never `elevation` or `shadowColor` — CSS `boxShadow` only
 - Never `margin` where `padding` works
 - Never `ScrollView` for lists ≥10 items — use `FlatList`/`FlashList`
+- Never `cancelAllScheduledNotificationsAsync()` — cancel scheduled notifications by identifier
+- Never `.upsert()` on a table with no UPDATE policy — use `ignoreDuplicates: true` (it compiles to `ON CONFLICT DO UPDATE`)
+- Never add a `*_seen_at` column without `NOT NULL DEFAULT now()` + a backfill of existing rows
+- Never surface `private_notes` in a partner-facing view — owner-only RLS by design
 
 ### Design system
 - Never Ivory `#FBF5E8` as page background — Parchment `#F3E9D2` only

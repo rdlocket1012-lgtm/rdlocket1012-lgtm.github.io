@@ -235,6 +235,17 @@ docs/             DESIGN.md (source of truth), BUILD_PLAN.md
 - Client: `lib/supabase.ts` · Auth state: `stores/auth.store.ts`
 - Always use `stores/` for queries — never query in components
 - RLS enabled — test with correct user context
+- **Realtime: consolidate channels.** Too many per client trips Supabase's rate limit (it broke the live-game channel). The tab bar is a **swipe pager — all four tab screens mount at once**, and `useMilestones`/`useBucketList`/`useCalendarEvents` are **not** refcounted, so every caller opens its own channel. Never mount those hooks (or `useConnectionCalendar`) in `app/(tabs)/_layout.tsx` — read the store + a pure builder instead. `coupons.store` shows the refcount pattern.
+- **`.upsert()` needs an UPDATE policy** — it compiles to `ON CONFLICT DO UPDATE`. On insert-only tables pass `ignoreDuplicates: true`.
+- **New `*_seen_at` column ⇒ `NOT NULL DEFAULT now()` + backfill existing rows.** The client reads NULL as "never seen → everything is new"; skipping the backfill badges every live user with their entire history.
+- **Edge Functions live in `supabase/functions/`** — vendor before editing. `notify` computes the app-icon badge server-side; keep its `ACTIVITY_TABLES` in sync with `stores/unseen.store.ts`.
+
+## Notifications
+
+- Two `setNotificationHandler` call sites (`lib/notifications.ts`, `lib/notify.ts`) — **last installed wins globally**, so keep `shouldSetBadge` identical in both.
+- **Cancel by identifier, never `cancelAllScheduledNotificationsAsync()`** — it wipes other features' scheduled alerts. Ids: `otd-daily`, `date:<eventId>:day|pre`.
+- Dated reminders are **local** `DATE` triggers (`lib/date-reminders.ts`); partner pushes go through the `notify` Edge Function (`lib/push.ts`).
+- iOS drops anything past **64 pending** local notifications — the date scheduler caps at 24 events.
 
 ---
 
@@ -242,6 +253,7 @@ docs/             DESIGN.md (source of truth), BUILD_PLAN.md
 
 Before marking any screen done:
 - [ ] No emojis as icons
+- [ ] Icon names checked against `components/ui/Icon.tsx` — the `name` prop is typed `string`, so a wrong name renders **blank with no tsc error**
 - [ ] All touch targets ≥44×44pt
 - [ ] Primary text contrast ≥4.5:1
 - [ ] Safe areas respected (notch, Dynamic Island, home indicator)
