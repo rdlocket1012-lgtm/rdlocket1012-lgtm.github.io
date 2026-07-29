@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, Animated, PanResponder, GestureResponderEvent } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess } from '@/lib/haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 
@@ -18,7 +18,7 @@ export function ScratchCard({ idea, color }: { idea: string; color: string }) {
     if (revealedRef.current) return;
     revealedRef.current = true;
     setRevealed(true);
-    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
+    hapticSuccess();
     Animated.timing(foilOpacity, { toValue: 0, duration: 320, useNativeDriver: true }).start();
   }
 

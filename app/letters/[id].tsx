@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, ScrollView, ActionSheetIOS, Alert, Platform, Share } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
+import { confirm, choose } from '@/lib/feedback';
+import { warn as hapticWarn } from '@/lib/haptics';
 import Transition from 'react-native-screen-transitions';
 import { EaseView } from 'react-native-ease';
 import { LK, tint, theme } from '@/constants/theme';
@@ -16,6 +17,8 @@ import { usePartner } from '@/hooks/usePartner';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { notifyPartner } from '@/lib/push';
 import { VoiceLetterPlayer } from '@/components/letter/VoiceLetterPlayer';
+import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
+import { shouldCelebrateLetter, markLetterCelebrated } from '@/lib/letter-moments';
 
 /** Gentle staggered "unfold" for the letter — the page settling open (§10.13).
  *  Honours Reduce Motion by snapping to the final state. */
@@ -85,6 +88,33 @@ export default function LetterReaderScreen() {
   const reduced = useReducedMotion();
 
   const letter = letters.find((l) => l.id === id);
+
+  // ── Arrival moment (§M1/M2) ───────────────────────────────────────────────
+  // Letters were the only peak-worthy event in the app without a peak: opening
+  // one your partner wrote looked identical to opening your own. `letter-received`
+  // was drawn for exactly this and had no call site anywhere.
+  //
+  // Held back until the card→letter morph has settled, so the two animations
+  // don't fight. Hooks sit above the early return below.
+  const [arrival, setArrival] = useState(false);
+  useEffect(() => {
+    if (!letter || !profile?.id) return;
+    const fromPartner = !!letter.sender_id && letter.sender_id !== profile.id;
+    if (!fromPartner) return;
+    // A sealed letter that hasn't reached its reveal date isn't an arrival yet.
+    if (letter.reveal_at && new Date(letter.reveal_at).getTime() > Date.now()) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    shouldCelebrateLetter(letter.id, letter.created_at).then((yes) => {
+      if (!yes || cancelled) return;
+      markLetterCelebrated(letter.id);
+      timer = setTimeout(() => { if (!cancelled) setArrival(true); }, reduced ? 0 : 480);
+    });
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [letter?.id, profile?.id]);
+
   if (!letter) return null;
 
   const bodyText = letter.body_rich_html.replace(/<[^>]+>/g, ''); // for share/copy
@@ -95,64 +125,52 @@ export default function LetterReaderScreen() {
   const senderAvatar = isMine ? profile?.avatar_url : partner?.avatar_url;
   const senderInitial = (isMine ? profile?.display_name : partner?.display_name)?.trim()?.[0]?.toUpperCase() || (isMine ? 'Y' : 'P');
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!letter) return;
-    Alert.alert(
-      'Delete this letter?',
-      'It will be removed for both of you. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); } catch {}
-            await deleteLetter(letter.id);
-            router.back();
-          },
-        },
-      ],
-    );
+    const ok = await confirm({
+      title: 'Delete this letter?',
+      message: 'It will be removed for both of you. This cannot be undone.',
+      destructive: true,
+      icon: 'trash',
+    });
+    if (!ok) return;
+    hapticWarn();
+    await deleteLetter(letter.id);
+    router.back();
   }
 
   async function shareLetter() {
     try { await Share.share({ message: bodyText }); } catch {}
   }
 
-  function openMenu() {
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-    const options = ['Share', ...(isMine ? ['Delete letter'] : []), 'Cancel'];
-    const cancelButtonIndex = options.length - 1;
-    const destructiveButtonIndex = isMine ? 1 : undefined;
-
-    const handle = (i: number) => {
-      if (options[i] === 'Share') shareLetter();
-      else if (options[i] === 'Delete letter') confirmDelete();
-    };
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options, cancelButtonIndex, destructiveButtonIndex },
-        handle,
-      );
-    } else {
-      // Android fallback
-      const buttons: any[] = [{ text: 'Share', onPress: shareLetter }];
-      if (isMine) buttons.push({ text: 'Delete letter', style: 'destructive', onPress: confirmDelete });
-      buttons.push({ text: 'Cancel', style: 'cancel' });
-      Alert.alert('Letter', undefined, buttons);
-    }
+  // One themed sheet on both platforms — this used to be ActionSheetIOS on
+  // iOS with an Alert.alert fallback on Android, so the menu looked different
+  // depending on the phone.
+  async function openMenu() {
+    // No tap() here: RoundIcon routes through ScalePressable, which already
+    // fires it on press-in.
+    const picked = await choose({
+      title: 'This letter',
+      options: [
+        { label: 'Share', value: 'share' },
+        ...(isMine ? [{ label: 'Delete letter', value: 'delete', destructive: true }] : []),
+      ],
+      icon: 'envelope',
+    });
+    if (picked === 'share') shareLetter();
+    else if (picked === 'delete') confirmDelete();
   }
 
   function react(emoji: string) {
     if (!letter || !profile?.id) return;
     // Tapping the active reaction clears it; otherwise set the new one.
     const next = letter.reaction === emoji ? null : emoji;
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+    // ScalePressable already fired tap() on press-in.
     reactToLetter(letter.id, next, profile.id);
     // Notify the partner only when adding a reaction to a letter THEY sent you.
     if (next && letter.sender_id && letter.sender_id !== profile.id) {
-      const me = profile.display_name || 'Your partner';
+      // First name only — matches every other push in the app (§T1).
+      const me = (profile.display_name || 'Your partner').split(' ')[0];
       notifyPartner('letter_reaction', `${next} ${me} reacted`, `${me} reacted ${next} to your letter.`);
     }
   }
@@ -257,6 +275,15 @@ export default function LetterReaderScreen() {
         </View>
       </ScrollView>
       </Transition.Boundary.View>
+
+      {/* The arrival moment — plays once per letter, per device (§M1/M2). */}
+      <SendMomentOverlay
+        visible={arrival}
+        name="letter-received"
+        message={`A letter from ${senderName} 💌`}
+        subMessage="Take your time with it."
+        onDismiss={() => setArrival(false)}
+      />
     </SafeAreaView>
   );
 }

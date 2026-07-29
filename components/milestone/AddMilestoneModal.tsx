@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Modal, Platform, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, Modal, Platform, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -9,8 +9,9 @@ import { useMilestones } from '@/hooks/useMilestones';
 import { useCouple } from '@/hooks/useCouple';
 import { useAuthStore } from '@/stores/auth.store';
 import { DateField } from '@/components/ui/DateField';
-import { notifyPartner } from '@/lib/push';
+import { notifyPartner, senderName } from '@/lib/push';
 import { pickAndUploadMilestonePhoto } from '@/lib/milestone-photo';
+import { toast } from '@/lib/feedback';
 import type { Milestone } from '@/stores/milestones.store';
 
 const MAX_PHOTOS = 5;
@@ -20,7 +21,8 @@ interface Props {
   isPremium: boolean;
   onPaywall: () => void;
   editing?: Milestone;
-  onSaved?: () => void;
+  /** Receives the saved title so the caller can name it in the peak moment. */
+  onSaved?: (title: string) => void;
 }
 
 export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSaved }: Props) {
@@ -40,7 +42,7 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
     if (photoBusy || photos.length >= MAX_PHOTOS) return;
     const coupleId = couple?.id ?? useAuthStore.getState().profile?.couple_id;
     if (!coupleId) {
-      Alert.alert('Setting up', 'Your shared space is still loading. Try again in a moment.');
+      toast('Your shared space is still loading. Try again in a moment.');
       return;
     }
     try {
@@ -48,7 +50,7 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
       const url = await pickAndUploadMilestonePhoto(coupleId);
       if (url) setPhotos((p) => [...p, url]);
     } catch (e: any) {
-      Alert.alert('Could not add photo', e?.message ?? 'Please try again.');
+      toast.error(e?.message ?? 'Couldn’t add that photo.');
     } finally {
       setPhotoBusy(false);
     }
@@ -62,7 +64,7 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
     if (!title.trim()) return;
     const coupleId = couple?.id ?? useAuthStore.getState().profile?.couple_id;
     if (!coupleId) {
-      Alert.alert('Setting up', 'Your shared space is still loading. Try again in a moment.');
+      toast('Your shared space is still loading. Try again in a moment.');
       return;
     }
     setSaving(true);
@@ -88,13 +90,13 @@ export function AddMilestoneModal({ onClose, isPremium, onPaywall, editing, onSa
           photos,
           deleted_at: null,
         });
-        const name = (useAuthStore.getState().profile?.display_name || 'Your partner').split(' ')[0];
+        const name = senderName();
         notifyPartner('milestone', 'A new memory ✨', `${name} added "${title.trim()}" to your timeline`);
-        onSaved?.();
+        onSaved?.(title.trim());
       }
       onClose();
     } catch (e: any) {
-      Alert.alert('Could not save', e?.message ?? 'Unknown error');
+      toast.error(e?.message ?? 'Couldn’t save this milestone.');
     } finally {
       setSaving(false);
     }

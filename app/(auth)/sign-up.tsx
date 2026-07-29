@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
+import { alert, toast } from '@/lib/feedback';
 import { routeAfterAuth } from '@/lib/post-auth';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -41,7 +42,7 @@ export default function SignUpScreen() {
       options: { data: { display_name: data.name }, emailRedirectTo: 'locket://confirm-email' },
     });
     setLoading(false);
-    if (error) { Alert.alert('Sign up failed', error.message); return; }
+    if (error) { toast.error(error.message); return; }
     await AsyncStorage.multiSet([
       ['has_account', 'true'],
       ['display_name', data.name.trim()],
@@ -50,11 +51,11 @@ export default function SignUpScreen() {
     // With PKCE, email sign-up returns no session until the address is
     // confirmed — don't walk them into onboarding without a real account.
     if (!res.session) {
-      Alert.alert(
+      await alert(
         'Confirm your email',
         "We just sent a confirmation link to your inbox. Tap it, then come back and sign in — we'll set up your Locket from there.",
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/sign-in') }],
       );
+      router.replace('/(auth)/sign-in');
       return;
     }
     router.replace((await routeAfterAuth(res.user?.id)) as never);
@@ -72,14 +73,14 @@ export default function SignUpScreen() {
         provider: 'apple',
         token: credential.identityToken!,
       });
-      if (error) { Alert.alert('Apple sign-in failed', error.message); return; }
+      if (error) { toast.error(error.message); return; }
       await AsyncStorage.multiSet([['has_account', 'true'], ['ai_consent_granted_at', new Date().toISOString()]]);
       // Couple-aware: returning Apple user → home, brand-new → onboarding,
       // pending invite → resume the join.
       router.replace((await routeAfterAuth(res.user?.id)) as never);
     } catch (e: unknown) {
       if ((e as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Apple sign-in failed', 'Please try again.');
+        toast.error('Apple sign-in failed — please try again.');
       }
     }
   }

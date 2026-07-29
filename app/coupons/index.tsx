@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, Pressable,
-  TextInput, Modal, Alert, KeyboardAvoidingView,
+  TextInput, Modal, KeyboardAvoidingView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess } from '@/lib/haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { NewTag } from '@/components/ui/NewTag';
 import { useCoupons } from '@/hooks/useCoupons';
 import { useCouple } from '@/hooks/useCouple';
@@ -20,10 +21,11 @@ import { usePartner } from '@/hooks/usePartner';
 import { useAuthStore } from '@/stores/auth.store';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { useStreakRestore } from '@/hooks/useStreakRestore';
-import { notifyPartner } from '@/lib/push';
+import { notifyPartner, senderName } from '@/lib/push';
+import { confirm, toast } from '@/lib/feedback';
 import { iGifted, useCouponsStore, type Coupon } from '@/stores/coupons.store';
 
-const firstName = () => (useAuthStore.getState().profile?.display_name || 'Your partner').split(' ')[0];
+const firstName = senderName; // shared helper — see lib/push.ts
 
 // §13.22 empty state — kawaii gift-box sticker (§7) instead of a line-icon chip.
 const EMPTY_COUPON_ILLUS = require('../../assets/illustrations/milestones/custom.png');
@@ -78,7 +80,7 @@ export default function CouponsScreen() {
 
   async function handleCreate() {
     const coupleId = couple?.id ?? useAuthStore.getState().profile?.couple_id;
-    if (!coupleId) { Alert.alert('Setting up', 'Your shared space is still loading.'); return; }
+    if (!coupleId) { toast('Your shared space is still loading.'); return; }
     const t = picked != null
       ? TEMPLATES[picked]
       : { title: title.trim(), description: desc.trim() || null, icon: 'gift', color: 'pink' };
@@ -88,119 +90,104 @@ export default function CouponsScreen() {
       notifyPartner('coupon_gift', 'A new coupon for you 🎁', `${firstName()} gifted you "${t.title}"`);
       setSheet(false);
     } catch (e: any) {
-      Alert.alert('Could not create', e?.message ?? 'Try again.');
+      toast.error(e?.message ?? 'Couldn’t create that coupon.');
     }
   }
 
   async function handleStreakRestore() {
     const coupleId = couple?.id ?? useAuthStore.getState().profile?.couple_id;
     if (!coupleId || !streakRestore.canRestore) return;
-    Alert.alert(
-      'Save your streak?',
-      `This will rescue the ${streakRestore.missedDates.length} missed day${streakRestore.missedDates.length === 1 ? '' : 's'} and let your partner know you saved it.`,
-      [
-        { text: 'Not now', style: 'cancel' },
-        {
-          text: 'Save it',
-          onPress: async () => {
-            setRestoring(true);
-            try {
-              await addStreakRestoreCoupon({
-                coupleId,
-                missedDates: streakRestore.missedDates,
-                streakDaysLost: streakRestore.streakBeforeBreak,
-              });
-              try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
-            } catch (e: any) {
-              Alert.alert('Could not save', e?.message ?? 'Try again.');
-            } finally {
-              setRestoring(false);
-            }
-          },
-        },
-      ]
-    );
+    const missed = streakRestore.missedDates.length;
+    const ok = await confirm({
+      title: 'Save your streak?',
+      message: `This will rescue the ${missed} missed day${missed === 1 ? '' : 's'} and let your partner know you saved it.`,
+      confirmLabel: 'Save it',
+      cancelLabel: 'Not now',
+      icon: 'sparkle',
+    });
+    if (!ok) return;
+
+    setRestoring(true);
+    try {
+      await addStreakRestoreCoupon({
+        coupleId,
+        missedDates: streakRestore.missedDates,
+        streakDaysLost: streakRestore.streakBeforeBreak,
+      });
+      hapticSuccess();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Couldn’t save your streak.');
+    } finally {
+      setRestoring(false);
+    }
   }
 
   // Step 1 (recipient): ask to redeem — does NOT consume the coupon.
-  function confirmRequest(c: Coupon) {
-    Alert.alert(
-      `Redeem "${c.title}"?`,
-      `${firstName()} will get a request to approve this. It's only used once they say yes.`,
-      [
-        { text: 'Not yet', style: 'cancel' },
-        {
-          text: 'Send request 💛',
-          onPress: async () => {
-            try {
-              await requestRedeem(c.id);
-              notifyPartner('coupon_redeem_request', 'Coupon request 🎟️', `${firstName()} wants to redeem "${c.title}"`);
-              try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
-            } catch (e: any) {
-              Alert.alert('Could not send', e?.message ?? 'Try again.');
-            }
-          },
-        },
-      ]
-    );
+  async function confirmRequest(c: Coupon) {
+    const ok = await confirm({
+      title: `Redeem "${c.title}"?`,
+      message: `${firstName()} will get a request to approve this. It's only used once they say yes.`,
+      confirmLabel: 'Send request 💛',
+      cancelLabel: 'Not yet',
+      icon: 'gift',
+    });
+    if (!ok) return;
+    try {
+      await requestRedeem(c.id);
+      notifyPartner('coupon_redeem_request', 'Coupon request 🎟️', `${firstName()} wants to redeem "${c.title}"`);
+      hapticSuccess();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Couldn’t send that request.');
+    }
   }
 
   async function handleCancelRequest(c: Coupon) {
-    try { await cancelRequest(c.id); } catch (e: any) { Alert.alert('Could not cancel', e?.message ?? 'Try again.'); }
+    try { await cancelRequest(c.id); } catch (e: any) { toast.error(e?.message ?? 'Couldn’t cancel that request.'); }
   }
 
   // Step 2 (gifter): approve the partner's request → coupon is consumed.
-  function confirmApprove(c: Coupon) {
-    Alert.alert(
-      `Approve "${c.title}"?`,
-      `This marks the coupon as redeemed and lets ${firstName()} know you're on it.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Approve 🎉',
-          onPress: async () => {
-            try {
-              await approveRedeem(c.id);
-              notifyPartner('coupon_redeemed', 'Coupon approved 🎉', `${firstName()} approved "${c.title}" — enjoy!`);
-              try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
-            } catch (e: any) {
-              Alert.alert('Could not approve', e?.message ?? 'Try again.');
-            }
-          },
-        },
-      ]
-    );
+  async function confirmApprove(c: Coupon) {
+    const ok = await confirm({
+      title: `Approve "${c.title}"?`,
+      message: `This marks the coupon as redeemed and lets ${firstName()} know you're on it.`,
+      confirmLabel: 'Approve 🎉',
+      icon: 'check',
+    });
+    if (!ok) return;
+    try {
+      await approveRedeem(c.id);
+      notifyPartner('coupon_redeemed', 'Coupon approved 🎉', `${firstName()} approved "${c.title}" — enjoy!`);
+      hapticSuccess();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Couldn’t approve that.');
+    }
   }
 
-  function confirmDecline(c: Coupon) {
-    Alert.alert(
-      `Decline "${c.title}"?`,
-      'The coupon stays unused — your partner can ask again later.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await declineRequest(c.id);
-              notifyPartner('coupon_declined', 'Not right now 💛', `${firstName()} can't redeem "${c.title}" just yet`);
-            } catch (e: any) {
-              Alert.alert('Could not decline', e?.message ?? 'Try again.');
-            }
-          },
-        },
-      ]
-    );
+  async function confirmDecline(c: Coupon) {
+    const ok = await confirm({
+      title: `Decline "${c.title}"?`,
+      message: 'The coupon stays unused — your partner can ask again later.',
+      confirmLabel: 'Decline',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await declineRequest(c.id);
+      notifyPartner('coupon_declined', 'Not right now 💛', `${firstName()} can't redeem "${c.title}" just yet`);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Couldn’t decline that.');
+    }
   }
 
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
         <ScreenHeader eyebrow="Little favours" title="Love Coupons" onBack={() => router.back()} />
+        {/* Shimmer placeholders (§10.6). These were static opacity-stepped blocks —
+            exactly the "static grey block" Skeleton exists to replace. */}
         <View style={{ paddingHorizontal: 20, paddingTop: 20, gap: 12 }}>
-          {[1, 2, 3].map((i) => (
-            <View key={i} style={{ height: 100, backgroundColor: LK.ivory, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(42,33,26,0.08)', opacity: 1 - i * 0.15, boxShadow: '0 2px 8px rgba(42,33,26,0.07)' } as any} />
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={100} radius={20} />
           ))}
         </View>
       </SafeAreaView>

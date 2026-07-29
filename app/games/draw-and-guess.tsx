@@ -5,7 +5,6 @@ import {
   TextInput,
   ScrollView,
   KeyboardAvoidingView,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -17,7 +16,8 @@ import Animated, {
   Easing,
   ReduceMotion,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { tap, impact, success as hapticSuccess } from '@/lib/haptics';
+import { confirm } from '@/lib/feedback';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
@@ -36,19 +36,13 @@ const ERASER_COLOR = LK.parchment;
 type Phase = 'lobby' | 'word_pick' | 'drawing' | 'celebrating' | 'timeout';
 type Role = 'drawer' | 'guesser';
 
+/** Thin alias over the app haptic vocabulary (lib/haptics) so this screen's many
+ *  call sites stay terse. Was a local reimplementation that also skipped Android
+ *  entirely — the vocabulary is cross-platform. */
 function haptic(style: 'light' | 'medium' | 'success' = 'light') {
-  if (process.env.EXPO_OS !== 'ios') return;
-  try {
-    if (style === 'success') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else {
-      Haptics.impactAsync(
-        style === 'medium'
-          ? Haptics.ImpactFeedbackStyle.Medium
-          : Haptics.ImpactFeedbackStyle.Light,
-      );
-    }
-  } catch {}
+  if (style === 'success') hapticSuccess();
+  else if (style === 'medium') impact();
+  else tap();
 }
 
 // Simple confetti pieces rendered via Reanimated
@@ -446,14 +440,13 @@ export default function DrawAndGuessScreen() {
   }
 
   function clearCanvas() {
-    Alert.alert('Clear canvas?', 'This will remove all your strokes.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Clear',
-        style: 'destructive',
-        onPress: () => setStrokes([]),
-      },
-    ]);
+    confirm({
+      title: 'Clear canvas?',
+      message: 'This will remove all your strokes.',
+      confirmLabel: 'Clear',
+      destructive: true,
+      icon: 'eraser',
+    }).then((ok) => { if (ok) setStrokes([]); });
   }
 
   function submitGuess() {
@@ -1057,10 +1050,14 @@ export default function DrawAndGuessScreen() {
         >
           <ScalePressable
             onPress={() => {
-              Alert.alert('Leave game?', 'Your partner will see "time up".', [
-                { text: 'Stay', style: 'cancel' },
-                { text: 'Leave', style: 'destructive', onPress: quit },
-              ]);
+              confirm({
+                title: 'Leave game?',
+                message: 'Your partner will see "time up".',
+                confirmLabel: 'Leave',
+                cancelLabel: 'Stay',
+                destructive: true,
+                icon: 'door',
+              }).then((ok) => { if (ok) quit(); });
             }}
             accessibilityLabel="Leave game"
             style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(42,33,26,0.08)', alignItems: 'center', justifyContent: 'center' }}

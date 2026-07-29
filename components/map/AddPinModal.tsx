@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView,
-  Modal, KeyboardAvoidingView, Platform, Alert,
+  Modal, KeyboardAvoidingView, Platform,
   ActivityIndicator, Image,
 } from 'react-native';
 import { LK, tint, shade, catColor, theme } from '@/constants/theme';
@@ -16,6 +16,7 @@ import { DateField } from '@/components/ui/DateField';
 import type { MapPin } from '@/stores/map.store';
 import * as Location from 'expo-location';
 import { enrichFromCoords, type PlacesEnrichment } from '@/lib/places';
+import { alert, toast } from '@/lib/feedback';
 
 interface Props {
   onClose: () => void;
@@ -105,7 +106,7 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
     if (!name.trim()) return;
     const coupleId = couple?.id ?? useAuthStore.getState().profile?.couple_id;
     if (!coupleId) {
-      Alert.alert('Setting up', 'Your shared space is still loading. Try again in a moment.');
+      toast('Your shared space is still loading. Try again in a moment.');
       return;
     }
     setSaving(true);
@@ -124,7 +125,7 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
       }
       if (latitude == null || longitude == null) {
         setSaving(false);
-        Alert.alert(
+        alert(
           'Where is this place?',
           'Enter a recognizable place name (like a city) so we can locate it, or tap the spot on the map.',
         );
@@ -166,7 +167,7 @@ export function AddPinModal({ onClose, editing, coords }: Props) {
       }
       onClose();
     } catch (e: any) {
-      Alert.alert('Could not save', e?.message ?? 'Unknown error');
+      toast.error(e?.message ?? 'Couldn’t save this pin.');
     } finally {
       setSaving(false);
     }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LK, theme } from '@/constants/theme';
@@ -9,6 +9,7 @@ import { PressableScale } from '@/components/onboarding/PressableScale';
 import { pickAndUploadAvatar } from '@/lib/avatar';
 import { useAuthStore } from '@/stores/auth.store';
 import { success } from '@/lib/haptics';
+import { toast } from '@/lib/feedback';
 
 export default function PhotoScreen() {
   const { joiner } = useLocalSearchParams<{ joiner?: string }>();
@@ -31,7 +32,7 @@ export default function PhotoScreen() {
         success();
       }
     } catch (e: any) {
-      Alert.alert('Upload failed', e?.message ?? 'Unknown error');
+      toast.error(e?.message ?? 'Couldn’t upload that photo.');
     } finally {
       setBusy(false);
     }

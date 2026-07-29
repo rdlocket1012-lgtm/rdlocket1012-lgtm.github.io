@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
 import { iGifted, type Coupon } from '@/stores/coupons.store';
 import { useCouponHomeBanners, REDEEMED_WINDOW_MS } from '@/hooks/useCouponHomeBanners';
+import { confirm, toast } from '@/lib/feedback';
 
 const COLORS: Record<string, string> = {
   pink: LK.blush, coral: LK.coral, lilac: LK.lilac,
@@ -43,23 +44,17 @@ export function CouponActivityBanners({ partnerName }: { partnerName: string }) 
   );
 
   async function onApprove(c: Coupon) {
-    try { await approve(c); } catch (e: any) { Alert.alert('Could not approve', e?.message ?? 'Try again.'); }
+    try { await approve(c); } catch (e: any) { toast.error(e?.message ?? 'Couldn’t approve that.'); }
   }
-  function onDecline(c: Coupon) {
-    Alert.alert(
-      `Decline "${c.title}"?`,
-      'The coupon stays unused — your partner can ask again later.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            try { await decline(c); } catch (e: any) { Alert.alert('Could not decline', e?.message ?? 'Try again.'); }
-          },
-        },
-      ],
-    );
+  async function onDecline(c: Coupon) {
+    const ok = await confirm({
+      title: `Decline "${c.title}"?`,
+      message: 'The coupon stays unused — your partner can ask again later.',
+      confirmLabel: 'Decline',
+      destructive: true,
+    });
+    if (!ok) return;
+    try { await decline(c); } catch (e: any) { toast.error(e?.message ?? 'Couldn’t decline that.'); }
   }
 
   return (

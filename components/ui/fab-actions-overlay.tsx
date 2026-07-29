@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Modal, Pressable, View, Text } from 'react-native';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -53,10 +52,9 @@ export function FabActionsOverlay({ visible, onClose }: { visible: boolean; onCl
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
 
+  // No tap() here: each action row is a ScalePressable, which already fires
+  // it on press-in (this used to buzz twice, and only on iOS).
   function pick(action: Action) {
-    if (process.env.EXPO_OS === 'ios') {
-      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch { /* no-op */ }
-    }
     onClose();
     // Let the overlay dismiss before navigating so the transition reads cleanly.
     setTimeout(action.run, 60);

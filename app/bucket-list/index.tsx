@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal, KeyboardAvoidingView, Alert, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, KeyboardAvoidingView, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
+import { toast } from '@/lib/feedback';
 import { LK, tint, shade, catColor, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { RoundIcon } from '@/components/ui/round-icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { BUCKET_CATEGORIES } from '@/constants/categories';
 import { useBucketList } from '@/hooks/useBucketList';
 import { useCouple } from '@/hooks/useCouple';
@@ -26,7 +28,7 @@ const stagger = (i: number) =>
 
 export default function BucketListScreen() {
   const { category: initCategory } = useLocalSearchParams<{ category?: string }>();
-  const { items, addItem, toggleItem, deleteItem, updateItem } = useBucketList();
+  const { items, loading, addItem, toggleItem, deleteItem, updateItem } = useBucketList();
   const [scratchMode, setScratchMode] = useState(false);
   const dateIdeas = dateIdeasForDay(new Date(), 4);
   const { isPremium, couple } = useCouple();
@@ -97,7 +99,7 @@ export default function BucketListScreen() {
       return;
     }
     if (!couple?.id) {
-      Alert.alert('Not ready', 'Your shared space is still setting up. Try again in a moment.');
+      toast('Your shared space is still setting up. Try again in a moment.');
       return;
     }
     await addItem({
@@ -232,7 +234,12 @@ export default function BucketListScreen() {
 
         {/* Items */}
         <View style={{ paddingHorizontal: 18, paddingTop: 14, gap: 12 }}>
-          {items.length === 0 ? (
+          {/* Loading has to come BEFORE the empty check: `items` is [] until the
+              fetch lands, so a user with a full list used to be shown the
+              "you have nothing yet" pitch and then a pop. */}
+          {loading ? (
+            [0, 1, 2, 3].map((i) => <Skeleton key={i} height={68} radius={theme.radii.sm} />)
+          ) : items.length === 0 ? (
             <View style={{ alignItems: 'center', paddingTop: 40, gap: 14 }}>
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 4 }}>
                 {[LK.sky, LK.coral, LK.lilac].map((col, i) => (

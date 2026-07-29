@@ -1,17 +1,25 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, ScrollView, Modal, ActivityIndicator, Alert, Linking } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, Pressable, ScrollView, Modal, ActivityIndicator, Linking } from 'react-native';
 import { EaseView } from 'react-native-ease';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ScalePressable } from '@/components/ui/scale-pressable';
-import { purchasePlan, restorePurchases, purchasesAvailable } from '@/lib/revenuecat';
+import {
+  purchasePlan, restorePurchases, purchasesAvailable,
+  fetchPlanPrices, formatPrice, type PlanPrice,
+} from '@/lib/revenuecat';
 import { success as hapticSuccess } from '@/lib/haptics';
 import { useCouple } from '@/hooks/useCouple';
+import { toast } from '@/lib/feedback';
 
+// Plan metadata only — prices are NEVER hardcoded. The App Store charges in the
+// user's own storefront currency, so every amount on this screen comes from the
+// live RevenueCat offering (see fetchPlanPrices).
 const PLANS = [
-  { id: 'monthly', title: 'Monthly', price: '$3.99', per: '/month', tag: null },
-  { id: 'annual', title: 'Annual', price: '$29.99', per: '/year', tag: 'Save ~35%' },
+  { id: 'monthly', title: 'Monthly', per: '/month' },
+  { id: 'annual', title: 'Annual', per: '/year' },
 ] as const;
 
 const ROWS = [
@@ -33,6 +41,41 @@ export function PaywallModal({ onClose }: Props) {
   const [restoring, setRestoring] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // ── Live, localised pricing ───────────────────────────────────────────────
+  const [prices, setPrices] = useState<Partial<Record<'monthly' | 'annual', PlanPrice>> | null>(null);
+  const [priceState, setPriceState] = useState<'loading' | 'ready' | 'unavailable'>(
+    purchasesAvailable ? 'loading' : 'unavailable',
+  );
+
+  const loadPrices = useCallback(async () => {
+    if (!purchasesAvailable) return;
+    setPriceState('loading');
+    const p = await fetchPlanPrices();
+    if (p?.monthly || p?.annual) {
+      setPrices(p);
+      setPriceState('ready');
+    } else {
+      setPriceState('unavailable');
+    }
+  }, []);
+
+  useEffect(() => { loadPrices(); }, [loadPrices]);
+
+  const monthly = prices?.monthly;
+  const annual = prices?.annual;
+
+  // Exact savings, computed from the live pair — never an approximation.
+  const savingsPct = monthly && annual && monthly.price > 0
+    ? Math.round((1 - annual.price / (monthly.price * 12)) * 100)
+    : null;
+
+  // Annual reads as a bigger ask than monthly until it's shown per-month.
+  const annualPerMonth = annual && annual.price > 0
+    ? formatPrice(annual.price / 12, annual.currencyCode)
+    : null;
+
+  const canPurchase = priceState === 'ready';
+
   async function handlePurchase() {
     setLoading(true);
     try {
@@ -45,7 +88,7 @@ export function PaywallModal({ onClose }: Props) {
     } catch (e: any) {
       // RevenueCat sets userCancelled on a cancelled flow — stay silent then.
       if (!e?.userCancelled) {
-        Alert.alert('Purchase unavailable', e?.message ?? 'Something went wrong. Please try again.');
+        toast.error(e?.message ?? 'Something went wrong. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -61,10 +104,10 @@ export function PaywallModal({ onClose }: Props) {
         hapticSuccess();
         setSuccess(true);
       } else {
-        Alert.alert('Nothing to restore', 'No previous purchases were found for this account.');
+        toast('No previous purchases were found for this account.');
       }
     } catch (e: any) {
-      Alert.alert('Restore unavailable', e?.message ?? 'Could not restore purchases.');
+      toast.error(e?.message ?? 'Couldn’t restore purchases.');
     } finally {
       setRestoring(false);
     }
@@ -137,6 +180,10 @@ export function PaywallModal({ onClose }: Props) {
           <View style={{ gap: 10 }}>
             {PLANS.map((pl) => {
               const on = plan === pl.id;
+              const live = prices?.[pl.id];
+              const tag = pl.id === 'annual' && savingsPct != null && savingsPct > 0
+                ? `Save ${savingsPct}%`
+                : null;
               return (
                 <ScalePressable key={pl.id} scaleTo={0.98} onPress={() => setPlan(pl.id)}>
                   <EaseView
@@ -157,21 +204,47 @@ export function PaywallModal({ onClose }: Props) {
                     </View>
                     <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 16, color: LK.espresso }}>{pl.title}</Text>
-                      {pl.tag && (
+                      {tag && (
                         <View style={{ backgroundColor: rgba(LK.marigold, 0.3), borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 3 }}>
-                          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.marigold, 0.45) }}>{pl.tag}</Text>
+                          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.marigold, 0.45) }}>{tag}</Text>
                         </View>
                       )}
                     </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, color: LK.espresso }}>{pl.price}</Text>
-                      <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70 }}>{pl.per}</Text>
+                    <View style={{ alignItems: 'flex-end', minWidth: 74 }}>
+                      {priceState === 'loading' ? (
+                        <>
+                          <Skeleton width={62} height={19} radius={6} />
+                          <Skeleton width={40} height={11} radius={5} style={{ marginTop: 5 }} />
+                        </>
+                      ) : (
+                        <>
+                          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, color: LK.espresso }}>
+                            {live?.priceString ?? '—'}
+                          </Text>
+                          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70 }}>
+                            {pl.id === 'annual' && annualPerMonth ? `${annualPerMonth}/mo` : pl.per}
+                          </Text>
+                        </>
+                      )}
                     </View>
                   </EaseView>
                 </ScalePressable>
               );
             })}
           </View>
+
+          {/* Pricing couldn't be loaded — never guess an amount, offer a retry. */}
+          {priceState === 'unavailable' && purchasesAvailable && (
+            <View style={{ backgroundColor: tint(LK.warning, 0.72), borderRadius: 14, padding: 12, marginTop: 12, flexDirection: 'row', gap: 9, alignItems: 'center' }}>
+              <Icon name="info" size={16} color={shade(LK.warning, 0.45)} />
+              <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontSize: 12.5, color: shade(LK.warning, 0.55), lineHeight: 18 }}>
+                Couldn’t load pricing just now — check your connection.
+              </Text>
+              <ScalePressable onPress={loadPrices} haptic={false} hitSlop={10} accessibilityLabel="Retry loading pricing">
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 12.5, color: shade(LK.warning, 0.55) }}>Retry</Text>
+              </ScalePressable>
+            </View>
+          )}
 
           {/* Shared-subscription reassurance */}
           <View style={{ backgroundColor: tint(LK.blush, 0.62), borderRadius: 16, padding: 14, marginTop: 16, flexDirection: 'row', gap: 11, alignItems: 'center' }}>
@@ -194,8 +267,12 @@ export function PaywallModal({ onClose }: Props) {
 
           <ScalePressable
             onPress={handlePurchase}
-            disabled={loading}
-            style={{ backgroundColor: LK.marigold, borderRadius: 9999, padding: 16, alignItems: 'center', marginTop: 18, ...theme.shadow.card }}
+            disabled={loading || !canPurchase}
+            style={{
+              backgroundColor: LK.marigold, borderRadius: 9999, padding: 16, alignItems: 'center', marginTop: 18,
+              opacity: canPurchase ? 1 : 0.5,
+              ...theme.shadow.card,
+            }}
           >
             {loading ? (
               <ActivityIndicator color={LK.espresso} />
@@ -222,10 +299,19 @@ export function PaywallModal({ onClose }: Props) {
             Cancel anytime. No hostile fine print, ever.
           </Text>
 
-          {/* Apple-required subscription disclosure + EULA / Privacy links (Guideline 3.1.2) */}
+          {/* Apple-required subscription disclosure + EULA / Privacy links (Guideline 3.1.2).
+              The amounts must match what the store will actually charge, so they're
+              interpolated from the live offering — never hardcoded. */}
           <Text style={{ fontFamily: theme.fonts.body, fontSize: 10.5, color: LK.ink70, textAlign: 'center', lineHeight: 16, marginTop: 12 }}>
             Locket Premium is an auto-renewable subscription. Your subscription renews
-            automatically — Monthly ($3.99) or Annual ($29.99) — unless cancelled at least 24 hours
+            automatically
+            {monthly || annual
+              ? ` — ${[
+                  monthly && `Monthly (${monthly.priceString})`,
+                  annual && `Annual (${annual.priceString})`,
+                ].filter(Boolean).join(' or ')} — `
+              : ' '}
+            unless cancelled at least 24 hours
             before the end of the current period. Payment is charged to your Apple ID account at
             purchase confirmation. Manage or cancel anytime in your App Store account settings.
           </Text>

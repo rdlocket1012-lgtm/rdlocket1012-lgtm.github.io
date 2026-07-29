@@ -3,6 +3,21 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/auth.store';
+
+/**
+ * The CURRENT user's first name, for use in pushes *they* trigger.
+ *
+ * Push bodies are read by the partner, so they must name the sender — not the
+ * recipient. Getting this backwards is easy: a screen usually has the partner's
+ * name close to hand and the sender's nowhere in sight.
+ *
+ * Falls back to "Your partner", which reads correctly sentence-initially
+ * ("Your partner sent you a hug").
+ */
+export function senderName(): string {
+  return (useAuthStore.getState().profile?.display_name || 'Your partner').split(' ')[0];
+}
 
 const PROJECT_ID =
   (Constants?.expoConfig?.extra as any)?.eas?.projectId ??

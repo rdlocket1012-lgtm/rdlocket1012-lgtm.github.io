@@ -4,11 +4,11 @@ import {
   Text,
   TextInput,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView, useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { toast } from '@/lib/feedback';
 import { LK, theme } from '@/constants/theme';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { StationeryRules } from '@/components/ui/stationery-rules';
@@ -75,7 +75,7 @@ export default function NoteComposeScreen() {
       }
       router.back();
     } catch (e: any) {
-      Alert.alert('Could not save note', e?.message ?? 'Please try again in a moment.');
+      toast.error(e?.message ?? 'Couldn’t save that note.');
     }
   }, [existing, addNote, updateNote]);
 

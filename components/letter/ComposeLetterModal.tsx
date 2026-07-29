@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Pressable, Modal, ScrollView, ActivityIndicator, Animated, Easing } from 'react-native';
+import { View, Text, TextInput, Pressable, Modal, ScrollView, ActivityIndicator, Animated, Easing, Keyboard } from 'react-native';
 import { KeyboardProvider, KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
@@ -19,6 +19,8 @@ import {
   encodeLoveCard,
   type IllustrationKey,
 } from '@/constants/love-card-illustrations';
+// TEMPORARY — the 17 Jul 2026 reunion. Remove with the `reunionOnly` seal preset.
+import { REUNION_AT, REUNION_COUPLE_ID } from '@/constants/reunion';
 
 interface Props {
   onClose: () => void;
@@ -27,7 +29,19 @@ interface Props {
   initialMode?: 'text' | 'voice' | 'card';
 }
 
-const SEAL_OPTIONS = [
+type SealOption = {
+  label: string;
+  getValue: (startDate?: string) => string | null;
+  /** Gated to the reunion couple — see `constants/reunion.ts`. */
+  reunionOnly?: boolean;
+};
+
+const SEAL_OPTIONS: SealOption[] = [
+  // TEMPORARY — the 17 Jul 2026 reunion. Unlike the presets below it, this one
+  // resolves to a full ISO instant rather than a bare date, so the letter opens
+  // at 5:30 PM sharp instead of at midnight. `reveal_at` is timestamptz, so it
+  // takes both. Drop this entry once the day has passed.
+  { label: 'When we meet 💕', getValue: () => REUNION_AT.toISOString(), reunionOnly: true },
   { label: 'Our anniversary', getValue: (startDate: string | undefined) => startDate ?? null },
   { label: 'Dec 31, 2026', getValue: () => '2026-12-31' },
   { label: '1 year from now', getValue: () => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().split('T')[0]; } },
@@ -253,7 +267,16 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
           </ScalePressable>
           <View style={{ flex: 1 }} />
           <ScalePressable
-            onPress={() => isPremium ? setSealedOpen(true) : onPaywall()}
+            onPress={() => {
+              if (!isPremium) return onPaywall();
+              // The editor autofocuses, so the keyboard is always up by the time
+              // this is tappable. The picker is `inset: 0` + `flex-end`, which
+              // pins its panel to the bottom of the *full* screen — i.e. behind
+              // a ~320pt keyboard, and the panel is only ~270pt tall, so it was
+              // completely covered. All the user ever saw was the scrim dim.
+              Keyboard.dismiss();
+              setSealedOpen(true);
+            }}
             scaleTo={0.95}
             accessibilityLabel="Seal until a date"
             style={{
@@ -315,7 +338,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
                 Your partner won't be able to open this until the date you choose.
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 18 }}>
-                {SEAL_OPTIONS.map((opt) => {
+                {SEAL_OPTIONS.filter((opt) => !opt.reunionOnly || couple?.id === REUNION_COUPLE_ID).map((opt) => {
                   const val = opt.getValue(couple?.start_date);
                   return (
                     <Chip

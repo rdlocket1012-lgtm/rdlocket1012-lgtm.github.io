@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { impact } from '@/lib/haptics';
+import { toast } from '@/lib/feedback';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
@@ -18,9 +19,12 @@ import { QUIZ_QUESTIONS, LETTERS } from '@/constants/quiz-questions';
 const OPTION_COLORS = [LK.coral, LK.marigold, LK.lilac, LK.success];
 const CATEGORY_LABEL: Record<string, string> = { casual: 'Just for fun', romantic: 'Cozy & sweet', deep: 'Know them deeper' };
 
-export function DailyQuizCard({ hideStreak = false, onReveal }: {
+export function DailyQuizCard({ hideStreak = false, bare = false, onReveal }: {
   hideStreak?: boolean;
-  onReveal?: (name: MascotAnimationName, message: string) => void;
+  /** Drop the card's own screen gutter + top padding. Set when a parent already
+   *  owns the horizontal inset — e.g. Home's Today spine. */
+  bare?: boolean;
+  onReveal?: (name: MascotAnimationName, message: string, subMessage?: string) => void;
 }) {
   const { today, submit, comment } = useQuiz();
   const streak = useQuizStreak();
@@ -69,13 +73,17 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
       : r.iGuessedRight || r.partnerGuessedRight
         ? 'quiz-correct'
         : 'quiz-wrong';
+    // Name who did what — "Nice guess!" never said whose. Failure stays kind:
+    // a mismatch is framed as a difference, not a miss.
     const message = sameAnswer
-      ? 'Same answer! 💛'
+      ? `Same answer as ${partnerName} 💛`
       : r.iGuessedRight && r.partnerGuessedRight
-        ? 'You really know each other! 💛'
-        : r.iGuessedRight || r.partnerGuessedRight
-          ? 'Nice guess! ✨'
-          : 'Different instincts 😄';
+        ? 'You both called it 💛'
+        : r.iGuessedRight
+          ? `You knew ${partnerName} on that one ✨`
+          : r.partnerGuessedRight
+            ? `${partnerName} knew you on that one ✨`
+            : 'Different instincts 😄';
     onReveal?.(name, message);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bothSubmitted]);
@@ -88,7 +96,11 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
     const prev = prevStreakRef.current;
     prevStreakRef.current = streak.current;
     if (streak.current > prev && STREAK_MILESTONES.includes(streak.current)) {
-      onReveal?.('streak-milestone', `${streak.current}-day streak! 🔥`);
+      onReveal?.(
+        'streak-milestone',
+        `${streak.current} days in a row 🔥`,
+        'Neither of you has missed one.',
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streak.current, streak.loading]);
@@ -107,7 +119,7 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
   }
 
   function tapHaptic() {
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch { /* no-op */ }
+    impact();
   }
 
   function pickSelf(letter: string) {
@@ -126,7 +138,7 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
       justCompletedRef.current = true;
     } catch (e: any) {
       setGuessPick(null);
-      Alert.alert('Could not save', e?.message ?? 'Try again.');
+      toast.error(e?.message ?? 'Couldn’t save your answer.');
     } finally {
       setSubmitting(false);
     }
@@ -148,7 +160,7 @@ export function DailyQuizCard({ hideStreak = false, onReveal }: {
   const choosingGuess = step === 'guess';
 
   return (
-    <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 22 }}>
+    <View style={bare ? undefined : { paddingHorizontal: theme.layout.screenX, paddingTop: 22 }}>
       <View
         style={{
           backgroundColor: LK.vellum,

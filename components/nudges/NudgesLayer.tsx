@@ -15,7 +15,7 @@ import { SparkleBurst } from '@/components/nudges/SparkleBurst';
 import { RippleBurst } from '@/components/nudges/RippleBurst';
 import { BiteBurst } from '@/components/nudges/BiteBurst';
 import { useNudgeChannel, NudgeKind } from '@/hooks/useNudgeChannel';
-import { notifyPartner } from '@/lib/push';
+import { notifyPartner, senderName } from '@/lib/push';
 import { useBiteFx } from '@/stores/bite-fx.store';
 import { useAuthStore } from '@/stores/auth.store';
 import MascotAnimation, { type MascotAnimationName } from '@/components/ui/mascot-animation';
@@ -88,6 +88,9 @@ export function NudgesLayer({
   partnerSilent?: boolean;
 }) {
   const partner = partnerName?.trim() || 'Your partner';
+  // Mid-sentence variant: the fallback above is capitalised for sentence-initial
+  // use ('Your partner nibbled you'), which reads wrong inside a phrase.
+  const partnerLc = partnerName?.trim() || 'your partner';
   const [sparkleTrigger, setSparkleTrigger] = useState(0);
   const [rippleTrigger, setRippleTrigger] = useState(0);
   const [biteTrigger, setBiteTrigger] = useState(0);
@@ -157,7 +160,7 @@ export function NudgesLayer({
     setSparkleTrigger((n) => n + 1);
     sendNudge('sparkles');
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-    notifyPartner('nudge_hug', '✨ Sparkles!', 'Your partner sent you sparkles.');
+    notifyPartner('nudge_hug', '✨ Sparkles!', `${senderName()} sent you sparkles.`);
     onClose();
   }
 
@@ -165,26 +168,26 @@ export function NudgesLayer({
     setRippleTrigger((n) => n + 1);
     hugHaptic();
     sendNudge('hug');
-    notifyPartner('nudge_hug', '🤗 A warm hug!', 'Your partner sent you a hug.');
+    notifyPartner('nudge_hug', '🤗 A warm hug!', `${senderName()} sent you a hug.`);
     onClose();
-    setSendPeak({ name: 'hug-send', message: 'Hug sent 🤗' });
+    setSendPeak({ name: 'hug-send', message: `A hug for ${partnerLc} 🤗` });
   }
 
   function doKissRequest() {
     sendNudge('kiss_request');
-    notifyPartner('nudge_kiss_request', '💋 Kiss incoming!', 'Tap to catch it before it lands…');
+    notifyPartner('nudge_kiss_request', '💋 Kiss incoming!', `From ${senderName()} — tap to catch it before it lands…`);
     onClose();
     // Sender peak — the kiss floats off; partner still has to "Catch It!" to land it.
-    setSendPeak({ name: 'kiss-send', message: 'Kiss on its way 💋' });
+    setSendPeak({ name: 'kiss-send', message: `On its way to ${partnerLc} 💋` });
   }
 
   function doBite() {
     biteHaptic();
     sendNudge('bite');
-    notifyPartner('bite', 'Ouch! 🦷', 'Your partner just playfully bit you over-the-air. Open to bite back!', 'bite');
+    notifyPartner('bite', 'Ouch! 🦷', `${senderName()} just playfully bit you over-the-air. Open to bite back!`, 'bite');
     onClose();
     // The bite-send mascot is the whole animation now — no emoji burst / feisty banner.
-    setSendPeak({ name: 'bite-send', message: 'Nibble sent 😈' });
+    setSendPeak({ name: 'bite-send', message: `${partner} won't see that coming 😈` });
   }
 
   function doThumbKiss() {
@@ -193,7 +196,7 @@ export function NudgesLayer({
     setKissOpen(true);
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
     sendNudge('thumb_kiss_invite');
-    notifyPartner('thumb_kiss', '💞 Thumb-Kiss?', 'Your partner wants to hold thumbs — open Locket and press together.');
+    notifyPartner('thumb_kiss', '💞 Thumb-Kiss?', `${senderName()} wants to hold thumbs — open Locket and press together.`);
     onClose();
   }
 

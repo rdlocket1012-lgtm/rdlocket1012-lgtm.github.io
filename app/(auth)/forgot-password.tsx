@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/lib/supabase';
+import { toast } from '@/lib/feedback';
 import { LK, theme } from '@/constants/theme';
 import { Btn } from '@/components/ui/btn';
 import { Icon } from '@/components/ui/Icon';
@@ -28,7 +29,7 @@ export default function ForgotPasswordScreen() {
       redirectTo: 'locket://reset-password',
     });
     setLoading(false);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { toast.error(error.message); return; }
     setSent(true);
   }
 

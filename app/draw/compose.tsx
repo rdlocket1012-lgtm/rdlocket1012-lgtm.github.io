@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ActivityIndicator,
-  Alert,
   useWindowDimensions,
   type View as RNView,
 } from 'react-native';
@@ -19,6 +18,7 @@ import { useDrawStore } from '@/stores/draw.store';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
 import { success } from '@/lib/haptics';
+import { confirm, toast } from '@/lib/feedback';
 import { LK, theme } from '@/constants/theme';
 import { Image } from 'expo-image';
 
@@ -82,19 +82,25 @@ export default function ComposeDrawScreen() {
 
   function handleClear() {
     if (strokes.length === 0) return;
-    Alert.alert('Clear canvas?', 'This will remove everything you’ve drawn.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => { setStrokes([]); setRedo([]); } },
-    ]);
+    confirm({
+      title: 'Clear canvas?',
+      message: 'This will remove everything you’ve drawn.',
+      confirmLabel: 'Clear',
+      destructive: true,
+      icon: 'eraser',
+    }).then((ok) => { if (ok) { setStrokes([]); setRedo([]); } });
   }
 
   function handleClose() {
     if (sending) return;
     if (strokes.length > 0 && !sent) {
-      Alert.alert('Discard this drawing?', 'It hasn’t been sent yet.', [
-        { text: 'Keep drawing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => router.back() },
-      ]);
+      confirm({
+        title: 'Discard this drawing?',
+        message: 'It hasn’t been sent yet.',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep drawing',
+        destructive: true,
+      }).then((ok) => { if (ok) router.back(); });
       return;
     }
     router.back();
@@ -102,7 +108,7 @@ export default function ComposeDrawScreen() {
 
   async function handleSend() {
     if (isEmpty) {
-      Alert.alert('Nothing to send', 'Draw something first!');
+      toast('Draw something first!');
       return;
     }
     if (!coupleId || !userId) return;

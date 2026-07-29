@@ -20,7 +20,6 @@ import { DoodleBackground } from '@/components/ui/doodle-background';
 import { TYPE_ICON } from '@/constants/milestone-types';
 import { DailyQuizCard } from '@/components/quiz/DailyQuizCard';
 import { ChallengeCard } from '@/components/ui/ChallengeCard';
-import { StreakMascot } from '@/components/ui/streak-mascot';
 import { BadgeUnlockOverlay } from '@/components/ui/BadgeUnlockOverlay';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useBadgeCelebration } from '@/hooks/useBadgeCelebration';
@@ -43,6 +42,13 @@ import MascotAnimation from '@/components/ui/mascot-animation';
 import type { MascotAnimationName } from '@/components/ui/mascot-animation';
 import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
 import { WidgetHelpModal } from '@/components/ui/widget-help-modal';
+import { SectionEyebrow } from '@/components/ui/section-eyebrow';
+import { TodaySpine } from '@/components/home/today-spine';
+import { StreakRow } from '@/components/home/streak-row';
+// TEMPORARY — the 17 Jul 2026 reunion. Remove this import, the block below it
+// in the tree, and `constants/reunion.ts` once the day has passed.
+import { ReunionCountdown } from '@/components/home/ReunionCountdown';
+import { REUNION_COUPLE_ID } from '@/constants/reunion';
 // NOTE: WatchTogether is intentionally NOT imported here yet — it pulls in the
 // native react-native-webview module which only exists in build #19 (v1.0.1).
 // Importing it would crash build #18 over OTA. Re-wire when cutting build #19.
@@ -60,9 +66,9 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [peakMoment, setPeakMoment] = useState<{ name: MascotAnimationName; message: string } | null>(null);
-  const handleReveal = useCallback((name: MascotAnimationName, message: string) => {
-    setPeakMoment({ name, message });
+  const [peakMoment, setPeakMoment] = useState<{ name: MascotAnimationName; message: string; sub?: string } | null>(null);
+  const handleReveal = useCallback((name: MascotAnimationName, message: string, sub?: string) => {
+    setPeakMoment({ name, message, sub });
   }, []);
   const [widgetCtaVisible, setWidgetCtaVisible] = useState(false);
   const [widgetHelpOpen, setWidgetHelpOpen] = useState(false);
@@ -71,7 +77,9 @@ export default function HomeScreen() {
   const streak = useQuizStreak();
   const badge = useBadgeCelebration(streak.best, !streak.loading);
   const challenge = useChallenges();
-  useStreakPause(); // keep pause windows loaded so the streak math holds during a pause
+  // Keeps pause windows loaded so the streak math holds during a pause — and now
+  // also feeds the paused-state card its resume date (§B3).
+  const { activePause } = useStreakPause();
   // The bell reflects everything in the Activity feed — letters, coupons,
   // memories and drawings — not just letters+coupons, and it clears when the
   // feed is opened rather than only when each feature screen is visited.
@@ -159,6 +167,20 @@ export default function HomeScreen() {
     }
   }, [isAnniversary, reducedMotion]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
+  // §B2 — entrance delays derive from the order of what's actually VISIBLE.
+  // They used to be hardcoded (60/120/160/185/200/220/260/300), so a user with
+  // three cards waited as long as one with eight, and got dead air where the
+  // hidden cards would have been. JSX children evaluate in source order and
+  // `&&` short-circuits, so a skipped section never takes a slot.
+  let entranceStep = 0;
+  const nextDelay = () => 60 + Math.min(entranceStep++, 8) * 45;
+
+  // Region contents — computed up front so each region can decide whether it
+  // has anything to say before it prints a heading.
+  const showStreak = partnerJoined && !streak.loading;
+  const showChallenge = partnerJoined && !challenge.loading && !!challenge.def;
+  const hasStory = !!(memory && memoryColor) || showAnniversaryCountdown || story.length > 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
@@ -273,6 +295,9 @@ export default function HomeScreen() {
           </View>
         </FadeSlideIn>
 
+        {/* ── TEMPORARY: reunion countdown (17 Jul 2026) ───────────────────── */}
+        {couple?.id === REUNION_COUPLE_ID && <ReunionCountdown partnerFirstName={partnerFirst} />}
+
         {/* Invite-partner banner (only when no partner) */}
         {!partnerJoined && (
           <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 12 }}>
@@ -297,52 +322,18 @@ export default function HomeScreen() {
         {/* ── Coupon activity: redeem requests (approve) + recent redemptions ── */}
         {partnerJoined && <CouponActivityBanners partnerName={partnerFirst} />}
 
-        {/* ── Zone B: Daily quiz ───────────────────────────────────────────── */}
-        <FadeSlideIn delay={120}>
-          <DailyQuizCard hideStreak onReveal={handleReveal} />
-        </FadeSlideIn>
-
-        {/* ── Zone C: Streak row (slim) — forgiven state only ──────────────── */}
-        {partnerJoined && !streak.loading && (
-          <FadeSlideIn delay={160}>
-            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
-              <ScalePressable
-                scaleTo={0.98}
-                onPress={() => router.push('/streak')}
-                accessibilityLabel="View your streak and achievements"
-                style={{
-                  backgroundColor: LK.ivory,
-                  borderRadius: 20,
-                  borderCurve: 'continuous',
-                  padding: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
-                } as any}
-              >
-                <StreakMascot size={52} active={streak.current > 0} />
-                <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: streak.current > 0 ? LK.coral : LK.espresso, letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>
-                  {streak.current}
-                </Text>
-                <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.sepia, flex: 1 }}>
-                  {streak.pausedActive ? 'streak paused' : streak.current === 0 ? 'start a new streak today' : 'day streak'}
-                </Text>
-                {streak.best > 0 && (
-                  <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '700', color: LK.faded }}>
-                    best: {streak.best}
-                  </Text>
-                )}
-                <Icon name="chevR" size={16} color={LK.faded} />
-              </ScalePressable>
-            </View>
+        {/* ══ REGION: TODAY ════════════════════════════════════════════════
+            The day's actions, strung on one connector spine so they read as a
+            single unit instead of three more cards in the stack (§B1). Coral is
+            this region's accent; Your story below owns Marigold. */}
+        <SectionEyebrow label="Today" color={shade(LK.coral, 0.3)} paddingTop={22} />
+        <TodaySpine>
+          <FadeSlideIn delay={nextDelay()}>
+            <DailyQuizCard bare hideStreak onReveal={handleReveal} />
           </FadeSlideIn>
-        )}
 
-        {/* ── Zone C½: Weekly challenge ────────────────────────────────────── */}
-        {partnerJoined && !challenge.loading && challenge.def && (
-          <FadeSlideIn delay={185}>
-            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
+          {showChallenge && challenge.def && (
+            <FadeSlideIn delay={nextDelay()}>
               <ChallengeCard
                 title={challenge.def.title}
                 icon={challenge.def.icon}
@@ -352,26 +343,52 @@ export default function HomeScreen() {
                 daysLeft={challenge.daysLeft}
                 isComplete={challenge.isComplete}
               />
-            </View>
-          </FadeSlideIn>
+            </FadeSlideIn>
+          )}
+
+          {/* Renders whenever the couple is connected — paused or running. The
+              old comment here claimed "forgiven state only", which never matched
+              the condition (§B4). */}
+          {showStreak && (
+            <FadeSlideIn delay={nextDelay()}>
+              <StreakRow
+                current={streak.current}
+                best={streak.best}
+                pausedActive={!!streak.pausedActive}
+                pauseEndDate={activePause?.end_date}
+              />
+            </FadeSlideIn>
+          )}
+        </TodaySpine>
+
+        {/* ══ REGION: YOUR STORY ═══════════════════════════════════════════
+            What you've already built together. Only prints its heading when
+            there's something under it. */}
+        {hasStory && (
+          <SectionEyebrow
+            label="Your story"
+            color={shade(LK.marigold, 0.4)}
+            trailing={
+              <ScalePressable
+                onPress={() => router.push('/(tabs)/timeline')}
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                accessibilityLabel="See all of your story"
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+              >
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: shade(LK.marigold, 0.5) }}>See all</Text>
+                <Icon name="chevR" size={13} color={shade(LK.marigold, 0.5)} />
+              </ScalePressable>
+            }
+          />
         )}
 
-        {/* ── Zone D: On this day (contextual) ─────────────────────────────── */}
+        {/* On this day (contextual) */}
         {memory && memoryColor && (
-          <FadeSlideIn delay={200}>
-            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 24 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingHorizontal: 2 }}>
-                <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso }}>On this day</Text>
-                <ScalePressable
-                  onPress={() => router.push('/(tabs)/timeline')}
-                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-                  accessibilityLabel="See all memories"
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
-                >
-                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: shade(LK.marigold, 0.5) }}>See all</Text>
-                  <Icon name="chevR" size={14} color={shade(LK.marigold, 0.5)} />
-                </ScalePressable>
-              </View>
+          <FadeSlideIn delay={nextDelay()}>
+            <View style={{ paddingHorizontal: theme.layout.screenX }}>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso, marginBottom: 10, paddingHorizontal: 2 }}>
+                On this day
+              </Text>
               {/* SOURCE for the card → milestone-detail morph (§10.13). Same
                   group/id as the timeline + story-strip triggers; pairs are keyed
                   per source screen so the duplicate id is unambiguous. */}
@@ -413,8 +430,8 @@ export default function HomeScreen() {
 
         {/* ── Zone E: Anniversary countdown (contextual, ≤45 days) ─────────── */}
         {showAnniversaryCountdown && (
-          <FadeSlideIn delay={220}>
-            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
+          <FadeSlideIn delay={nextDelay()}>
+            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 14 }}>
               <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 14, paddingRight: 16, ...theme.shadow.sm }}>
                 <View style={{ width: 4, alignSelf: 'stretch', backgroundColor: LK.marigold }} />
                 <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: tint(LK.marigold, 0.7), alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
@@ -432,21 +449,11 @@ export default function HomeScreen() {
         )}
 
         {/* ── Zone F: Your story (milestone strip) ─────────────────────────── */}
+        {/* Milestone strip. The region eyebrow above carries its label and
+            "See all", so this no longer prints a duplicate header. */}
         {story.length > 0 && (
-          <FadeSlideIn delay={260}>
-            <View style={{ paddingTop: 24 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.layout.screenX, marginBottom: 12 }}>
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, letterSpacing: 0.5, textTransform: 'uppercase', color: LK.espresso }}>Your story</Text>
-                <ScalePressable
-                  onPress={() => router.push('/(tabs)/timeline')}
-                  hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-                  accessibilityLabel="See all of your story"
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
-                >
-                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: LK.sepia }}>See all</Text>
-                  <Icon name="chevR" size={13} color={LK.sepia} />
-                </ScalePressable>
-              </View>
+          <FadeSlideIn delay={nextDelay()}>
+            <View style={{ paddingTop: 14 }}>
               <FlatList
                 data={story}
                 keyExtractor={(m) => m.id}
@@ -488,8 +495,12 @@ export default function HomeScreen() {
         )}
 
         {/* ── Zone G: Premium nudge (free users only) ──────────────────────── */}
+        {/* Premium nudge (free users only). Deliberately OUTSIDE both regions:
+            it is a persistent footer CTA, and filing it under "Your story" would
+            mean a couple with no milestones yet got a heading whose only content
+            was an advert. */}
         {!isPremium && (
-          <FadeSlideIn delay={300}>
+          <FadeSlideIn delay={nextDelay()}>
             <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 24 }}>
               <ScalePressable
                 onPress={() => setPaywallOpen(true)}
@@ -522,6 +533,7 @@ export default function HomeScreen() {
         visible={!!peakMoment}
         name={peakMoment?.name ?? 'quiz-correct'}
         message={peakMoment?.message ?? ''}
+        subMessage={peakMoment?.sub}
         onDismiss={() => setPeakMoment(null)}
       />
       {/* Defer the badge celebration until any quiz-reveal moment has cleared,

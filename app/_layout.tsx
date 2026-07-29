@@ -28,6 +28,8 @@ import { registerNudgeCategories, setupNudgeResponseHandler } from '@/lib/notifi
 import { routeAfterAuth } from '@/lib/post-auth';
 import { useNudgeLaunch } from '@/stores/nudge-launch.store';
 import { AppErrorBoundary } from '@/components/ui/error-boundary';
+import { ConfirmSheetHost } from '@/components/ui/confirm-sheet';
+import { ToastHost } from '@/components/ui/toast';
 import { initSentry, Sentry } from '@/lib/sentry';
 
 // Initialise crash reporting before anything renders (no-op without a DSN).
@@ -234,6 +236,11 @@ function RootLayout() {
             — both configured inside app/draw/_layout.tsx + the screens. */}
         <TransitionNativeStack.Screen name="draw" options={{ headerShown: false, gestureEnabled: false }} />
       </TransitionNativeStack>
+      {/* App-wide feedback primitives (§10.12) — the replacement for Alert.alert.
+          Driven imperatively from lib/feedback.ts, so they must be mounted once
+          here and nowhere else. Both render nothing until something is queued. */}
+      <ConfirmSheetHost />
+      <ToastHost />
       </KeyboardProvider>
     </GestureHandlerRootView>
   );

@@ -61,7 +61,7 @@ function dayBeforeCopy(e: CalEvent): { title: string; body: string } {
     case 'anniversary':
       return { title: `Your ${e.title} is tomorrow`, body: 'Last chance to plan something.' };
     case 'birthday':
-      return { title: `${e.title} is tomorrow 🎂`, body: 'Last chance to plan something.' };
+      return { title: `${e.title} is tomorrow 🎂`, body: 'Time to sort a card.' };
     default:
       return { title: `${e.title} is tomorrow`, body: 'Just so it doesn’t sneak up on you.' };
   }

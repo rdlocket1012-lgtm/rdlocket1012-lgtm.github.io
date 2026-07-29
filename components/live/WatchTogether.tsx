@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { View, Text, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import YoutubePlayer from 'react-native-youtube-iframe';
-import * as Haptics from 'expo-haptics';
+import { toast } from '@/lib/feedback';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { useWatchSession, type WatchEvent } from '@/hooks/useWatchSession';
-import { notifyPartner } from '@/lib/push';
+import { notifyPartner, senderName } from '@/lib/push';
 import { parseYouTubeId } from '@/utils/youtube';
 
 const DRIFT_TOLERANCE = 1.5;   // seconds before a follower re-syncs
@@ -17,7 +17,7 @@ type Role = 'host' | 'follower';
 
 export type WatchHandle = { start: () => void };
 
-const tap = () => { try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {} };
+import { tap, success as hapticSuccess } from '@/lib/haptics';
 
 /**
  * YouTube "watch together": one partner pastes a link and invites; both load
@@ -61,7 +61,7 @@ export const WatchTogether = forwardRef<WatchHandle, {
           pendingVideo.current = e.videoId;
           setRole('follower');
           setMode('invited');
-          try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+          hapticSuccess();
         }
         break;
       case 'accept':
@@ -72,7 +72,7 @@ export const WatchTogether = forwardRef<WatchHandle, {
         }
         break;
       case 'decline':
-        if (modeRef.current === 'inviting') { setMode('idle'); Alert.alert('Maybe later', `${partner} isn't up for it right now.`); }
+        if (modeRef.current === 'inviting') { setMode('idle'); toast(`${partner} isn't up for it right now.`); }
         break;
       case 'load':
         setVideoId(e.videoId);
@@ -136,13 +136,13 @@ export const WatchTogether = forwardRef<WatchHandle, {
 
   function submitLink() {
     const id = parseYouTubeId(link);
-    if (!id) { Alert.alert('Hmm, no video found', 'Paste a YouTube link (or share one from the YouTube app).'); return; }
+    if (!id) { toast.warn('Paste a YouTube link (or share one from the YouTube app).'); return; }
     pendingVideo.current = id;
     setRole('host');
     setMode('inviting');
     tap();
     send({ kind: 'invite', videoId: id });
-    notifyPartner('live_invite', '📺 Watch together?', 'Your partner wants to watch a video with you — tap to join');
+    notifyPartner('live_invite', '📺 Watch together?', `${senderName()} wants to watch a video with you — tap to join`);
   }
 
   function accept() {

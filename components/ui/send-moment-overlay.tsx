@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Pressable, Text } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess } from '@/lib/haptics';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -82,7 +82,7 @@ export function SendMomentOverlay({
     dismissingRef.current = false;
     displayedRef.current = false;
     if (process.env.EXPO_OS === 'ios') {
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
+      hapticSuccess();
     }
 
     overlay.value = withTiming(1, { duration: reduced ? 120 : 240 });

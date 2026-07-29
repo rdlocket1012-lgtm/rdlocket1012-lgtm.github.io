@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Share, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Share, TextInput, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Shell, PrimaryCta, QuietCta } from '@/components/onboarding/Shell';
 import { PressableScale } from '@/components/onboarding/PressableScale';
 import { supabase } from '@/lib/supabase';
@@ -109,7 +110,8 @@ export default function InvitePartnerScreen() {
                 {code}
               </Text>
             ) : (
-              <ActivityIndicator color={LK.espresso} style={{ marginVertical: 14 }} />
+              // Sized to the 40px code text so there is no layout jump on load.
+              <Skeleton width={196} height={44} radius={10} style={{ marginTop: 8, marginLeft: 9 }} />
             )}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
               <Icon name="share" size={13} color={LK.ink70} />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
+import { toast } from '@/lib/feedback';
 import { routeAfterAuth } from '@/lib/post-auth';
 import { LK, theme } from '@/constants/theme';
 import { Canvas, BackOrb, PrimaryCta, T } from '@/components/onboarding/Shell';
@@ -38,7 +39,7 @@ export default function SignInScreen() {
         provider: 'apple',
         token: credential.identityToken!,
       });
-      if (error) { Alert.alert('Apple sign-in failed', error.message); return; }
+      if (error) { toast.error(error.message); return; }
       await AsyncStorage.multiSet([
         ['has_account', 'true'],
         ['ai_consent_granted_at', new Date().toISOString()],
@@ -46,7 +47,7 @@ export default function SignInScreen() {
       router.replace((await routeAfterAuth(res.user?.id)) as never);
     } catch (e: unknown) {
       if ((e as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Apple sign-in failed', 'Please try again.');
+        toast.error('Apple sign-in failed — please try again.');
       }
     }
   }
@@ -55,7 +56,7 @@ export default function SignInScreen() {
     setLoading(true);
     const { data: res, error } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password });
     setLoading(false);
-    if (error) { Alert.alert('Sign in failed', error.message); return; }
+    if (error) { toast.error(error.message); return; }
     await AsyncStorage.multiSet([
       ['ai_consent_granted_at', new Date().toISOString()],
       ['has_account', 'true'],

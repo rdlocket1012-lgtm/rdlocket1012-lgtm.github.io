@@ -3,10 +3,10 @@ import {
   View,
   Text,
   FlatList,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { confirm } from '@/lib/feedback';
 import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { LK, theme } from '@/constants/theme';
@@ -33,14 +33,12 @@ export default function NotesScreen() {
   const { notes, loading, removeNote } = usePrivateNotes();
 
   const handleDelete = useCallback((note: PrivateNote) => {
-    Alert.alert('Delete note?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => removeNote(note.id),
-      },
-    ]);
+    confirm({
+      title: 'Delete note?',
+      message: 'This cannot be undone.',
+      destructive: true,
+      icon: 'trash',
+    }).then((ok) => { if (ok) removeNote(note.id); });
   }, [removeNote]);
 
   return (

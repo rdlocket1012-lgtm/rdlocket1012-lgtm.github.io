@@ -99,6 +99,77 @@ export async function isPremiumActive(): Promise<boolean> {
   }
 }
 
+/** Maps our plan ids onto RevenueCat package types. */
+function packageTypeFor(): Record<PlanId, string> {
+  return {
+    monthly: PACKAGE_TYPE?.MONTHLY ?? 'MONTHLY',
+    annual: PACKAGE_TYPE?.ANNUAL ?? 'ANNUAL',
+    lifetime: PACKAGE_TYPE?.LIFETIME ?? 'LIFETIME',
+  };
+}
+
+/** A plan's live price, exactly as the App Store will charge it. */
+export type PlanPrice = {
+  id: PlanId;
+  /** Store-formatted, localised — e.g. "£3.49", "¥600", "$3.99". */
+  priceString: string;
+  /** Raw amount in `currencyCode` units, for per-month / savings maths. */
+  price: number;
+  currencyCode: string;
+};
+
+/**
+ * Read live, LOCALISED prices from the current RevenueCat offering.
+ *
+ * The paywall must never render a hardcoded price: the App Store charges in the
+ * user's own storefront currency, so a hardcoded "$3.99" is simply wrong for
+ * everyone outside the US — and Apple's required subscription disclosure has to
+ * state the real amount (Guideline 3.1.2).
+ *
+ * Returns null when purchases are unavailable (Expo Go / missing key) or the
+ * offering can't be loaded, so callers can render a "pricing unavailable" state
+ * instead of inventing a number.
+ */
+export async function fetchPlanPrices(): Promise<Partial<Record<PlanId, PlanPrice>> | null> {
+  if (!Purchases) return null;
+  try {
+    const offerings = await Purchases.getOfferings();
+    const packages = offerings?.current?.availablePackages;
+    if (!packages?.length) return null;
+
+    const typeFor = packageTypeFor();
+    const out: Partial<Record<PlanId, PlanPrice>> = {};
+    for (const id of ['monthly', 'annual', 'lifetime'] as PlanId[]) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const product = packages.find((p: any) => p.packageType === typeFor[id])?.product;
+      if (!product?.priceString) continue;
+      const price = typeof product.price === 'number' ? product.price : Number(product.price);
+      out[id] = {
+        id,
+        priceString: product.priceString,
+        price: Number.isFinite(price) ? price : 0,
+        currencyCode: product.currencyCode ?? 'USD',
+      };
+    }
+    return Object.keys(out).length ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Format a derived amount (e.g. an annual plan's per-month equivalent) in the
+ * same currency the store quoted. Falls back to a plain "12.34 GBP" if the
+ * runtime has no Intl currency data.
+ */
+export function formatPrice(amount: number, currencyCode: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: currencyCode }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currencyCode}`;
+  }
+}
+
 /** Purchase the selected plan. Returns true if premium is now active. */
 export async function purchasePlan(planId: PlanId): Promise<boolean> {
   if (!Purchases) {
@@ -109,11 +180,7 @@ export async function purchasePlan(planId: PlanId): Promise<boolean> {
   if (!current || !current.availablePackages?.length) {
     throw new Error('No subscription offerings are available right now.');
   }
-  const typeFor: Record<PlanId, string> = {
-    monthly: PACKAGE_TYPE?.MONTHLY ?? 'MONTHLY',
-    annual: PACKAGE_TYPE?.ANNUAL ?? 'ANNUAL',
-    lifetime: PACKAGE_TYPE?.LIFETIME ?? 'LIFETIME',
-  };
+  const typeFor = packageTypeFor();
   const pkg =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     current.availablePackages.find((p: any) => p.packageType === typeFor[planId]) ??

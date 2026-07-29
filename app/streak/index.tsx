@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
 import { LK, shade, rgba, theme } from '@/constants/theme';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Icon } from '@/components/ui/Icon';
@@ -15,6 +14,8 @@ import { useQuizStreak } from '@/hooks/useQuizStreak';
 import { useStreakPause } from '@/hooks/useStreakPause';
 import { useChallengesStore } from '@/stores/challenges.store';
 import { addDays } from '@/utils/streak';
+import { confirm, choose, toast } from '@/lib/feedback';
+import { success as hapticSuccess } from '@/lib/haptics';
 import { STREAK_BADGES, nextBadge, unlockedCount, type StreakBadge } from '@/constants/streak-achievements';
 
 const BADGE_COL_GAP = 12;
@@ -132,39 +133,36 @@ export default function StreakScreen() {
   async function doPause(days: number) {
     try {
       await pause(days);
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
+      hapticSuccess();
     } catch (e: any) {
-      Alert.alert('Could not pause', e?.message ?? 'Please try again.');
+      toast.error(e?.message ?? 'Couldn’t pause your streak.');
     }
   }
 
-  function openPausePicker() {
-    Alert.alert(
-      'Pause your streak',
-      'Your run will hold — no breaks — until the pause ends, then pick right back up. Either of you can resume early.',
-      [
-        { text: '3 days', onPress: () => doPause(3) },
-        { text: '1 week', onPress: () => doPause(7) },
-        { text: '2 weeks', onPress: () => doPause(14) },
-        { text: 'Cancel', style: 'cancel' },
+  async function openPausePicker() {
+    const picked = await choose({
+      title: 'Pause your streak',
+      message: 'Your run will hold — no breaks — until the pause ends, then pick right back up. Either of you can resume early.',
+      icon: 'pause',
+      options: [
+        { label: '3 days', value: '3' },
+        { label: '1 week', value: '7' },
+        { label: '2 weeks', value: '14' },
       ],
-    );
+    });
+    if (picked) doPause(Number(picked));
   }
 
-  function confirmResume() {
-    Alert.alert(
-      'Resume your streak?',
-      'Your streak starts counting again from today.',
-      [
-        { text: 'Not yet', style: 'cancel' },
-        {
-          text: 'Resume',
-          onPress: async () => {
-            try { await resume(); } catch (e: any) { Alert.alert('Could not resume', e?.message ?? 'Please try again.'); }
-          },
-        },
-      ],
-    );
+  async function confirmResume() {
+    const ok = await confirm({
+      title: 'Resume your streak?',
+      message: 'Your streak starts counting again from today.',
+      confirmLabel: 'Resume',
+      cancelLabel: 'Not yet',
+      icon: 'play',
+    });
+    if (!ok) return;
+    try { await resume(); } catch (e: any) { toast.error(e?.message ?? 'Couldn’t resume your streak.'); }
   }
 
   // This week's challenge — read from the already-subscribed store (Home keeps it

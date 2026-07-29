@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, SafeAreaView, Alert } from 'react-native';
+import { View, Text, TextInput, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
 import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';

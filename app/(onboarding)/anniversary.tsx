@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
@@ -10,6 +10,7 @@ import { CountUp } from '@/components/onboarding/CountUp';
 import { ensureCoupleSession } from '@/lib/bootstrap';
 import { supabase } from '@/lib/supabase';
 import { success } from '@/lib/haptics';
+import { alert } from '@/lib/feedback';
 import { daysTogether } from '@/utils/date';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -56,11 +57,11 @@ export default function AnniversaryScreen() {
       // Almost always: signed up with email + PKCE, so the account isn't
       // confirmed yet and there's no real session. Don't dead-end — send them
       // to sign in; the date is saved and onboarding resumes here afterwards.
-      Alert.alert(
+      await alert(
         "Let's finish setting up",
         "We just need to confirm your account first. Sign in (or tap the link in your confirmation email) and we'll pick up right here.",
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/sign-in') }],
       );
+      router.replace('/(auth)/sign-in');
     } finally {
       setBusy(false);
     }

@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
-import * as Haptics from 'expo-haptics';
+import { impact } from '@/lib/haptics';
 import Transition from 'react-native-screen-transitions';
 import { useDrawStore, type Drawing } from '@/stores/draw.store';
 import { useAuth } from '@/hooks/useAuth';
@@ -247,7 +247,7 @@ export default function DrawGalleryScreen() {
             size={CELL_SIZE}
             onPress={() => openViewer(item)}
             onLongPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              impact();
               openViewer(item);
             }}
           />

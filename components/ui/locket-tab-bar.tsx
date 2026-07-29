@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -13,6 +12,8 @@ import { LK, theme, rgba } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { FabActionsOverlay } from '@/components/ui/fab-actions-overlay';
+import { ScalePressable } from '@/components/ui/scale-pressable';
+import { impact } from '@/lib/haptics';
 
 /**
  * Cozy Scrapbook floating tab bar (§8.11): a Vellum tray with 4 tabs and a
@@ -135,10 +136,10 @@ export default function LocketTabBar({ state, navigation }: MaterialTopTabBarPro
   const leftRoutes = routes.slice(0, mid);
   const rightRoutes = routes.slice(mid);
 
+  // No haptic here on purpose: haptics confirm decisions, never navigation
+  // (DESIGN.md §10.12). This tab bar sits on a swipe pager, so buzzing on every
+  // switch fired constantly — including on swipes the user never "pressed".
   function go(routeName: string, routeKey: string, isFocused: boolean) {
-    if (process.env.EXPO_OS === 'ios') {
-      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch { /* no-op */ }
-    }
     const event = navigation.emit({ type: 'tabPress', target: routeKey, canPreventDefault: true });
     if (!isFocused && !event.defaultPrevented) {
       navigation.navigate(routeName);
@@ -161,10 +162,10 @@ export default function LocketTabBar({ state, navigation }: MaterialTopTabBarPro
     );
   }
 
+  // The FAB *is* a decision (it opens the quick-actions overlay), so it keeps
+  // its weightier impact — routed through the vocabulary rather than raw expo-haptics.
   function openFab() {
-    if (process.env.EXPO_OS === 'ios') {
-      try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch { /* no-op */ }
-    }
+    impact();
     setFabOpen(true);
   }
 
@@ -210,40 +211,44 @@ export default function LocketTabBar({ state, navigation }: MaterialTopTabBarPro
   );
 }
 
+/**
+ * The FAB routes through ScalePressable like every other tappable surface
+ * (§10.12 rule 1). It used to hand-roll its own shared value + two hardcoded
+ * springs, which meant the app's primary action was the one button NOT using the
+ * press primitive.
+ */
 function FabButton({ onPress }: { onPress: () => void }) {
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Pressable
+    <ScalePressable
       accessibilityRole="button"
       accessibilityLabel="Quick actions"
       onPress={onPress}
-      onPressIn={() => { scale.value = withSpring(0.92, { damping: 20, stiffness: 500 }); }}
-      onPressOut={() => { scale.value = withSpring(1, { damping: 14, stiffness: 320 }); }}
-      style={{
+      scaleTo={0.92}
+      // openFab() fires impact() — the FAB's heavier signature. Suppress the
+      // primitive's default tap() so it doesn't buzz twice.
+      haptic={false}
+      containerStyle={{
         position: 'absolute',
         alignSelf: 'center',
         bottom: FAB_BOTTOM,
         borderRadius: FAB_SIZE / 2,
       }}
     >
-      <Animated.View style={animStyle}>
-        <LinearGradient
-          colors={[LK.coral, '#FF9A6B']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            width: FAB_SIZE,
-            height: FAB_SIZE,
-            borderRadius: FAB_SIZE / 2,
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: `0 4px 16px ${rgba(LK.coral, 0.4)}`,
-          }}
-        >
-          <Icon name="plus" size={24} color="#fff" strokeWidth={2.4} />
-        </LinearGradient>
-      </Animated.View>
-    </Pressable>
+      <LinearGradient
+        colors={[LK.coral, '#FF9A6B']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          width: FAB_SIZE,
+          height: FAB_SIZE,
+          borderRadius: FAB_SIZE / 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: `0 4px 16px ${rgba(LK.coral, 0.4)}`,
+        }}
+      >
+        <Icon name="plus" size={24} color="#fff" strokeWidth={2.4} />
+      </LinearGradient>
+    </ScalePressable>
   );
 }

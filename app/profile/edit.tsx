@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, TextInput, ScrollView,
-  Alert, ActivityIndicator,
+  ActivityIndicator, Linking,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDetails } from '@/hooks/useDetails';
 import { useSelfPerson } from '@/hooks/useSelfPerson';
 import { usePartner } from '@/hooks/usePartner';
+import { confirm, toast } from '@/lib/feedback';
 import { useAuthStore } from '@/stores/auth.store';
 import { supabase } from '@/lib/supabase';
 import type { Person } from '@/stores/details.store';
@@ -61,7 +62,7 @@ export default function EditProfileScreen() {
 
   async function handleSave() {
     if (!coupleId) {
-      Alert.alert('Setting up', 'Your shared space is still loading. Try again in a moment.');
+      toast('Your shared space is still loading. Try again in a moment.');
       return;
     }
     setSaving(true);
@@ -78,7 +79,7 @@ export default function EditProfileScreen() {
       }
       router.back();
     } catch (e: any) {
-      Alert.alert('Could not save', e?.message ?? 'Unknown error');
+      toast.error(e?.message ?? 'Couldn’t save your changes.');
     } finally {
       setSaving(false);
     }
@@ -93,7 +94,7 @@ export default function EditProfileScreen() {
       await upsertDetail({ coupleId, person, key, label: q, value: null, is_question: !isMe });
       setCustomQ('');
     } catch (e: any) {
-      Alert.alert('Could not add', e?.message ?? 'Unknown error');
+      toast.error(e?.message ?? 'Couldn’t add that question.');
     }
   }
 
@@ -101,7 +102,12 @@ export default function EditProfileScreen() {
     if (!isMe || !profile?.id) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Allow photo access to set a profile picture.');
+      if (await confirm({
+        title: 'Photo access needed',
+        message: 'Allow photo access for Locket in your device Settings to set a profile picture.',
+        confirmLabel: 'Open Settings',
+        icon: 'camera',
+      })) Linking.openSettings();
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -125,7 +131,7 @@ export default function EditProfileScreen() {
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
       await useAuthStore.getState().fetchProfile(profile.id);
     } catch (e: any) {
-      Alert.alert('Upload failed', e?.message ?? 'Unknown error');
+      toast.error(e?.message ?? 'Couldn’t upload that photo.');
     } finally {
       setUploading(false);
     }

@@ -1,5 +1,5 @@
 ﻿import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, Pressable, Modal, TextInput, KeyboardAvoidingView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -13,6 +13,7 @@ import { useConnectionCalendar, type CalEvent } from '@/hooks/useConnectionCalen
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useAuthStore } from '@/stores/auth.store';
 import { addEventToPhoneCalendar, addAllToPhoneCalendar } from '@/lib/calendar-sync';
+import { confirm, toast } from '@/lib/feedback';
 
 const EVENT_EMOJIS = ['🎂', '🎉', '🎁', '💍', '✈️', '🏠', '🍾', '⭐', '❤️', '🌹', '🍰', '📅'];
 
@@ -53,7 +54,7 @@ export default function CalendarScreen() {
 
   async function handleAddEvent() {
     const coupleId = useAuthStore.getState().profile?.couple_id;
-    if (!coupleId) { Alert.alert('Setting up', 'Your shared space is still loading.'); return; }
+    if (!coupleId) { toast('Your shared space is still loading.'); return; }
     if (!evTitle.trim()) return;
     setSaving(true);
     try {
@@ -67,29 +68,29 @@ export default function CalendarScreen() {
       });
       setAddOpen(false);
     } catch (e: any) {
-      Alert.alert('Could not add', e?.message ?? 'Try again.');
+      toast.error(e?.message ?? 'Couldn’t add that event.');
     } finally {
       setSaving(false);
     }
   }
 
-  function confirmDeleteEvent(e: CalEvent) {
+  async function confirmDeleteEvent(e: CalEvent) {
     if (!e.sourceId) return;
-    Alert.alert(
-      `Remove "${e.title}"?`,
-      e.recurring ? 'This yearly event will be removed from your calendar.' : 'This event will be removed from your calendar.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => deleteEvent(e.sourceId!) },
-      ],
-    );
+    const ok = await confirm({
+      title: `Remove "${e.title}"?`,
+      message: e.recurring ? 'This yearly event will be removed from your calendar.' : 'This event will be removed from your calendar.',
+      confirmLabel: 'Remove',
+      destructive: true,
+      icon: 'trash',
+    });
+    if (ok) deleteEvent(e.sourceId!);
   }
 
   // Build the month grid (Mon-first). Returns array of {day, dateStr} | null.
   const cells = useMemo(() => {
     const first = new Date(viewYear, viewMonth, 1);
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    // JS getDay(): 0=Sun. Convert to Mon-first index (0=Mon â€¦ 6=Sun).
+    // JS getDay(): 0=Sun. Convert to Mon-first index (0=Mon … 6=Sun).
     const lead = (first.getDay() + 6) % 7;
     const arr: (null | { day: number; dateStr: string })[] = [];
     for (let i = 0; i < lead; i++) arr.push(null);
@@ -120,17 +121,30 @@ export default function CalendarScreen() {
     else if (e.kind === 'birthday' || e.kind === 'custom') confirmDeleteEvent(e);
   }
 
+  /** Shared "we need calendar permission" ask — routes to Settings rather than
+   *  just naming it. */
+  async function askForCalendarAccess() {
+    if (await confirm({
+      title: 'Calendar access needed',
+      message: 'Turn on calendar access for Locket in your device Settings to add events to your phone.',
+      confirmLabel: 'Open Settings',
+      icon: 'calendar',
+    })) Linking.openSettings();
+  }
+
   async function syncEvent(e: CalEvent) {
     const res = await addEventToPhoneCalendar(e);
-    if (res === 'added') Alert.alert('Added to your calendar ðŸ’›', `"${e.title}" is now on your phone calendar with a reminder the day before.`);
-    else if (res === 'denied') Alert.alert('Calendar access needed', 'Enable calendar access for Locket in Settings to add events.');
-    else Alert.alert('Could not add', 'Something went wrong adding this event. Please try again.');
+    // NOTE: these two strings previously shipped double-encoded ("ðŸ'›") — the
+    // emoji below are the real ones. Keep this file UTF-8.
+    if (res === 'added') toast.success(`"${e.title}" is on your phone calendar 💛`);
+    else if (res === 'denied') await askForCalendarAccess();
+    else toast.error('Couldn’t add that event. Please try again.');
   }
 
   async function syncAll() {
     const res = await addAllToPhoneCalendar(upcoming);
-    if (res.denied) Alert.alert('Calendar access needed', 'Enable calendar access for Locket in Settings to add events.');
-    else Alert.alert('Synced ðŸ’›', `Added ${res.added} upcoming ${res.added === 1 ? 'event' : 'events'} to your phone calendar.`);
+    if (res.denied) { await askForCalendarAccess(); return; }
+    toast.success(`Added ${res.added} upcoming ${res.added === 1 ? 'event' : 'events'} to your phone calendar 💛`);
   }
 
   return (

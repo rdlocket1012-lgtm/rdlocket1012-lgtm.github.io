@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, Pressable, Alert, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, Linking, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library';
-import * as Haptics from 'expo-haptics';
+import { confirm, toast } from '@/lib/feedback';
+import { success as hapticSuccess } from '@/lib/haptics';
 import Transition from 'react-native-screen-transitions';
 import { useDrawStore } from '@/stores/draw.store';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,14 +43,19 @@ export default function DrawViewerScreen() {
     if (!drawing) return;
     const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow photo library access to save drawings.');
+      if (await confirm({
+        title: 'Photo access needed',
+        message: 'Allow photo library access for Locket in your device Settings to save drawings.',
+        confirmLabel: 'Open Settings',
+        icon: 'image',
+      })) Linking.openSettings();
       return;
     }
     try {
       await MediaLibrary.saveToLibraryAsync(drawing.image_url);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      hapticSuccess();
     } catch {
-      Alert.alert('Couldn\'t save', 'Something went wrong saving this drawing.');
+      toast.error('Something went wrong saving this drawing.');
     }
   }
 

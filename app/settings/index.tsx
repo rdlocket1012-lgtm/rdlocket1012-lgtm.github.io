@@ -3,6 +3,40 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { requestPermissions, scheduleOnThisDay, cancelOnThisDay } from '@/lib/notifications';
 import { usePrefsStore } from '@/stores/prefs.store';
 import { View, Text, ScrollView, Switch, Alert, Linking } from 'react-native';
+import Constants from 'expo-constants';
+import { confirm, alert, toast } from '@/lib/feedback';
+
+/** App Store id (matches `ascAppId` in eas.json). */
+const APP_STORE_ID = '6775300058';
+
+/**
+ * Opens the store's write-a-review sheet.
+ *
+ * Deliberately a deep link rather than `expo-store-review`: that's a native
+ * module, so adding it would need an EAS rebuild before this row worked, while
+ * this ships over OTA. The trade-off is that it leaves the app instead of
+ * showing the in-app prompt — worth revisiting next time a build is cut.
+ *
+ * Previously this row showed a thank-you and did nothing at all.
+ */
+function rateLocket() {
+  const url = process.env.EXPO_OS === 'ios'
+    ? `itms-apps://apps.apple.com/app/id${APP_STORE_ID}?action=write-review`
+    : 'market://details?id=com.siren96.locket';
+  Linking.openURL(url).catch(() => {
+    toast.error('Couldn’t open the store — please try again.');
+  });
+}
+
+/** App version straight from the manifest, with the native build number when
+ *  one is present (dev clients and OTA runtimes may not expose it). */
+const appVersion = (() => {
+  const v = Constants.expoConfig?.version ?? '—';
+  const build =
+    Constants.expoConfig?.ios?.buildNumber ??
+    Constants.expoConfig?.android?.versionCode;
+  return build ? `${v} (${build})` : v;
+})();
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -58,7 +92,14 @@ export default function SettingsScreen() {
         if (!granted) {
           setNotifOTD(false);
           await AsyncStorage.setItem('pref_notif_otd', '0');
-          Alert.alert('Notifications off', 'Enable notifications for Locket in your device Settings to get On This Day reminders.');
+          // Route the user to the only place that can actually fix this, rather
+          // than telling them where to go and dead-ending.
+          if (await confirm({
+            title: 'Notifications are off',
+            message: 'Turn on notifications for Locket in your device Settings to get On This Day reminders.',
+            confirmLabel: 'Open Settings',
+            icon: 'bell',
+          })) Linking.openSettings();
           return;
         }
         await scheduleOnThisDay();
@@ -81,7 +122,12 @@ export default function SettingsScreen() {
         if (!granted) {
           setNotifDates(false);
           await usePrefsStore.getState().setDateReminders(false);
-          Alert.alert('Notifications off', 'Enable notifications for Locket in your device Settings to get birthday and anniversary reminders.');
+          if (await confirm({
+            title: 'Notifications are off',
+            message: 'Turn on notifications for Locket in your device Settings to get birthday and anniversary reminders.',
+            confirmLabel: 'Open Settings',
+            icon: 'bell',
+          })) Linking.openSettings();
           return;
         }
       }
@@ -114,17 +160,23 @@ export default function SettingsScreen() {
     const { error } = await supabase.from('profiles').update({ nudge_haptics: on }).eq('id', profile.id);
     if (error) {
       setNudgeHaptics(!on);
-      Alert.alert('Could not save', error.message);
+      toast.error('Couldn’t save that — please try again.');
       return;
     }
     useAuthStore.getState().setProfile({ ...useAuthStore.getState().profile!, nudge_haptics: on });
   }
 
   async function handleSignOut() {
-    Alert.alert('Sign out?', "You'll need to sign back in to access your memories.", [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: async () => { await signOut(); router.replace('/(auth)/sign-up'); } },
-    ]);
+    const ok = await confirm({
+      title: 'Sign out?',
+      message: "You'll need to sign back in to access your memories.",
+      confirmLabel: 'Sign out',
+      destructive: true,
+      icon: 'door',
+    });
+    if (!ok) return;
+    await signOut();
+    router.replace('/(auth)/sign-up');
   }
 
   async function handleDeleteAccount() {
@@ -132,6 +184,9 @@ export default function SettingsScreen() {
   }
 
   function handleEnterCode() {
+    // ⚠️ Alert.prompt is iOS-only — the optional call silently no-ops on
+    // Android, so this row does nothing there. Needs a themed prompt sheet
+    // (text input) before it can move off Alert like everything else here.
     Alert.prompt?.(
       'Enter invite code',
       'Paste the code or link your partner sent you.',
@@ -144,26 +199,22 @@ export default function SettingsScreen() {
   }
 
   async function handleDisconnect() {
-    Alert.alert(
-      'Disconnect from your partner?',
-      'Your shared space will be separated. If you’re the subscriber, your Premium stays with you; otherwise it returns to the free tier. Your own memories are kept.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Disconnect',
-          style: 'destructive',
-          onPress: async () => {
-            const startDate = couple?.start_date ?? new Date().toISOString().split('T')[0];
-            const { error } = await supabase.rpc('disconnect_relationship', { p_start_date: startDate });
-            if (error) { Alert.alert('Could not disconnect', error.message); return; }
-            const uid = useAuthStore.getState().profile?.id;
-            if (uid) await useAuthStore.getState().fetchProfile(uid);
-            await fetchCouple();
-            Alert.alert('Disconnected', 'You’re now in your own private space.');
-          },
-        },
-      ]
-    );
+    const ok = await confirm({
+      title: 'Disconnect from your partner?',
+      message: 'Your shared space will be separated. If you’re the subscriber, your Premium stays with you; otherwise it returns to the free tier. Your own memories are kept.',
+      confirmLabel: 'Disconnect',
+      destructive: true,
+      icon: 'door',
+    });
+    if (!ok) return;
+
+    const startDate = couple?.start_date ?? new Date().toISOString().split('T')[0];
+    const { error } = await supabase.rpc('disconnect_relationship', { p_start_date: startDate });
+    if (error) { toast.error('Couldn’t disconnect — please try again.'); return; }
+    const uid = useAuthStore.getState().profile?.id;
+    if (uid) await useAuthStore.getState().fetchProfile(uid);
+    await fetchCouple();
+    toast('You’re now in your own private space.');
   }
 
   async function handleRestorePurchases() {
@@ -171,12 +222,12 @@ export default function SettingsScreen() {
       const ok = await restorePurchases();
       if (ok) {
         await fetchCouple();
-        Alert.alert('Purchases restored', 'Your Premium status has been updated.');
+        toast.success('Purchases restored — Premium is active.');
       } else {
-        Alert.alert('Nothing to restore', 'No previous purchases were found.');
+        toast('No previous purchases were found.');
       }
     } catch (e: any) {
-      Alert.alert('Restore unavailable', e?.message ?? 'Could not restore purchases.');
+      toast.error(e?.message ?? 'Couldn’t restore purchases.');
     }
   }
 
@@ -291,7 +342,7 @@ export default function SettingsScreen() {
         <SectionLabel>Privacy & Data</SectionLabel>
         <SGroup>
           <SRow icon="shield" color={LK.sage} title="Analytics & crash reports" sub="Never shared with advertisers" toggle value={analytics} onToggle={toggleAnalytics} />
-          <SRow icon="clockTab" color={LK.warning} title="Data retention" sub="30-day soft delete" chevron last onPress={() => Alert.alert('Data Retention', 'When you remove a milestone, letter or map pin, it\'s kept for 30 days before permanent deletion. The same applies if you delete your account.')} />
+          <SRow icon="clockTab" color={LK.warning} title="Data retention" sub="30-day soft delete" chevron last onPress={() => alert('Data retention', 'When you remove a milestone, letter or map pin, it\'s kept for 30 days before permanent deletion. The same applies if you delete your account.')} />
         </SGroup>
 
         <SectionLabel>Legal</SectionLabel>
@@ -303,9 +354,9 @@ export default function SettingsScreen() {
 
         <SectionLabel>Support</SectionLabel>
         <SGroup>
-          <SRow icon="star" color={LK.marigold} title="Rate Locket" onPress={() => Alert.alert('Thank you!', 'We appreciate your support.')} />
+          <SRow icon="star" color={LK.marigold} title="Rate Locket" onPress={rateLocket} />
           <SRow icon="chat" color={LK.success} title="Send feedback" chevron onPress={() => Linking.openURL('mailto:hello@locket.app')} />
-          <SRow icon="help" color={LK.lilac} title="Help & FAQ" chevron last onPress={() => Alert.alert('Help', 'Contact us at hello@locket.app')} />
+          <SRow icon="help" color={LK.lilac} title="Help & FAQ" chevron last onPress={() => alert('Help', 'Contact us any time at hello@locket.app and we’ll get back to you.')} />
         </SGroup>
 
         <SectionLabel danger>Account</SectionLabel>
@@ -319,7 +370,11 @@ export default function SettingsScreen() {
 
         <View style={{ alignItems: 'center', paddingTop: 22 }}>
           <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 18, color: LK.ink70, letterSpacing: -0.5 }}>Locket</Text>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70, marginTop: 2 }}>Version 1.0 · Made with love</Text>
+          {/* Read from the manifest, never hardcoded — this said "Version 1.0"
+              for the whole of the 1.1 rollout. */}
+          <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70, marginTop: 2 }}>
+            Version {appVersion} · Made with love
+          </Text>
         </View>
       </ScrollView>
 

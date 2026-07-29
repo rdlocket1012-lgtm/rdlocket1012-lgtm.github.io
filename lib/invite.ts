@@ -1,6 +1,7 @@
-import { Share, Alert } from 'react-native';
+import { Share } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
+import { toast } from '@/lib/feedback';
 
 /** Generates a single-use invite token, stores it, and opens the share sheet. */
 export async function shareInvite() {
@@ -28,6 +29,6 @@ export async function shareInvite() {
     const link = `https://rdlocket1012-lgtm.github.io/invite?token=${token}`;
     await Share.share({ message: `Join me on Locket 💛 Tap to link our space: ${link}` });
   } catch (e: any) {
-    Alert.alert('Could not share', e?.message ?? 'Please try again.');
+    toast.error(e?.message ?? 'Couldn’t open the share sheet.');
   }
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
+import { tick, success as hapticSuccess } from '@/lib/haptics';
 import { iGifted, useCouponsStore, type Coupon } from '@/stores/coupons.store';
 import { useAuthStore } from '@/stores/auth.store';
 import { notifyPartner } from '@/lib/push';
@@ -95,14 +95,14 @@ export function useCouponHomeBanners() {
       AsyncStorage.setItem(DISMISS_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
-    try { Haptics.selectionAsync(); } catch { /* no-op */ }
+    tick();
   }, []);
 
   const approve = useCallback(
     async (c: Coupon) => {
       await approveRedeem(c.id);
       void notifyPartner('coupon_redeemed', 'Coupon approved 🎉', `${myFirstName()} approved "${c.title}" — enjoy!`);
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch { /* no-op */ }
+      hapticSuccess();
     },
     [approveRedeem],
   );

@@ -2,14 +2,13 @@ import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperat
 import { View, Text, Modal, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
 import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { SwipeCard } from '@/components/game/SwipeCard';
 import MascotAnimation from '@/components/ui/mascot-animation';
 import { useLiveSession, type LiveEvent } from '@/hooks/useLiveSession';
-import { notifyPartner } from '@/lib/push';
+import { notifyPartner, senderName } from '@/lib/push';
 import { LIVE_PROMPTS, categoryIndices, categoryOfIndex, fillNames, CATEGORY_ILLUS } from '@/constants/live-games';
 
 const ROUNDS = 8;
@@ -42,8 +41,7 @@ function lexLess(a: number[], b: number[]): boolean {
   return a.length < b.length;
 }
 
-const tap = () => { try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {} };
-const pop = () => { try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {} };
+import { tap, success as pop } from '@/lib/haptics';
 
 /**
  * "You're both online" live presence + a co-op This-or-That game.
@@ -175,7 +173,7 @@ export const LiveLayer = forwardRef<LiveHandle, {
     setMode('inviting');
     tap();
     send({ kind: 'invite', order: ord });
-    notifyPartner('live_invite', '💞 Play together?', 'Your partner wants to play This or That — tap to join');
+    notifyPartner('live_invite', '💞 Play together?', `${senderName()} wants to play This or That — tap to join`);
   }
 
   // Broadcasts are fire-and-forget and occasionally dropped, which made the

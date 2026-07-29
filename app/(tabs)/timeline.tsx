@@ -12,7 +12,6 @@ import { useCouple } from '@/hooks/useCouple';
 import { FREE_LIMITS } from '@/constants/free-limits';
 import { MILESTONE_ILLUS, MILESTONE_FILTERS, typeGroup, type MilestoneFilterId } from '@/constants/milestone-types';
 import { RoundIcon } from '@/components/ui/round-icon';
-import { IconChip } from '@/components/ui/icon-chip';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { AddMilestoneModal } from '@/components/milestone/AddMilestoneModal';
@@ -23,15 +22,33 @@ import { parseLocalDate } from '@/utils/date';
 
 const BORDER = 'rgba(42,33,26,0.15)';
 
+// §13.14 empty state — kawaii sticker, matching every other empty state in the app.
+const EMPTY_ILLUS = require('../../assets/illustrations/empty-states/no-milestones.png');
+
 export default function TimelineScreen() {
   const { milestones } = useMilestones();
   const { isPremium } = useCouple();
   const [filter, setFilter] = useState<MilestoneFilterId>('all');
   const [sheet, setSheet] = useState<'add' | 'paywall' | null>(null);
-  const [momentPeak, setMomentPeak] = useState(false);
+  /** Title of the milestone just saved — drives the peak moment's copy. */
+  const [savedTitle, setSavedTitle] = useState<string | null>(null);
 
   const atCap = !isPremium && milestones.length >= FREE_LIMITS.MILESTONES;
   const nearCap = !isPremium && milestones.length >= 25;
+
+  // Peak-moment copy names the thing that was just saved instead of the generic
+  // "Added to your story ✨". Round-number saves get their own beat.
+  const peak = (() => {
+    if (!savedTitle) return null;
+    const n = milestones.length;
+    if (n <= 1) {
+      return { message: 'Your first memory together 💛', sub: `“${savedTitle}” — the start of it.` };
+    }
+    if (n % 25 === 0 || n === 10) {
+      return { message: `That’s ${n} memories 🎉`, sub: `The latest: “${savedTitle}”` };
+    }
+    return { message: `“${savedTitle}” is in your story ✨`, sub: `${n} memories and counting` };
+  })();
 
   // Clear the milestones badge whenever the timeline is viewed.
   useFocusEffect(useCallback(() => { useUnseenStore.getState().markSeen('milestones'); }, []));
@@ -152,7 +169,9 @@ export default function TimelineScreen() {
         ListEmptyComponent={
           milestones.length === 0 ? (
             <View style={{ alignItems: 'center', paddingTop: 64, paddingHorizontal: 30, gap: 14 }}>
-              <IconChip color={LK.coral} size={72}><Icon name="heart" size={34} color={shade(LK.coral, 0.5)} /></IconChip>
+              {/* Recipe is illustration + Shantell line + CTA (§10.12). This was
+                  the only empty state in the app still using an IconChip. */}
+              <Image source={EMPTY_ILLUS} style={{ width: 132, height: 132 }} contentFit="contain" accessible={false} />
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 26, color: LK.espresso, textAlign: 'center' }}>Your story starts here</Text>
               <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, textAlign: 'center', lineHeight: 24, maxWidth: 260 }}>
                 Add your first milestone — the moment your story began.
@@ -171,12 +190,13 @@ export default function TimelineScreen() {
         }
       />
 
-      {sheet === 'add' && <AddMilestoneModal onClose={() => setSheet(null)} isPremium={isPremium} onPaywall={() => setSheet('paywall')} onSaved={() => setMomentPeak(true)} />}
+      {sheet === 'add' && <AddMilestoneModal onClose={() => setSheet(null)} isPremium={isPremium} onPaywall={() => setSheet('paywall')} onSaved={setSavedTitle} />}
       <SendMomentOverlay
-        visible={momentPeak}
+        visible={!!peak}
         name="moment-send"
-        message="Added to your story ✨"
-        onDismiss={() => setMomentPeak(false)}
+        message={peak?.message ?? ''}
+        subMessage={peak?.sub}
+        onDismiss={() => setSavedTitle(null)}
       />
       {sheet === 'paywall' && <PaywallModal onClose={() => setSheet(null)} />}
     </SafeAreaView>
