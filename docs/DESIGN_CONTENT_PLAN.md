@@ -183,8 +183,8 @@ it unless the count moves.
 
 ## Phase S — Screen design
 
-> Status: **S1, S2, S4 done** (2026-07-29). Only **S3** (paywall design, = A4/A5
-> in the UX plan) remains.
+> Status: **all done** (2026-07-29). S3 closed last, partly by shipping and partly
+> by decision — see below.
 
 These three are carried over from `UX_POLISH_PLAN.md` (E1, E2, A4/A5) — restated here
 because they're design work rather than structural.
@@ -236,11 +236,29 @@ So: live counts only where they're genuinely loaded, and static blurbs ("Places 
 are yours", "Dates worth remembering") everywhere else. The blurbs give the grid
 information without inventing numbers.
 
-### S3. Paywall design (A4/A5)
+### S3. Paywall design (A4/A5) — ✅ CLOSED
 
 Add social proof above the plan picker, and reframe the comparison table around what
 the free tier *loses* rather than what it generously includes. Detail in
 `UX_POLISH_PLAN.md`.
+
+**Half shipped, half dropped.**
+
+**A5 shipped.** The table is framed as loss: an eyebrow reading **WHERE FREE RUNS
+OUT**, caps suffixed `max` so they read as a ceiling, Danger `x` / Success `check`
+icons in place of the `'—'` and `'✓'` text glyphs, and the missing bucket-list row
+added. All four numbers interpolate from `FREE_LIMITS`, so the table can't drift from
+the code that enforces it.
+
+**A4 dropped.** Social proof needs a real review, and there aren't any yet. A
+fabricated testimonial on a purchase screen is dishonest and an App Review risk
+(Guideline 2.3), so the slot stays empty rather than filled with something invented.
+It's a self-contained insert between the table and the plan picker whenever there's
+a review worth quoting.
+
+The rest of the paywall pass — the live free trial, post-value trigger timing and the
+success-state share — is design-adjacent but structural, so it's documented in
+`UX_POLISH_PLAN.md` §A2/A7/A8 and `DESIGN.md` §12.15b.
 
 ### S4. Timeline empty state doesn't follow its own recipe — ✅ DONE
 
@@ -252,13 +270,14 @@ highest-traffic screen after Home.
 
 ## Remaining
 
-Everything in this plan is done except **S3** (paywall design — social proof + the
-comparison-table reframe), which is tracked as A4/A5 in `UX_POLISH_PLAN.md` and is
-best done in one pass with the rest of the paywall work (A2 free trial, A6 lifetime
-tier, A7 triggers, A8 success share). That whole block is gated on App Store Connect
-+ RevenueCat configuration, and A2 needs a new build — it cannot ship over OTA.
+**Nothing.** Every item in this plan is shipped or explicitly dropped, as is every
+item in `UX_POLISH_PLAN.md`. The only outstanding work on either plan is not code: a
+7-day introductory offer needs configuring on the annual product in App Store Connect
+and exposing through the RevenueCat offering, at which point the paywall's trial copy
+appears over OTA.
 
- remains shelved.
+`partner-typing` remains shelved (no presence feature planned), so that mascot
+animation stays the one commissioned asset without a call site.
 
 ## Questions — resolved
 
@@ -268,5 +287,6 @@ tier, A7 triggers, A8 success share). That whole block is gated on App Store Con
 
 ## Still owed
 
-Nothing blocking. The open items (M1 `letter-received` + M2, T1–T5, S2–S4) are all
-independently shippable, and T1/T2/T4 are copy-only OTA changes.
+Nothing. All of M1–M3, T1–T5 and S1–S4 are resolved. The ranked device-verification
+list in `docs/UX_POLISH_PLAN.md` is the only thing standing between this work and a
+build — **none of it has run on a phone**.

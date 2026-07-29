@@ -28,7 +28,7 @@ export default function ConnectScreen() {
   return (
     <Shell
       step={2}
-      total={6}
+      total={7}
       title="How do you two connect?"
       why="so Locket fits the shape of your relationship."
       footer={<PrimaryCta label="Continue" onPress={next} disabled={!selected} />}

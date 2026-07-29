@@ -68,13 +68,13 @@ export default function InvitePartnerScreen() {
   }
 
   function goNext() {
-    router.push('/(onboarding)/photo-permission');
+    router.push('/(onboarding)/notification-permission');
   }
 
   return (
     <Shell
       step={5}
-      total={6}
+      total={7}
       title="Invite your person"
       why="one link — or six little letters — and you're linked."
       keyboardAvoid

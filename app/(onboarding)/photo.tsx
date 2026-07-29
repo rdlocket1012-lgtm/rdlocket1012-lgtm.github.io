@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LK, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { Shell, PrimaryCta, QuietCta } from '@/components/onboarding/Shell';
@@ -39,18 +38,15 @@ export default function PhotoScreen() {
   }
 
   async function finish() {
-    if (isJoiner) {
-      await AsyncStorage.setItem('onboarding_done', 'true');
-      router.replace('/(tabs)');
-    } else {
-      router.push('/(onboarding)/invite-partner');
-    }
+    // Both paths now pass through notification priming (§E3) — the joiner's flow
+    // ends there, which is why it no longer closes onboarding out here.
+    router.push(isJoiner ? '/(onboarding)/notification-permission?joiner=1' : '/(onboarding)/invite-partner');
   }
 
   return (
     <Shell
       step={isJoiner ? 2 : 4}
-      total={isJoiner ? 2 : 6}
+      total={isJoiner ? 3 : 7}
       title="Put a face to the name"
       why="so your person sees you — not a grey circle — the moment they open your space."
       footer={

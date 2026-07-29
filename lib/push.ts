@@ -25,17 +25,35 @@ const PROJECT_ID =
   '34c35f43-76e1-4efc-8a85-8a8596485ba0';
 
 /**
- * Requests notification permission, fetches this device's Expo push token,
- * and saves it on the current user's profile. Safe to call repeatedly.
- * No-ops on simulators / when permission is denied.
+ * Fetches this device's Expo push token and saves it on the current user's
+ * profile. Safe to call repeatedly. No-ops on simulators / when permission is
+ * denied.
+ *
+ * **`request` defaults to false, and the app-startup caller must leave it that
+ * way.** This used to always request, which meant the cold OS permission prompt
+ * fired from `app/_layout.tsx` the instant a session existed — before onboarding
+ * had rendered a single screen, with no explanation of why an app the user had
+ * just signed into wanted to notify them. Given how much of Locket rides on push
+ * (nudges, letters, date reminders, partner activity), a denial there is
+ * expensive and effectively permanent.
+ *
+ * The one place that passes `request: true` is the onboarding priming screen
+ * (`app/(onboarding)/notification-permission.tsx`), which asks in Locket's own
+ * words first.
+ * Everywhere else this only picks up a token the user has already agreed to —
+ * including on every later launch, so a permission granted in iOS Settings after
+ * the fact still lands a token.
  */
-export async function registerForPush(profileId: string): Promise<void> {
+export async function registerForPush(
+  profileId: string,
+  opts: { request?: boolean } = {},
+): Promise<void> {
   try {
     if (!Device.isDevice) return; // push doesn't work on simulators
 
     const { status: existing } = await Notifications.getPermissionsAsync();
     let status = existing;
-    if (status !== 'granted') {
+    if (status !== 'granted' && opts.request) {
       const req = await Notifications.requestPermissionsAsync();
       status = req.status;
     }

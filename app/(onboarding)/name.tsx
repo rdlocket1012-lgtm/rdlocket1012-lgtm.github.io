@@ -40,7 +40,7 @@ export default function NameScreen() {
   return (
     <Shell
       step={1}
-      total={isJoiner ? 2 : 6}
+      total={isJoiner ? 3 : 7}
       title="What should we call you?"
       why="petnames welcome — this stays between you two."
       showBack={false}

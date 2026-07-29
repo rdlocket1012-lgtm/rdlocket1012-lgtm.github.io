@@ -43,8 +43,8 @@ export default function PhotoPermissionScreen() {
 
   return (
     <Shell
-      step={6}
-      total={6}
+      step={7}
+      total={7}
       title="One last thing — your photos"
       why="On This Day quietly resurfaces moments from this date in past years. Photos never leave your phone."
       footer={

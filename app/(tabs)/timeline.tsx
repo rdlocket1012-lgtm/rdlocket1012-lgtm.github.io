@@ -19,6 +19,7 @@ import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
 import type { Milestone } from '@/stores/milestones.store';
 import { parseLocalDate } from '@/utils/date';
+import { claimPremiumMoment, milestoneMoment, PEAK_HANDOFF_MS } from '@/lib/premium-moments';
 
 const BORDER = 'rgba(42,33,26,0.15)';
 
@@ -52,6 +53,22 @@ export default function TimelineScreen() {
 
   // Clear the milestones badge whenever the timeline is viewed.
   useFocusEffect(useCallback(() => { useUnseenStore.getState().markSeen('milestones'); }, []));
+
+  /**
+   * §A7 — the post-value ask. Every other paywall trigger on this screen is a
+   * wall (at cap, near cap); this one follows a peak instead. It runs from the
+   * celebration's dismiss, after a beat, so the two full-screen surfaces never
+   * stack — and `claimPremiumMoment` rations it hard (see lib/premium-moments).
+   */
+  const dismissPeak = useCallback(() => {
+    setSavedTitle(null);
+    if (isPremium) return;
+    const moment = milestoneMoment(milestones.length);
+    if (!moment) return;
+    setTimeout(() => {
+      claimPremiumMoment(moment).then((ok) => { if (ok) setSheet('paywall'); });
+    }, PEAK_HANDOFF_MS);
+  }, [isPremium, milestones.length]);
 
   function handleAdd() {
     if (atCap) { setSheet('paywall'); return; }
@@ -196,7 +213,7 @@ export default function TimelineScreen() {
         name="moment-send"
         message={peak?.message ?? ''}
         subMessage={peak?.sub}
-        onDismiss={() => setSavedTitle(null)}
+        onDismiss={dismissPeak}
       />
       {sheet === 'paywall' && <PaywallModal onClose={() => setSheet(null)} />}
     </SafeAreaView>

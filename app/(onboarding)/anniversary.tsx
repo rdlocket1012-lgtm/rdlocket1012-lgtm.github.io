@@ -70,7 +70,7 @@ export default function AnniversaryScreen() {
   return (
     <Shell
       step={3}
-      total={6}
+      total={7}
       title="When did your story begin?"
       why="this date anchors your day counter — every day since, counted."
       footer={<PrimaryCta label="Continue" onPress={next} busy={busy} />}

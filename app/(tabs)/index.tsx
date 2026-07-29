@@ -45,6 +45,7 @@ import { WidgetHelpModal } from '@/components/ui/widget-help-modal';
 import { SectionEyebrow } from '@/components/ui/section-eyebrow';
 import { TodaySpine } from '@/components/home/today-spine';
 import { StreakRow } from '@/components/home/streak-row';
+import { claimPremiumMoment, badgeMoment, PEAK_HANDOFF_MS } from '@/lib/premium-moments';
 // TEMPORARY — the 17 Jul 2026 reunion. Remove this import, the block below it
 // in the tree, and `constants/reunion.ts` once the day has passed.
 import { ReunionCountdown } from '@/components/home/ReunionCountdown';
@@ -113,6 +114,26 @@ export default function HomeScreen() {
     if (quizChallengeSignal != null) challenge.refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quizChallengeSignal]);
+
+  /**
+   * §A7 — the post-value ask. Home's only other paywall entry is the persistent
+   * footer nudge; this one follows a peak instead. A badge unlock *is* the streak
+   * milestone celebration, so it owns the ask (see lib/premium-moments), and it
+   * runs from the overlay's dismiss after a beat so the two never stack.
+   *
+   * Gated on `partnerJoined`: a solo user's badge isn't a moment to sell into —
+   * the thing they're missing is their partner, not Premium.
+   */
+  const dismissBadge = useCallback(() => {
+    const unlocked = badge.celebrating;
+    badge.dismiss();
+    if (isPremium || !partnerJoined || !unlocked) return;
+    const moment = badgeMoment(unlocked.days, unlocked.key);
+    if (!moment) return;
+    setTimeout(() => {
+      claimPremiumMoment(moment).then((ok) => { if (ok) setPaywallOpen(true); });
+    }, PEAK_HANDOFF_MS);
+  }, [badge.celebrating, badge.dismiss, isPremium, partnerJoined]);
 
   // Widget "Add to Home Screen" CTA — iOS only (the widget is an apple-target),
   // dismiss-once, gone forever.
@@ -538,7 +559,7 @@ export default function HomeScreen() {
       />
       {/* Defer the badge celebration until any quiz-reveal moment has cleared,
           so the two full-screen overlays never stack. */}
-      <BadgeUnlockOverlay badge={peakMoment ? null : badge.celebrating} onDismiss={badge.dismiss} />
+      <BadgeUnlockOverlay badge={peakMoment ? null : badge.celebrating} onDismiss={dismissBadge} />
       <WidgetHelpModal visible={widgetHelpOpen} onClose={() => setWidgetHelpOpen(false)} />
     </SafeAreaView>
   );

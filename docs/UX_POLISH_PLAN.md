@@ -42,11 +42,23 @@ Phases are ordered by (commercial impact × user-visible polish) ÷ risk.
 | **E1** Fun tab density | ✅ **Done** (2026-07-29) — tracked as S1 in DESIGN_CONTENT_PLAN |
 | **E2** Us tab information | ✅ **Done** (2026-07-29) — tracked as S2 in DESIGN_CONTENT_PLAN |
 | **E4** Timeline empty state | ✅ **Done** (2026-07-29) — tracked as S4 in DESIGN_CONTENT_PLAN |
-| **A2, A4–A8** | Open — the paywall block. Gated on App Store Connect + RevenueCat config; A2 needs a build, not an OTA |
-| **E3** Onboarding pairing | Open — needs measurement, not just taste |
+| **A2** Free trial | ✅ **Done** (2026-07-29) — read live off the package; needs the offer configured in App Store Connect + RevenueCat to appear |
+| **A4** Social proof | ⛔ **Dropped by decision** — no real reviews to quote yet, and inventing one is an Apple 2.3 risk. Revisit when there are reviews worth quoting |
+| **A5** Table reframe | ✅ **Done** (2026-07-29) — loss framing, icon cells, bucket-list row added |
+| **A6** Lifetime tier | ⛔ **Dropped by decision** — trial / monthly / annual only |
+| **A7** Trigger placement | ✅ **Done** (2026-07-29) — post-value moments, hard-rationed. No onboarding paywall |
+| **A8** Success share | ✅ **Done** (2026-07-29) |
+| **E3** Onboarding pairing | ✅ **Done** (2026-07-29) — welcome explainer + promoted redeem + notification priming. Bidirectional pairing deliberately not built |
 
-> Everything else in this doc is done. See `docs/DESIGN_CONTENT_PLAN.md` for the
-> companion design/copy/motion work, which is complete except its S3 (= A4/A5 here).
+> Everything in this doc is now either done or explicitly dropped. The companion
+> design/copy/motion work is in `docs/DESIGN_CONTENT_PLAN.md`, also complete.
+>
+> **A2 still needs store-side configuration to be visible.** The code reads the
+> intro offer live, so until a 7-day free trial exists on the annual product in
+> App Store Connect *and* RevenueCat, the CTA simply stays "Start Premium" and no
+> trial copy renders. It does **not** need a new build — the plan previously said
+> it did, which was wrong: `introPrice` comes off the existing native module at
+> runtime, so this ships over OTA and lights up the moment the offer is live.
 
 ---
 
@@ -82,6 +94,29 @@ be wrong in a way tsc cannot see:
    flattening medium-weight actions to Light. If it feels wrong, it's isolated to
    `lib/haptics.ts` + four call sites — see D1.
 
+### Added by the paywall + onboarding pass (2026-07-29)
+
+9. **The notification prompt no longer fires at sign-up.** `registerForPush` only
+   requests when passed `request: true`, and the sole caller that does is the new
+   priming screen. **Verify a fresh install actually reaches an OS prompt** — if
+   the priming screen is skipped or its `registerForPush` call fails silently, a
+   new user ends up with no push token at all, and Locket is push-first. Check
+   both paths: inviter (step 6 of 7) and **joiner (step 3 of 3, where the flow now
+   ends)**. Existing users are unaffected — they've already answered the prompt,
+   and a granted permission still yields a token on every launch.
+10. **Onboarding step counts.** Now 7 for the inviter and 3 for the joiner, across
+    six files. Walk both flows and confirm the progress bar never goes backwards
+    or lands short of full.
+11. **Free trial copy.** Needs a build + a configured intro offer. Confirm the CTA,
+    the reassurance line and the 3.1.2 disclosure all agree on the same length and
+    price, and that an *ineligible* user (already used the trial) sees none of it.
+12. **Post-value paywall timing.** Save a 10th milestone and confirm the paywall
+    arrives *after* the celebration fades, not over it — then confirm it never
+    comes back for that moment. The ledger is `lk.premiumMoments.v1` in
+    AsyncStorage; clear that key to re-test.
+13. **Paywall table at 375px.** Two icon columns replaced two text columns and the
+    table gained a sixth row.
+
 ---
 
 ## Phase A — Paywall & monetisation
@@ -110,7 +145,7 @@ That also closes A3's per-month framing and the `'Save ~35%'` tilde. Still open 
 this file: A2 (trial), A4 (social proof), A5 (table framing + missing bucket-list
 row), A6 (lifetime), A7 (triggers), A8 (success-state share).
 
-### A2. There is no free trial anywhere
+### A2. There is no free trial anywhere — ✅ DONE
 
 Every comparable paywall pulled from Mobbin leads with one:
 [Fixtured](https://mobbin.com/screens/0576cc85-bcfb-48ce-9115-cc4fbd774e02) ("Try free
@@ -125,6 +160,32 @@ Deezer's trailing reassurance is worth copying verbatim in spirit: *"We'll remin
 7 days before your trial ends."* Headway shows the same idea as an Apple-reminder
 line under the plan.
 
+**Shipped, read live — never asserted.** `PlanPrice` gained a `trial` field parsed
+from the store product (`introPrice` with a zero price on iOS,
+`defaultOption.freePhase` on Android). It's present only when an intro offer exists
+**and this user is still eligible for it**, so the paywall can't promise a trial
+that evaporates at checkout. When present:
+
+- CTA becomes **"Start your 7-day free trial"** (the length comes from the store,
+  so 3 or 14 days needs no code change)
+- The trial pill takes the plan row's badge slot; the savings % moves under the price
+- A reassurance line states the length, the price it converts to, and that
+  cancelling before the end costs nothing
+- The Apple 3.1.2 disclosure interpolates the same two values
+
+**One deviation: no "we'll remind you" promise.** Deezer's line is only honest if
+you actually schedule the reminder. Locket doesn't, and adding one runs into the
+64-pending-local-notification cap that `lib/date-reminders.ts` already budgets
+against — so it's a separate decision, not a copy tweak. The line says only what's
+true.
+
+**Still needs store config to appear:** a 7-day introductory offer on the annual
+product in App Store Connect, exposed through the RevenueCat offering. Until then
+the CTA reads "Start Premium" and no trial copy renders. **This does not need a new
+build** — the original write-up claimed it did, but `introPrice` comes off the
+existing native module at runtime, so it lights up over OTA the moment the offer
+goes live.
+
 ### A3. Annual price needs monthly-equivalent framing — ✅ DONE (with A1)
 
 `$29.99/year` reads as a bigger ask than `$3.99/month` despite being cheaper.
@@ -135,13 +196,19 @@ leads with `$3.34/mo` and puts the billed total in the secondary line.
 Also: `'Save ~35%'` — the tilde reads as unfinished. Real number is 37%
 (`29.99 / 47.88`). Compute it from the live prices once A1 lands.
 
-### A4. No social proof
+### A4. No social proof — ⛔ DROPPED
 
 Paired and Fixtured both place a star rating + one short review directly above the
 plan picker. Locket has zero. Add a single testimonial card between the comparison
 table and the plan selector.
 
-### A5. The comparison table undersells Premium
+**Dropped by decision.** There are no real reviews to quote yet, and a fabricated
+testimonial on a purchase screen is both dishonest and an App Review risk
+(Guideline 2.3 — accurate metadata). The space stays with the plan picker.
+Revisit when there are reviews worth quoting; it's a self-contained insert between
+the table and the selector.
+
+### A5. The comparison table undersells Premium — ✅ DONE
 
 `ROWS` (`PaywallModal.tsx:17-23`) presents the free tier as *30 milestones, 15 pins,
 5 letters* — which reads generous, so Premium reads optional. References frame the
@@ -153,14 +220,28 @@ Bucket-list items (`FREE_LIMITS.BUCKET_LIST_ITEMS = 10`) are enforced in
 `app/bucket-list/index.tsx:68` but **missing from the paywall table entirely** — a
 user hits a wall they were never told about.
 
-### A6. Missing lifetime tier
+**Shipped.** `ROWS` is now a typed structure rather than string triples:
+
+- Eyebrow above the table: **WHERE FREE RUNS OUT**
+- Every cap carries a `max` suffix, so `30` reads as a ceiling rather than a gift
+- `false` renders a Danger `x` icon and `true` a Success `check` — the `'—'` and
+  `'✓'` text glyphs are gone
+- **The bucket-list row exists**, and all four numbers interpolate from
+  `FREE_LIMITS` so the table can't drift from the code that enforces it again
+
+### A6. Missing lifetime tier — ⛔ DROPPED
 
 `PlanId` in `lib/revenuecat.ts` already types `'lifetime'` and `purchasePlan` already
 maps `PACKAGE_TYPE.LIFETIME` — but `PLANS` never offers it. Couples apps convert
 unusually well on a one-time "ours forever" purchase, which also fits the product's
 emotional pitch better than a subscription does. Low-effort add; the plumbing exists.
 
-### A7. Trigger placement
+**Dropped by decision: trial / monthly / annual only.** The tier was built and then
+removed in the same pass. The `PlanId` type and the `PACKAGE_TYPE.LIFETIME` mapping
+stay because they predate the decision, and `lib/revenuecat.ts` now carries a note
+saying nothing should start offering one without a fresh product call.
+
+### A7. Trigger placement — ✅ DONE
 
 The paywall is currently reachable from six scattered `setSheet('paywall')` sites and
 nowhere else. Two gaps:
@@ -174,11 +255,46 @@ nowhere else. Two gaps:
 Keep the soft-nudge model (per `feature-decisions` memory) — this is about *timing*,
 not aggression.
 
-### A8. Success state dead-ends
+**Shipped: post-value only. No onboarding paywall** — that would contradict the
+soft-nudge model outright, so it wasn't built.
+
+New module `lib/premium-moments.ts` holds the rationing, and the two peak screens
+already owned both a `PaywallModal` and a peak overlay with an `onDismiss`, so this
+needed **no global host or store** — just a ledger and two dismiss handlers:
+
+- Fires from the overlay's dismiss after `PEAK_HANDOFF_MS` (420ms), clearing the
+  260ms fade-out so two full-screen surfaces never stack
+- Each named moment fires **at most once ever**, plus a global cooldown and a
+  lifetime cap per install
+- A corrupt or unreadable ledger fails **closed** — the alternative failure mode is
+  re-offering on every peak forever
+- Moments: **10th milestone** and every 25th, and **streak badges from One Week up**
+
+Three deviations worth knowing:
+
+- **Not the first milestone**, which the plan proposed. The first save is activation,
+  not value — the couple still has 29 of 30 free slots, so an upsell there reads as a
+  toll booth on the front door. The 10th is where the timeline starts to feel theirs,
+  and it's the count the peak copy already gives its own beat to.
+- **No separate streak-7 trigger.** The badge tiers *are* the streak milestones
+  (3/7/14/30/…), so a streak-7 trigger would fire alongside the One Week badge and
+  ask twice for one event. The badge already owns a full-screen celebration, so it
+  owns the ask. First Spark (3 days) is excluded as too early.
+- **Home gates on `partnerJoined`.** A solo user's badge isn't a moment to sell
+  into — what they're missing is their partner, not Premium.
+
+### A8. Success state dead-ends — ✅ DONE
 
 `PaywallModal.tsx:73-101` is a genuinely lovely moment that then just closes. Add a
 "Tell your partner" share action — the subscription covers them both, and they don't
 otherwise find out.
+
+**Shipped**, with a correction to the premise: they *sometimes* find out.
+`couple.store`'s realtime handler fires a local "You're Premium! 👑" notification on
+the partner's device when the row flips — but only if their app is open and
+subscribed at that exact moment. Otherwise they discover it by accident, so the
+share is still the reliable path. It's the primary action; "Keep writing it" drops to
+a quiet secondary. The success line also now says "for both of you".
 
 ---
 
@@ -439,7 +555,7 @@ letters", "12 pins", next calendar event). All of that data is already in
 Add a secondary line per card. Consider promoting Letters (the emotional core, and a
 paywalled feature) to a wide hero row above the grid.
 
-### E3. Onboarding — audit against Paired/Flo
+### E3. Onboarding — audit against Paired/Flo — ✅ DONE
 
 Two patterns worth checking `app/(onboarding)/invite-partner.tsx` against:
 
@@ -457,6 +573,49 @@ permission does). Feeld primes before the OS prompt. Given how much of Locket de
 on push (nudges, letters, date reminders, partner activity), a cold OS prompt is
 costly.
 
+---
+
+**Shipped — and the priming item turned out to be worse than written.** There was no
+cold prompt *in onboarding* to prime, because `registerForPush` was called from
+`app/_layout.tsx` the instant a session existed and requested permission
+unconditionally. The OS prompt fired at sign-up, before onboarding rendered a single
+screen. A priming screen placed anywhere in the flow would have arrived **after** the
+user had already answered. So the fix was two-part:
+
+1. **`registerForPush(profileId, { request })` — `request` now defaults to false.**
+   The startup caller only picks up a token the user has already granted, which also
+   means a permission enabled in iOS Settings later still lands a token on the next
+   launch. Existing users are unaffected: granted still registers, denied still
+   doesn't.
+2. **New `app/(onboarding)/notification-permission.tsx`** is the only caller passing
+   `request: true`. Three sample notification cards using the app's *real* strings
+   (not invented examples), the honest scope line — "nudges, letters and little
+   anniversaries — nothing else, ever. No marketing, no digests." — then
+   "Turn on notifications" / "Not right now".
+
+It sits on **both** paths, which the plan didn't account for: the inviter gets it at
+step 6 of 7, and the joiner at step 3 of 3 where their flow now ends. Without the
+joiner placement, `request: false` would have left Person B with no push at all.
+Step counts moved across six files (7 for the inviter, 3 for the joiner).
+
+Named `notification-permission`, not `notifications` — route groups don't namespace
+URLs, so `app/(onboarding)/notifications.tsx` resolves to `/notifications` and
+collides with the Activity feed.
+
+**On the pairing screen: welcome, not invite-partner.** The plan pointed at
+`(onboarding)/invite-partner`, but Paired's bidirectional layout can't work there.
+Locket creates the couple at sign-up — anniversary and connection style are set at
+steps 2–3 — so a user reaching `invite-partner` already owns one, and a redeem field
+would call `join_couple` for someone who has a couple, discarding the anniversary
+they just entered. The stated symptom ("a user who *has* a code may go the wrong way
+from `welcome.tsx`") is a welcome-screen problem, and that's where it's fixed:
+
+- **A three-step `INVITE → PAIR → SHARE` explainer** under the tagline (Flo pattern),
+  so pairing is explained before the ask
+- **"I have an invite code" promoted to a real secondary action** — a full-width
+  Ivory pill directly under the primary CTA, instead of a tertiary link sharing a
+  row with "I have an account", which now drops to the quiet link below
+
 ### E4. Timeline — already good
 
 `app/(tabs)/timeline.tsx` is the strongest screen: filter chips, year sections with
@@ -466,6 +625,9 @@ soft-warning pattern. Use it as the template for the others.
 
 The one nit — the empty state used an `IconChip` rather than the mascot illustration
 the recipe calls for — is **✅ fixed** (tracked as S4 in `DESIGN_CONTENT_PLAN.md`).
+
+Timeline also now carries the milestone post-value paywall trigger (§A7), fired from
+the save celebration's dismiss.
 
 ---
 
@@ -479,20 +641,26 @@ the recipe calls for — is **✅ fixed** (tracked as S4 in `DESIGN_CONTENT_PLAN
 | ~~**B**~~ | ✅ done | — |
 | ~~**D2, D3**~~ | ✅ done | — |
 | ~~**E1, E2, E4**~~ | ✅ done (as S1/S2/S4) | — |
-| **A2, A4–A8** | Revenue; needs App Store Connect + RevenueCat config first | Medium |
-| **E3** | Needs measurement, not just taste | Medium |
+| ~~**A2, A5, A7, A8**~~ | ✅ done | — |
+| ~~**A4, A6**~~ | ⛔ dropped by decision | — |
+| ~~**E3**~~ | ✅ done | — |
 
-Everything shipped so far is OTA-safe. **A2 (free trial) requires store config and a
-new build** — it cannot go out over OTA, and A4–A8 are best done in the same pass.
+**Everything in this plan is OTA-safe**, including A2 — the trial is read off the
+existing native module at runtime, so it needs store configuration, not a build.
+
+The one thing left is not code: **configure a 7-day introductory offer on the annual
+product** in App Store Connect and expose it through the RevenueCat offering. Until
+then the paywall reads "Start Premium" and behaves exactly as it did before.
 
 ---
 
-## Open questions for the user
+## Open questions — resolved
 
-1. **Free trial length** — 7 days is the reference default. 3 days converts harder
-   but churns more.
-2. **Lifetime tier** — add it, and at what price? (Typical: 4–5× annual.)
-3. **Onboarding paywall** — worth testing, or does it conflict with the soft-nudge
-   positioning?
-
-~~4. Home restructure scope~~ — resolved: the full two-region rebuild shipped.
+1. ~~**Free trial length**~~ — **moot in code.** The length is read from the store, so
+   7 vs 3 days is an App Store Connect setting, not a code change. 7 is still the
+   recommendation.
+2. ~~**Lifetime tier**~~ — **dropped.** Trial / monthly / annual only.
+3. ~~**Onboarding paywall**~~ — **no.** It conflicts with the soft-nudge positioning;
+   A7 ships post-value triggers instead.
+4. ~~Home restructure scope~~ — resolved: the full two-region rebuild shipped.
+5. ~~**Social proof**~~ — **dropped** until there are real reviews to quote.

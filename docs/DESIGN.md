@@ -3381,7 +3381,35 @@ Three screens receive a background treatment beyond the standard Parchment + sca
 - Never say "you've reached your limit" — say "add more with Premium"
 - Never use scarcity language ("only X items left!") — Locket is warm, not pressuring
 - Never show a paywall on first launch or before value is established
-- The upgrade sheet is only shown when the user initiates an action that requires premium
+- The upgrade sheet is user-initiated, with **one** exception: the rationed post-value moment below
+
+---
+
+#### 12.15b Live pricing, free trial, and post-value timing (§A1/A2/A5/A7/A8 — shipped)
+
+**Never hardcode a price.** The line above ("no price in the design system") was written for a RevenueCat-hosted paywall; the app renders its own, so every amount comes from the live offering via `fetchPlanPrices()` in `lib/revenuecat.ts`. Pricing has four states — loading (`Skeleton` in the price slot), ready, unavailable-with-retry, Expo Go — and **the purchase CTA stays disabled unless pricing loaded**, so the app never shows a number it can't back. Savings % and the annual per-month equivalent are computed from the live pair, never approximated.
+
+**Two tiers only: monthly and annual.** No lifetime tier (product decision). `PlanId` still types `'lifetime'` and `purchasePlan` still maps `PACKAGE_TYPE.LIFETIME` — that plumbing predates the decision and nothing should start offering it without a new call.
+
+**Free trial.** Read live off the selected package (`PlanPrice.trial`): iOS from `introPrice` with a zero price, Android from `defaultOption.freePhase`. Present only when the store reports one *for this user*, so the CTA can never promise a trial an ineligible user won't get at checkout.
+- CTA becomes **"Start your {N}-day free trial"**, else "Start Premium"
+- The trial badge outranks the savings pill on the row; the saving then moves under the price
+- Reassurance line: "Free for {N} days, then {price}/year. Cancel any time before it ends and you won't be charged a thing." — it deliberately does **not** promise "we'll remind you", because no such reminder is scheduled (iOS caps pending local notifications at 64; adding one is a separate decision)
+- The Apple 3.1.2 disclosure interpolates trial length *and* the price it converts to
+
+**Comparison table is framed as loss, not generosity.** Eyebrow "WHERE FREE RUNS OUT" (J/11/800, 1.4px tracking, uppercase, ink70). Caps carry a `max` suffix so they read as a ceiling. Missing features render a Danger `x` icon, not an em-dash glyph; included ones a Success `check`, not a `✓` character. **All four free limits appear** — bucket list was enforced in code but missing from the table, so users hit a wall they were never shown.
+
+**Post-value trigger (the one app-initiated ask).** Every other trigger is a wall — the user hit a cap and the sheet explains why — which means the app only ever asked at the moment of frustration. `lib/premium-moments.ts` adds an ask after a *peak*, hard-rationed so it can't become nagging:
+- Fires from the peak overlay's `onDismiss` after `PEAK_HANDOFF_MS` (420ms), so the celebration always finishes and two full-screen surfaces never stack
+- Each named moment fires **at most once ever**; plus a global cooldown between offers and a lifetime cap per install
+- Storage errors fail **closed** — never offer on a guess
+- Moments: **10th milestone** and every 25th (`milestoneMoment`), and **streak badges from One Week up** (`badgeMoment`)
+- Gated on `isPremium` and — on Home — `partnerJoined`: a solo user's badge isn't a moment to sell into, since what they're missing is their partner
+- **Not the first milestone**, though the plan proposed it: the first save is activation, not value — the couple still has 29 of 30 free slots, so an upsell there reads as a toll booth on the front door
+- **No onboarding paywall** — that would contradict the soft-nudge model outright
+- The 3-day *First Spark* badge is excluded: day three is too early to have earned the ask
+
+**Success state doesn't dead-end.** A "Tell your partner" share (primary) sits above the "Keep writing it" dismiss. The subscription covers both accounts, but the partner otherwise only learns that from `couple.store`'s realtime handler, which needs their app open and subscribed at the exact moment the row flips.
 
 ---
 
@@ -3715,6 +3743,15 @@ Copy varies by `CalEvent.kind` (anniversary / birthday / bucket / milestone).
 [safe area bottom]
 ```
 
+**Pairing explainer + redeem hierarchy** (§E3 — shipped, supersedes the `Have a code? Redeem it →` footnote above):
+
+Locket has two front doors and they used to look nothing alike. "I have an invite" was a tertiary link with no explanation of what pairing does, so Person B arriving with a code could reasonably tap **Begin your story** and create a second, empty couple instead of joining their partner's. Two changes:
+
+1. **A three-step explainer** under the tagline — `INVITE → PAIR → SHARE`, three 40pt Ivory circles (1.5px hairline border, Level 1 shadow) holding `share` / `heart` / `sparkle` at 18pt Espresso, captions J/10/800 uppercase 1px-tracked ink70, joined by 26×1.5px hairline connectors. Sets expectations *before* the ask (Flo pattern).
+2. **Redeem is promoted to a real secondary action** — 53pt-high Ivory pill, 1.5px hairline border, `heart` 17pt + "I have an invite code" J/16/700/Espresso, directly under the primary CTA. "I have an account" drops to the quiet text link below it.
+
+> **Not built, deliberately:** Paired's *bidirectional* pairing screen (own code + partner-code entry side by side). Locket creates the couple at sign-up — the anniversary and connection style are set at steps 2–3 — so by the time a user reaches `invite-partner` they already own a couple. A redeem field there would call `join_couple` for someone who has one, discarding the anniversary they just entered. The divergence belongs here at welcome, which is where the wrong-way problem actually was.
+
 **Entrance animations** (all Reanimated, reduced-motion: `FadeIn.duration(150)` only):
 - Illustration: `FadeInDown.duration(400).springify()` on mount
 - Headline: `FadeIn.duration(320)` delay 120ms
@@ -3831,7 +3868,7 @@ Same shell and field card spec as §13.3. Simpler form:
 
 ---
 
-### 13.7 Onboarding — Name (Step 1 of 6 / Step 1 of 2 for joiners)
+### 13.7 Onboarding — Name (Step 1 of 7 / Step 1 of 3 for joiners)
 
 **Route:** `app/(onboarding)/name.tsx`  
 **Purpose:** First onboarding screen — sets the display name. Sets the tone: warm, personal, not corporate.
@@ -3874,7 +3911,7 @@ S/18/500/Sepia    "so your partner knows it's you"   [center, 1 warm line]
 
 ---
 
-### 13.8 Onboarding — Connection Style (Step 2 of 6)
+### 13.8 Onboarding — Connection Style (Step 2 of 7)
 
 **Route:** `app/(onboarding)/connect.tsx`  
 **Purpose:** Selects the couple's connection style. Informs Partner Presence (§12.13 timezone visibility for distance couples) and Calendar copy.
@@ -3900,7 +3937,7 @@ S/18/500/Sepia    "so your partner knows it's you"   [center, 1 warm line]
 
 ---
 
-### 13.9 Onboarding — Anniversary (Step 3 of 6)
+### 13.9 Onboarding — Anniversary (Step 3 of 7)
 
 **Route:** `app/(onboarding)/anniversary.tsx`  
 **Purpose:** Set the couple's start date. The **peak moment of onboarding**: day counter appears and ticks live as the user scrolls the wheel picker — the emotional crescendo before the app begins.
@@ -3933,7 +3970,7 @@ J/12/500/Faded      "since [Mon DD, YYYY]"   [center]
 
 ---
 
-### 13.10 Onboarding — Photo (Step 4 of 6 / Step 2 of 2 for joiners)
+### 13.10 Onboarding — Photo (Step 4 of 7 / Step 2 of 3 for joiners)
 
 **Route:** `app/(onboarding)/photo.tsx`  
 **Purpose:** Set a profile photo for partner recognition. Optional — never block progress.
@@ -3956,7 +3993,7 @@ J/12/500/Faded      "since [Mon DD, YYYY]"   [center]
 
 ---
 
-### 13.11 Onboarding — Invite Partner (Step 5 of 6)
+### 13.11 Onboarding — Invite Partner (Step 5 of 7)
 
 **Route:** `app/(onboarding)/invite-partner.tsx`  
 **Purpose:** Generate and share an invite code/link with the partner. A **second peak moment** — the connection is one tap away.
@@ -3989,11 +4026,35 @@ Below card: S/16/500/Sepia "your partner enters this code when they join"
 - Pre-composed message: "Join me on Locket 💌 → [dynamic link]"
 
 **CTA:** "I've shared it, continue" — active immediately (don't gate on sharing)
-**Sub-link:** "They'll join later" J/13/Sepia → `(onboarding)/photo-permission`
+**Sub-link:** "They'll join later" J/13/Sepia → `(onboarding)/notification-permission`
 
 ---
 
-### 13.12 Onboarding — Photo Permission (Step 6 of 6)
+### 13.11b Onboarding — Notification Permission (Step 6 of 7 / Step 3 of 3 for joiners)
+
+**Route:** `app/(onboarding)/notification-permission.tsx`
+**Purpose:** Prime notification permission *before* the OS prompt. Locket is push-first — nudges, letters, date reminders and partner activity all arrive as notifications — so a cold, unexplained prompt is expensive and its denial effectively permanent.
+
+> **This screen owns the only `request: true` call to `registerForPush`.** The prompt used to fire from `app/_layout.tsx` the instant a session existed, before onboarding rendered anything. `registerForPush` no longer requests by default; every other caller only picks up a token the user has already granted.
+
+**Layout:**
+- Shell title: "Want to know the moment they join?" (inviter) / "Want to know when they reach for you?" (joiner)
+- `why` line (Newsreader italic): "nudges, letters and little anniversaries — nothing else, ever. No marketing, no digests."
+- **Three sample notification cards** — Vellum, 18px R, 1.5px hairline border, Level 1 shadow, each tilted ±1.5°, 11px gap. 34×34 rounded-square app tile (Blush / Gold / Marigold) + title J/13.5/800 + body J/12.5/ink70, both `numberOfLines={1}`.
+  - Samples use the app's **real** notification strings, not invented ones — the screen is a promise about what actually arrives.
+- Footer note J/12/ink70 centred: "Only ever from your person. You can change this any time in Settings."
+
+**CTAs:**
+1. "Turn on notifications" — PrimaryCta → `registerForPush(pid, { request: true })`, then continue
+2. "Not right now" — QuietCta, skips without asking
+
+**Routing:** inviter → `(onboarding)/photo-permission`. **Joiner ends here** — sets `onboarding_done` and `router.replace('/(tabs)')`, since the joiner never sees invite-partner or photo-permission.
+
+**Naming:** must not be `notifications.tsx` — route groups don't namespace URLs, so that resolves to `/notifications` and collides with the Activity feed at `app/notifications/index.tsx`.
+
+---
+
+### 13.12 Onboarding — Photo Permission (Step 7 of 7)
 
 **Route:** `app/(onboarding)/photo-permission.tsx`  
 **Purpose:** Request photo library access. "Ask once, explain why" — builds trust. Final screen before the app begins.

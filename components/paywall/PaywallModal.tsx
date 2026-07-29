@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, Modal, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, Pressable, ScrollView, Modal, ActivityIndicator, Linking, Share } from 'react-native';
 import { EaseView } from 'react-native-ease';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
@@ -8,8 +8,9 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import {
   purchasePlan, restorePurchases, purchasesAvailable,
-  fetchPlanPrices, formatPrice, type PlanPrice,
+  fetchPlanPrices, formatPrice, type PlanPrice, type PlanId,
 } from '@/lib/revenuecat';
+import { FREE_LIMITS } from '@/constants/free-limits';
 import { success as hapticSuccess } from '@/lib/haptics';
 import { useCouple } from '@/hooks/useCouple';
 import { toast } from '@/lib/feedback';
@@ -17,17 +18,29 @@ import { toast } from '@/lib/feedback';
 // Plan metadata only — prices are NEVER hardcoded. The App Store charges in the
 // user's own storefront currency, so every amount on this screen comes from the
 // live RevenueCat offering (see fetchPlanPrices).
+//
+// Two tiers by decision: monthly and annual, with a free trial on top. There is
+// deliberately no lifetime tier — `PlanId` in lib/revenuecat.ts still types one
+// because `purchasePlan` has always mapped PACKAGE_TYPE.LIFETIME, but nothing
+// offers it and nothing should start to without that being a product decision.
 const PLANS = [
   { id: 'monthly', title: 'Monthly', per: '/month' },
   { id: 'annual', title: 'Annual', per: '/year' },
 ] as const;
 
-const ROWS = [
-  ['Milestones', '30', 'Unlimited'],
-  ['Map pins', '15', 'Unlimited'],
-  ['Love letters', '5', 'Unlimited'],
-  ['Sealed letters', '—', '✓'],
-  ['Rich notes', '—', '✓'],
+/**
+ * The comparison table is framed around what the *free* tier runs out of, not
+ * what it generously includes — a free column reading "30 milestones, 15 pins"
+ * makes Premium look optional. Caps carry a "max" suffix and read as a ceiling;
+ * `false` renders a Danger cross rather than an em-dash glyph.
+ */
+const ROWS: { label: string; free: string | false; premium: string | true }[] = [
+  { label: 'Milestones',     free: `${FREE_LIMITS.MILESTONES} max`,        premium: 'Unlimited' },
+  { label: 'Map pins',       free: `${FREE_LIMITS.MAP_PINS} max`,          premium: 'Unlimited' },
+  { label: 'Love letters',   free: `${FREE_LIMITS.LETTERS} max`,           premium: 'Unlimited' },
+  { label: 'Bucket list',    free: `${FREE_LIMITS.BUCKET_LIST_ITEMS} max`, premium: 'Unlimited' },
+  { label: 'Sealed letters', free: false,                                  premium: true },
+  { label: 'Rich notes',     free: false,                                  premium: true },
 ];
 
 interface Props {
@@ -36,13 +49,15 @@ interface Props {
 
 export function PaywallModal({ onClose }: Props) {
   const { fetchCouple } = useCouple();
+  // Narrower than PlanId on purpose — there is no lifetime tier, and this makes
+  // it a type error to start selecting one without revisiting PLANS.
   const [plan, setPlan] = useState<'monthly' | 'annual'>('annual');
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [success, setSuccess] = useState(false);
 
   // ── Live, localised pricing ───────────────────────────────────────────────
-  const [prices, setPrices] = useState<Partial<Record<'monthly' | 'annual', PlanPrice>> | null>(null);
+  const [prices, setPrices] = useState<Partial<Record<PlanId, PlanPrice>> | null>(null);
   const [priceState, setPriceState] = useState<'loading' | 'ready' | 'unavailable'>(
     purchasesAvailable ? 'loading' : 'unavailable',
   );
@@ -75,6 +90,30 @@ export function PaywallModal({ onClose }: Props) {
     : null;
 
   const canPurchase = priceState === 'ready';
+
+  // While loading, both rows render as skeletons; once the offering lands, only
+  // plans the store actually sells are offered.
+  const visiblePlans = priceState === 'ready'
+    ? PLANS.filter((p) => !!prices?.[p.id])
+    : PLANS;
+
+  // The offering may not contain the plan we defaulted to. Never leave a
+  // selection pointing at a package that isn't for sale — purchasePlan would
+  // silently fall back to availablePackages[0] and charge for something else.
+  useEffect(() => {
+    if (priceState !== 'ready') return;
+    if (prices?.[plan]) return;
+    const first = visiblePlans[0]?.id;
+    if (first) setPlan(first);
+  // visiblePlans is derived from prices/priceState
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceState, prices, plan]);
+
+  // Free trial on the *selected* plan, straight from the store. Absent unless
+  // an intro offer is configured AND this user is still eligible for it, so the
+  // CTA can never promise a trial that won't materialise at checkout.
+  const trial = prices?.[plan]?.trial;
+  const selectedPrice = prices?.[plan];
 
   async function handlePurchase() {
     setLoading(true);
@@ -113,6 +152,20 @@ export function PaywallModal({ onClose }: Props) {
     }
   }
 
+  /**
+   * The subscription covers both accounts, but the partner only learns that
+   * from `couple.store`'s realtime handler — which needs their app to be open
+   * and subscribed at the moment the row flips. If it isn't, they find out by
+   * accident. So the success state offers to tell them.
+   */
+  async function tellPartner() {
+    try {
+      await Share.share({
+        message: 'I just unlocked Locket Premium — it covers us both 👑 Unlimited milestones, letters and pins, on your account too. 💛',
+      });
+    } catch { /* user dismissed the share sheet */ }
+  }
+
   if (success) {
     return (
       <Modal animationType="fade" transparent>
@@ -130,13 +183,25 @@ export function PaywallModal({ onClose }: Props) {
             You're Premium!
           </Text>
           <Text style={{ fontFamily: theme.fonts.body, fontSize: 15.5, color: LK.ink70, marginTop: 10, lineHeight: 24, maxWidth: 260, textAlign: 'center' }}>
-            Every limit is gone. Your story has all the room it needs.
+            Every limit is gone — for both of you. Your story has all the room it needs.
           </Text>
           <ScalePressable
-            onPress={onClose}
-            style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 28, paddingVertical: 16, marginTop: 26 }}
+            onPress={tellPartner}
+            style={{
+              backgroundColor: LK.espresso, borderRadius: 9999,
+              paddingHorizontal: 26, paddingVertical: 16, marginTop: 26,
+              flexDirection: 'row', alignItems: 'center', gap: 9,
+            }}
           >
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Keep writing it</Text>
+            <Icon name="share" size={17} color="#fff" />
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Tell your partner</Text>
+          </ScalePressable>
+          <ScalePressable
+            onPress={onClose}
+            haptic={false}
+            style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 20, marginTop: 4 }}
+          >
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: shade(LK.marigold, 0.6) }}>Keep writing it</Text>
           </ScalePressable>
         </View>
       </Modal>
@@ -160,30 +225,53 @@ export function PaywallModal({ onClose }: Props) {
             </Text>
           </View>
 
-          {/* Comparison table */}
-          <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 6, marginBottom: 18, ...theme.shadow.sm }}>
+          {/* Comparison table — framed as where free runs out, not what it gives */}
+          <Text style={{
+            fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11,
+            letterSpacing: 1.4, textTransform: 'uppercase', color: LK.ink70,
+            marginBottom: 8, marginLeft: 4,
+          }}>
+            Where free runs out
+          </Text>
+          <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', padding: 6, marginBottom: 18, ...theme.shadow.sm }}>
             <View style={{ flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: LK.hairline }}>
               <View style={{ flex: 1.5 }} />
               <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 12, color: LK.ink70, textAlign: 'center' }}>Free</Text>
               <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 12, color: shade(LK.marigold, 0.5), textAlign: 'center' }}>Premium</Text>
             </View>
             {ROWS.map((r, i) => (
-              <View key={i} style={{ flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 10, borderBottomWidth: i < ROWS.length - 1 ? 1 : 0, borderBottomColor: LK.hairline, alignItems: 'center' }}>
-                <Text style={{ flex: 1.5, fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 13.5, color: LK.espresso }}>{r[0]}</Text>
-                <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontSize: 13.5, color: LK.ink70, textAlign: 'center' }}>{r[1]}</Text>
-                <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: shade(LK.marigold, 0.5), textAlign: 'center' }}>{r[2]}</Text>
+              <View key={r.label} style={{ flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 10, borderBottomWidth: i < ROWS.length - 1 ? 1 : 0, borderBottomColor: LK.hairline, alignItems: 'center' }}>
+                <Text style={{ flex: 1.5, fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 13.5, color: LK.espresso }}>{r.label}</Text>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  {r.free === false ? (
+                    <Icon name="x" size={16} color={LK.danger} strokeWidth={2.6} />
+                  ) : (
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70 }}>{r.free}</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  {r.premium === true ? (
+                    <Icon name="check" size={17} color={LK.success} strokeWidth={2.8} />
+                  ) : (
+                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: shade(LK.marigold, 0.5) }}>{r.premium}</Text>
+                  )}
+                </View>
               </View>
             ))}
           </View>
 
           {/* Plan selector */}
           <View style={{ gap: 10 }}>
-            {PLANS.map((pl) => {
+            {visiblePlans.map((pl) => {
               const on = plan === pl.id;
               const live = prices?.[pl.id];
-              const tag = pl.id === 'annual' && savingsPct != null && savingsPct > 0
-                ? `Save ${savingsPct}%`
-                : null;
+              // A trial outranks the savings badge — it's the stronger reason to
+              // pick the row, and two pills on one line is noise.
+              const tag = live?.trial
+                ? `${live.trial.label} free`
+                : pl.id === 'annual' && savingsPct != null && savingsPct > 0
+                  ? `Save ${savingsPct}%`
+                  : null;
               return (
                 <ScalePressable key={pl.id} scaleTo={0.98} onPress={() => setPlan(pl.id)}>
                   <EaseView
@@ -224,6 +312,13 @@ export function PaywallModal({ onClose }: Props) {
                           <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70 }}>
                             {pl.id === 'annual' && annualPerMonth ? `${annualPerMonth}/mo` : pl.per}
                           </Text>
+                          {pl.id === 'annual' && annualPerMonth && savingsPct != null && savingsPct > 0 && live?.trial ? (
+                            // The badge was taken by the trial, so the saving
+                            // still needs saying somewhere on the row.
+                            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.marigold, 0.5), marginTop: 1 }}>
+                              Save {savingsPct}%
+                            </Text>
+                          ) : null}
                         </>
                       )}
                     </View>
@@ -252,7 +347,7 @@ export function PaywallModal({ onClose }: Props) {
               <Icon name="heart" size={19} color={shade(LK.blush, 0.5)} />
             </View>
             <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 12.5, color: shade(LK.blush, 0.6), lineHeight: 18 }}>
-              One subscription covers you both. Upgrading instantly unlocks Premium for your partner’s account at no extra cost — billed as a couple.
+              One plan covers you both. Upgrading instantly unlocks Premium for your partner’s account at no extra cost — billed as a couple.
             </Text>
           </View>
 
@@ -277,9 +372,26 @@ export function PaywallModal({ onClose }: Props) {
             {loading ? (
               <ActivityIndicator color={LK.espresso} />
             ) : (
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: LK.espresso }}>Start Premium</Text>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: LK.espresso }}>
+                {trial ? `Start your ${trial.label} free trial` : 'Start Premium'}
+              </Text>
             )}
           </ScalePressable>
+
+          {/* Trial reassurance. Deliberately does NOT promise "we'll remind you"
+              — the app schedules no such reminder, and iOS caps pending local
+              notifications at 64, so adding one is a separate decision. This
+              says only what is true. */}
+          {trial && selectedPrice && (
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 10, paddingHorizontal: 8 }}>
+              <Icon name="lock" size={13} color={LK.ink70} />
+              <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, lineHeight: 17 }}>
+                Free for {trial.label.replace('-', ' ')}, then {selectedPrice.priceString}
+                {plan === 'annual' ? '/year' : '/month'}. Cancel any time
+                before it ends and you won’t be charged a thing.
+              </Text>
+            </View>
+          )}
 
           <ScalePressable
             onPress={handleRestore}
@@ -301,7 +413,9 @@ export function PaywallModal({ onClose }: Props) {
 
           {/* Apple-required subscription disclosure + EULA / Privacy links (Guideline 3.1.2).
               The amounts must match what the store will actually charge, so they're
-              interpolated from the live offering — never hardcoded. */}
+              interpolated from the live offering — never hardcoded. An introductory
+              free trial has to be disclosed too: its length, and the price it
+              converts to. */}
           <Text style={{ fontFamily: theme.fonts.body, fontSize: 10.5, color: LK.ink70, textAlign: 'center', lineHeight: 16, marginTop: 12 }}>
             Locket Premium is an auto-renewable subscription. Your subscription renews
             automatically
@@ -312,7 +426,13 @@ export function PaywallModal({ onClose }: Props) {
                 ].filter(Boolean).join(' or ')} — `
               : ' '}
             unless cancelled at least 24 hours
-            before the end of the current period. Payment is charged to your Apple ID account at
+            before the end of the current period.
+            {trial && selectedPrice
+              ? ` Your ${trial.label.replace('-', ' ')} free trial converts to the ${
+                  plan === 'annual' ? 'annual' : 'monthly'
+                } plan at ${selectedPrice.priceString} unless cancelled at least 24 hours before it ends.`
+              : ''}
+            {' '}Payment is charged to your Apple ID account at
             purchase confirmation. Manage or cancel anytime in your App Store account settings.
           </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 8 }}>

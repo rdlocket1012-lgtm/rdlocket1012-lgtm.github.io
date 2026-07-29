@@ -721,7 +721,11 @@ eas update --branch production                    # OTA for JS-only changes
 - **Reduced-motion:** stagger collapses to one 150ms fade; no shake (border flashes Danger instead).
 - **Files:** `app/(auth)/*`, `components/ui/btn.tsx`, `components/ui/DateField.tsx`.
 
-### 20.3 Onboarding flow (name → connection style → anniversary → photo → invite → photo-permission)
+### 20.3 Onboarding flow (name → connection style → anniversary → photo → invite → notification-permission → photo-permission)
+
+> 7 steps for the inviter, 3 for the joiner (name → photo → notification-permission,
+> which is where the joiner's flow ends). `notification-permission` was added in the
+> 2026-07-29 §E3 pass and is the only caller of `registerForPush(..., { request: true })`.
 - **UX:** one continuously unfolding story, not a stepper — already fades between steps (`(onboarding)/_layout.tsx`, fade 260ms). Reinforce forward momentum + reduce perceived length.
 - **Transition:** keep group `fade`. Add a slim top progress bar that animates width per step via `<EaseView>` (allowed exception to "never animate width" — it's a 3px progress indicator, not layout) OR a dot row that springs the active dot (`spring.snappy`, Reanimated) — prefer the dot row to stay inside the no-width-anim rule.
 - **In-screen:** each step's hero + fields stagger in (`<EaseView delay={i*60}>`). Anniversary: the day-count reveal uses the Reanimated `CountUp` (`components/onboarding/CountUp.tsx`) — continuous, stays Reanimated. WheelPicker detents: `tick()` haptic (already wired).
