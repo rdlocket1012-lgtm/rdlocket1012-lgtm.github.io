@@ -31,11 +31,35 @@ key or `.env` ever committed), branch pushed, `v1.0.0-build17-live` tagged at `c
 - §2.5 the four remaining `Alert.alert` matches are all comments — nothing to do.
 - §2.3 support email — **still open, needs a decision.**
 
-**Phase 3 — mostly done.** `my_couple_id()` EXECUTE revoked from PUBLIC (revoking
-from `anon` alone was a no-op — the grant was to PUBLIC). `notify`'s
-`ACTIVITY_TABLES` verified identical to `stores/unseen.store.ts`. The five
-remaining SECURITY DEFINER findings are documented-intentional. Leaked password
-protection is a dashboard toggle and is **still open**.
+**Phase 3 — done except the dashboard items.**
+- §3.1 `my_couple_id()` EXECUTE revoked from PUBLIC (revoking from `anon` alone
+  was a no-op — the grant was to PUBLIC, which subsumes anon). The five remaining
+  SECURITY DEFINER findings are documented-intentional. Leaked password protection
+  is a dashboard toggle, **still open**.
+- §3.2 **RLS verified by role impersonation**, which is stricter than two devices:
+  `set local role authenticated` + a forged `request.jwt.claims` sub.
+  - An outsider from another couple sees **0** across letters, milestones, map
+    pins, bucket items, coupons, drawings, profile details, private notes and the
+    couple row.
+  - A real member of that couple sees 11 letters, 10 milestones, their couple row
+    and exactly **2** profiles — not all 22. So RLS is scoping, not just denying.
+  - `private_notes` isolation (§12.11, the one that matters most): on a disposable
+    two-member couple, the owner sees their note and **the partner in the same
+    couple sees 0**.
+- §3.3 all five buckets confirmed: `voice-letters` private, the other four public
+  by design. Found every bucket with `file_size_limit: null` and no MIME
+  restriction — unbounded upload cost and arbitrary file hosting on a public
+  origin. Migration 022 caps all five and restricts MIME on the four image
+  buckets (the client sends a hardcoded type to each); `voice-letters` is left
+  MIME-open on purpose because its type is derived from the recording's file
+  extension. Zero existing objects exceed the new limits.
+- §3.4 backups — not exposed via the API. **Dashboard item, still open.**
+- §3.5 `notify`'s `ACTIVITY_TABLES` verified identical to `stores/unseen.store.ts`,
+  so the server badge and the in-app bell dot agree.
+
+All test fixtures were removed; production is back to its exact baseline
+(22 auth users, 22 profiles, 17 couples, 14 letters, 36 milestones) after every
+experiment.
 
 **Phase 5.2 — done.** `SENTRY_DISABLE_AUTO_UPLOAD=false` in EAS production, so
 build 25 uploads source maps and crash reports arrive symbolicated.
@@ -62,6 +86,23 @@ build 25 uploads source maps and crash reports arrive symbolicated.
    the served `.well-known/` one). **Still needs the Supabase redirect allowlist
    entry** — `signUp` silently ignores a `redirectTo` that is not allowlisted.
 
+### Third defect: every page the app links to was 404 in production
+
+GitHub Pages serves this user site from `main`, and `main` only ever contained
+`invite/`. So `/privacy-policy/`, `/terms-of-service/`, `/reset-password/` and
+`/confirm-email/` were all returning **404 to real users** — including the privacy
+policy linked from Settings, which is also the URL App Review clicks and the one
+App Store Connect requires. The pages existed, but only on the v1.1 branch.
+
+Fixed by putting the static pages on `main` on their own (they have no dependency
+on app code and must be live *before* the app ships, not after). All four now
+return 200 and the AASA serves the added `/confirm-email` paths.
+
+While doing that: **`main`'s `.gitignore` had `.env*.local` but not `.env`**, and a
+real `.env` holding the Mapbox `sk.` download token sits in the working directory —
+one `git add -A` on `main` away from being published to a public repo. The v1.1
+branch had the fix; `main` never got it. Now fixed there too.
+
 ### New blocker found: transactional email will not survive launch
 
 Creating test accounts hit `over_email_send_rate_limit` after two signups. The
@@ -71,6 +112,59 @@ Since email confirmation is required, at launch new signups will stop being able
 confirm within minutes of any traffic. **Configure custom SMTP** (Resend, Postmark,
 SES) before release. This also gates §2.3, since the sending domain and the support
 address should agree.
+
+---
+
+## Handed back — things only you can do
+
+Ordered by what blocks what. The first three are Supabase dashboard settings that
+take minutes; the domain gates the most.
+
+### 1. Register the domain, then settle the support address — **blocker**
+`hello@locket.app` appears **9 times** (Settings rows, the privacy policy, the ToS)
+and is the only support channel. Decided: you're registering a domain. Once you
+have it, tell me and I'll update all 9 in one pass. App Store Connect's Support URL
+and Marketing URL must match. Do this before build 25 — the address is compiled
+into the bundle.
+
+### 2. Supabase → Authentication → URL Configuration — **blocker**
+Add to the redirect allowlist:
+```
+https://rdlocket1012-lgtm.github.io/confirm-email
+```
+`signUp` **silently ignores** a `redirectTo` that isn't allowlisted — it won't
+error, the email just goes to the Site URL instead. `https://rdlocket1012-lgtm.github.io/reset-password`
+should already be there from the password-reset fix; confirm both.
+
+### 3. Supabase → Authentication → Emails → SMTP — **blocker**
+Configure custom SMTP (Resend is the quickest). Use the domain from step 1 as the
+sending domain so support and transactional mail agree. Until this is done, email
+signups die at a handful per hour project-wide.
+
+### 4. Supabase → Authentication → Policies
+Enable **leaked password protection** (HaveIBeenPwned check). One toggle, clears
+the last actionable security advisor finding.
+
+### 5. Supabase → Database → Backups
+Confirm PITR or daily backups are on, and take one manual snapshot before release
+day. Real user data exists. Not exposed via the API, so it must be done in the UI.
+
+### 6. App Store Connect — Phase 4 and Phase 6
+None of this is reachable from here: the IAP products and the 7-day introductory
+offer (§4.1–4.2), RevenueCat offering + webhook wiring (§4.3), screenshots (§6.1),
+metadata and What's New (§6.2), privacy nutrition labels (§6.3), age rating and the
+paired demo account for review (§6.4).
+
+### 7. Device QA — Phase 5.3
+The 18-row table. Nothing below the build line has been run on a phone. Item 1
+(the notification prompt on a fresh install, both paths) is still the riskiest,
+and item 3 is now "account deletion end-to-end on device" — the server side is
+verified against production, but the button that calls it is not.
+
+> **Note on `docs/privacy-policy.md`:** it is now stale. `2c09430` rewrote the
+> published HTML to match the app (email + Apple sign-in); the markdown still
+> describes anonymous sign-in. The HTML under `privacy-policy/` is canonical —
+> treat the markdown as an old draft or delete it.
 
 ---
 
