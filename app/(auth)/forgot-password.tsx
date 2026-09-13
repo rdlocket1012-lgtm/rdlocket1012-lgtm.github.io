@@ -26,7 +26,13 @@ export default function ForgotPasswordScreen() {
   async function onSubmit(data: FormData) {
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo: 'locket://reset-password',
+      // HTTPS, not `locket://` — Gmail, Outlook and several iOS mail clients
+      // render a custom scheme as plain text rather than a tappable link, which
+      // left the only account-recovery path unreachable. The domain is in
+      // `associatedDomains`, so an installed app opens this as a Universal Link;
+      // everyone else gets the landing page at `/reset-password`, which forwards
+      // the credential on to `locket://reset-password`.
+      redirectTo: 'https://rdlocket1012-lgtm.github.io/reset-password',
     });
     setLoading(false);
     if (error) { toast.error(error.message); return; }
