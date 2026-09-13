@@ -347,8 +347,8 @@ export default function SettingsScreen() {
 
         <SectionLabel>Legal</SectionLabel>
         <SGroup>
-          <SRow icon="shield" color={LK.dusk} title="Privacy Policy" chevron onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/Locket/privacy-policy.md')} />
-          <SRow icon="info" color={LK.dusk} title="Terms of Service" chevron onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/Locket/terms-of-service.md')} />
+          <SRow icon="shield" color={LK.dusk} title="Privacy Policy" chevron onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/privacy-policy/')} />
+          <SRow icon="info" color={LK.dusk} title="Terms of Service" chevron onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/terms-of-service/')} />
           <SRow icon="envelope" color={LK.dusk} title="Contact us" chevron last onPress={() => Linking.openURL('mailto:hello@locket.app')} />
         </SGroup>
 

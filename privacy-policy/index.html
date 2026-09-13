@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Locket — Privacy Policy</title>
+<style>
+  :root {
+    --parchment: #F3E9D2;
+    --vellum:    #FFFDF7;
+    --espresso:  #2A211A;
+    --sepia:     #6E6253;
+    --gold:      #A8712C;
+    --hairline:  rgba(42,33,26,0.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --parchment: #191410;
+      --vellum:    #221C16;
+      --espresso:  #F0E6D4;
+      --sepia:     #B3A794;
+      --gold:      #D9A85C;
+      --hairline:  rgba(240,230,212,0.16);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--parchment);
+    color: var(--espresso);
+    line-height: 1.65;
+    padding: 40px 20px 80px;
+  }
+  .sheet {
+    background: var(--vellum);
+    max-width: 720px;
+    margin: 0 auto;
+    border-radius: 24px;
+    padding: 44px 38px 48px;
+    box-shadow: 0 4px 24px rgba(42,33,26,0.09);
+  }
+  .mark { font-size: 38px; line-height: 1; margin-bottom: 16px; }
+  h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.6px; line-height: 1.15; }
+  .updated {
+    font-size: 13px; font-weight: 700; color: var(--gold);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-top: 10px;
+  }
+  .intro { font-size: 16px; color: var(--sepia); margin-top: 18px; }
+  h2 {
+    font-size: 19px; font-weight: 800; letter-spacing: -0.2px;
+    margin-top: 38px; padding-top: 22px; border-top: 1px solid var(--hairline);
+  }
+  h3 { font-size: 15.5px; font-weight: 700; margin-top: 22px; }
+  p, li { font-size: 15px; color: var(--sepia); margin-top: 10px; }
+  strong { color: var(--espresso); font-weight: 700; }
+  ul { margin-top: 8px; padding-left: 22px; }
+  li { margin-top: 6px; }
+  a { color: var(--gold); }
+  .tbl { overflow-x: auto; margin-top: 14px; border: 1px solid var(--hairline); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 520px; }
+  th, td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--hairline); color: var(--sepia); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--espresso); font-weight: 800; }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--espresso); font-weight: 600; }
+  footer { max-width: 720px; margin: 22px auto 0; text-align: center; font-size: 13px; color: var(--sepia); }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <div class="mark">💛</div>
+  <h1>Locket — Privacy Policy</h1>
+  <p class="updated">Last updated: September 2026</p>
+
+  <p class="intro">
+    Locket (“we”, “us”, “our”) is a private couples memory app. This policy explains what data
+    we collect, why, and how it is protected. Locket is designed so that the minimum amount of
+    data necessary is collected.
+  </p>
+
+  <h2>1. Who we are</h2>
+  <p>Locket is an independent app. You can contact us at <strong>hello@locket.app</strong>.</p>
+
+  <h2>2. Data we collect and why</h2>
+
+  <h3>Account</h3>
+  <p>
+    You create an account with an <strong>email address and password</strong>, or with
+    <strong>Sign in with Apple</strong>. We store your email address so you can sign in again and
+    recover your account if you forget your password. A display name and profile photo are
+    optional and stored only if you add them.
+  </p>
+
+  <h3>Relationship data you create</h3>
+  <p>
+    Everything you add — milestones, letters, map pins, bucket list items, coupons, drawings,
+    private notes and profile details — is stored in a database hosted by <strong>Supabase</strong>
+    (a US-based cloud provider). This data is:
+  </p>
+  <ul>
+    <li>Accessible only to you and your linked partner</li>
+    <li>Protected by row-level security so no other user can read it</li>
+    <li>Never sold, shared with advertisers, or used for anything other than showing it back to you inside the app</li>
+  </ul>
+
+  <h3>Photos</h3>
+  <p>
+    Profile photos and photos you attach to memories are stored in a private Supabase storage
+    bucket, visible only to you and your partner. The “On This Day” feature reads your photo
+    library <strong>on your device only</strong> — those photos are not uploaded.
+  </p>
+
+  <h3>Location and places</h3>
+  <p>
+    The map stores coordinates that <strong>you</strong> place manually. Locket does not track you
+    in the background and does not log your movements. When you drop a pin, the coordinates are
+    sent to <strong>Google Places</strong> to look up the place name, address and photo, and map
+    tiles are served by <strong>Mapbox</strong>.
+  </p>
+
+  <h3>Voice letters</h3>
+  <p>
+    If you record a voice letter, the audio is stored in a private Supabase bucket for your
+    partner to play. Locket also produces a text transcript using
+    <strong>Apple's speech recognition</strong>, which may process the audio on Apple's servers
+    rather than on your device.
+  </p>
+
+  <h3>Calendar</h3>
+  <p>
+    If you grant calendar access, Locket writes your anniversaries and date nights to your device
+    calendar. It does not read or upload your existing events.
+  </p>
+
+  <h3>Notifications</h3>
+  <p>
+    To send you your partner's nudges, letters and reminders we store a push token for your device
+    and deliver messages through <strong>Expo's push service</strong> to Apple's notification servers.
+  </p>
+
+  <h3>Device &amp; crash data</h3>
+  <p>
+    Crash reports and error logs are collected through <strong>Sentry</strong> solely to fix bugs.
+    Personal identifiers are disabled, and crash data is never linked to your relationship content.
+  </p>
+
+  <h3>Payments</h3>
+  <p>
+    Subscriptions are processed by <strong>Apple</strong> and managed by <strong>RevenueCat</strong>.
+    We receive only your subscription status (free or premium) — never your card details.
+  </p>
+
+  <h2>3. Artificial intelligence</h2>
+  <p>
+    <strong>Locket does not use generative AI.</strong> Your photos, letters, milestones and map
+    pins are never sent to any generative AI service, and nothing you create is used to train any
+    model. The one machine-learning feature in the app is the speech-to-text transcription of
+    voice letters described above, which uses Apple's speech recognition.
+  </p>
+  <p>
+    If generative AI features are ever introduced, you will be shown an explicit consent screen
+    before any of your data is processed, and you will be free to opt out.
+  </p>
+
+  <h2>4. Data sharing</h2>
+  <p>We do not sell your data and we do not share it with advertisers. The only third parties that receive data are:</p>
+  <div class="tbl">
+    <table>
+      <thead>
+        <tr><th>Service</th><th>Purpose</th><th>Data received</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Supabase</td><td>Database, storage, auth</td><td>Your account and relationship content</td></tr>
+        <tr><td>Apple</td><td>Sign-in, payments, push, speech-to-text</td><td>Account identifier, payment handled by Apple, voice-letter audio for transcription</td></tr>
+        <tr><td>RevenueCat</td><td>Subscription management</td><td>Your user ID and subscription status</td></tr>
+        <tr><td>Google Places</td><td>Place lookup for map pins</td><td>Coordinates of pins you drop</td></tr>
+        <tr><td>Mapbox</td><td>Map tiles</td><td>Map view requests</td></tr>
+        <tr><td>Expo</td><td>Push notification delivery</td><td>Device push token and message content</td></tr>
+        <tr><td>Sentry</td><td>Crash reporting</td><td>Device OS, app version, error logs</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>5. Data retention and deletion</h2>
+  <ul>
+    <li><strong>Deleted items</strong> are soft-deleted and permanently removed after 30 days.</li>
+    <li><strong>Delete Account</strong> permanently removes your relationship data, profile and couple record. Use Settings → Account → Delete my account.</li>
+    <li>You may also email <strong>hello@locket.app</strong> to request deletion. We will honour it within 30 days.</li>
+  </ul>
+
+  <h2>6. Children</h2>
+  <p>Locket is not directed at children under 13, and we do not knowingly collect data from anyone under 13.</p>
+
+  <h2>7. Your rights</h2>
+  <p>
+    Depending on where you live, you may have the right to access, correct, export or delete your
+    personal data. Contact <strong>hello@locket.app</strong> and we will respond within 30 days.
+  </p>
+
+  <h2>8. Security</h2>
+  <p>
+    Data in transit is encrypted with TLS. Data at rest is encrypted by Supabase's underlying
+    infrastructure (AES-256). Access to your couple's data is enforced at the database level — no
+    other user can read your records even if they know your IDs.
+  </p>
+
+  <h2>9. Changes to this policy</h2>
+  <p>
+    We will post material changes to this page and update the date above. Continued use of the app
+    after changes constitutes acceptance.
+  </p>
+
+  <h2>10. Contact</h2>
+  <p><strong>hello@locket.app</strong></p>
+</main>
+<footer>Locket · <a href="/terms-of-service/">Terms of Service</a></footer>
+</body>
+</html>

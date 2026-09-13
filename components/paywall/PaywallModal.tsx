@@ -436,11 +436,11 @@ export function PaywallModal({ onClose }: Props) {
             purchase confirmation. Manage or cancel anytime in your App Store account settings.
           </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 8 }}>
-            <ScalePressable onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/Locket/terms-of-service.md')} haptic={false} accessibilityRole="link" accessibilityLabel="Terms of Service" hitSlop={{ top: 14, bottom: 14, left: 6, right: 6 }}>
+            <ScalePressable onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/terms-of-service/')} haptic={false} accessibilityRole="link" accessibilityLabel="Terms of Service" hitSlop={{ top: 14, bottom: 14, left: 6, right: 6 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '700', color: shade(LK.marigold, 0.5) }}>Terms of Service</Text>
             </ScalePressable>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, color: LK.ink70 }}>·</Text>
-            <ScalePressable onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/Locket/privacy-policy.md')} haptic={false} accessibilityRole="link" accessibilityLabel="Privacy Policy" hitSlop={{ top: 14, bottom: 14, left: 6, right: 6 }}>
+            <ScalePressable onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/privacy-policy/')} haptic={false} accessibilityRole="link" accessibilityLabel="Privacy Policy" hitSlop={{ top: 14, bottom: 14, left: 6, right: 6 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '700', color: shade(LK.marigold, 0.5) }}>Privacy Policy</Text>
             </ScalePressable>
           </View>
