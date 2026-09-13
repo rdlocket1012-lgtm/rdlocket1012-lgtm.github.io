@@ -161,10 +161,14 @@ The 18-row table. Nothing below the build line has been run on a phone. Item 1
 and item 3 is now "account deletion end-to-end on device" — the server side is
 verified against production, but the button that calls it is not.
 
-> **Note on `docs/privacy-policy.md`:** it is now stale. `2c09430` rewrote the
-> published HTML to match the app (email + Apple sign-in); the markdown still
-> describes anonymous sign-in. The HTML under `privacy-policy/` is canonical —
-> treat the markdown as an old draft or delete it.
+> **Legal docs: the HTML is canonical.** `2c09430` rewrote the published pages to
+> match the app (email + Apple sign-in); the markdown drafts in `docs/` still
+> described **anonymous sign-in**, which stopped being true long ago.
+> `docs/privacy-policy.md` has been deleted. **`docs/terms-of-service.md` is stale
+> in exactly the same way** (line 17: "Locket uses anonymous sign-in. No email is
+> required.") and should go too — it is superseded by `terms-of-service/index.html`.
+> Nothing in the app or the build references either markdown file; Settings links
+> to the published URLs.
 
 ---
 
