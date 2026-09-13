@@ -46,10 +46,6 @@ import { SectionEyebrow } from '@/components/ui/section-eyebrow';
 import { TodaySpine } from '@/components/home/today-spine';
 import { StreakRow } from '@/components/home/streak-row';
 import { claimPremiumMoment, badgeMoment, PEAK_HANDOFF_MS } from '@/lib/premium-moments';
-// TEMPORARY — the 17 Jul 2026 reunion. Remove this import, the block below it
-// in the tree, and `constants/reunion.ts` once the day has passed.
-import { ReunionCountdown } from '@/components/home/ReunionCountdown';
-import { REUNION_COUPLE_ID } from '@/constants/reunion';
 // NOTE: WatchTogether is intentionally NOT imported here yet — it pulls in the
 // native react-native-webview module which only exists in build #19 (v1.0.1).
 // Importing it would crash build #18 over OTA. Re-wire when cutting build #19.
@@ -315,9 +311,6 @@ export default function HomeScreen() {
             </ScalePressable>
           </View>
         </FadeSlideIn>
-
-        {/* ── TEMPORARY: reunion countdown (17 Jul 2026) ───────────────────── */}
-        {couple?.id === REUNION_COUPLE_ID && <ReunionCountdown partnerFirstName={partnerFirst} />}
 
         {/* Invite-partner banner (only when no partner) */}
         {!partnerJoined && (

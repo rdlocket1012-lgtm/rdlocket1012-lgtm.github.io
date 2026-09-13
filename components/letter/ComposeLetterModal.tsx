@@ -19,9 +19,6 @@ import {
   encodeLoveCard,
   type IllustrationKey,
 } from '@/constants/love-card-illustrations';
-// TEMPORARY — the 17 Jul 2026 reunion. Remove with the `reunionOnly` seal preset.
-import { REUNION_AT, REUNION_COUPLE_ID } from '@/constants/reunion';
-
 interface Props {
   onClose: () => void;
   isPremium: boolean;
@@ -32,16 +29,9 @@ interface Props {
 type SealOption = {
   label: string;
   getValue: (startDate?: string) => string | null;
-  /** Gated to the reunion couple — see `constants/reunion.ts`. */
-  reunionOnly?: boolean;
 };
 
 const SEAL_OPTIONS: SealOption[] = [
-  // TEMPORARY — the 17 Jul 2026 reunion. Unlike the presets below it, this one
-  // resolves to a full ISO instant rather than a bare date, so the letter opens
-  // at 5:30 PM sharp instead of at midnight. `reveal_at` is timestamptz, so it
-  // takes both. Drop this entry once the day has passed.
-  { label: 'When we meet 💕', getValue: () => REUNION_AT.toISOString(), reunionOnly: true },
   { label: 'Our anniversary', getValue: (startDate: string | undefined) => startDate ?? null },
   { label: 'Dec 31, 2026', getValue: () => '2026-12-31' },
   { label: '1 year from now', getValue: () => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().split('T')[0]; } },
@@ -338,7 +328,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode 
                 Your partner won't be able to open this until the date you choose.
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 18 }}>
-                {SEAL_OPTIONS.filter((opt) => !opt.reunionOnly || couple?.id === REUNION_COUPLE_ID).map((opt) => {
+                {SEAL_OPTIONS.map((opt) => {
                   const val = opt.getValue(couple?.start_date);
                   return (
                     <Chip

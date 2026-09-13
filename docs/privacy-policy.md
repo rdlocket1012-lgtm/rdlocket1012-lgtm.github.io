@@ -60,7 +60,7 @@ We do not sell your data. We do not share your data with advertisers. The only t
 ## 5. Data retention and deletion
 
 - **Deleted items** (milestones, letters, pins, bucket items) are soft-deleted and permanently removed after 30 days.
-- **Delete Account** removes all your relationship data, profile, and couple record permanently. Use Settings → Account → Delete my account. We will honour deletion within 30 days.
+- **Delete Account** removes your profile, your private notes, your photo and your drawings immediately and permanently — there is no grace period. Use Settings → Account → Delete my account. If your partner is still using Locket, the letters, milestones and pins the two of you made together remain in *their* account, no longer attributed to you; if nobody is left, the shared space and everything in it is deleted too.
 - You may also email **hello@locket.app** to request deletion of all data associated with your account.
 
 ---

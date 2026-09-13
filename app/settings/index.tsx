@@ -342,7 +342,7 @@ export default function SettingsScreen() {
         <SectionLabel>Privacy & Data</SectionLabel>
         <SGroup>
           <SRow icon="shield" color={LK.sage} title="Analytics & crash reports" sub="Never shared with advertisers" toggle value={analytics} onToggle={toggleAnalytics} />
-          <SRow icon="clockTab" color={LK.warning} title="Data retention" sub="30-day soft delete" chevron last onPress={() => alert('Data retention', 'When you remove a milestone, letter or map pin, it\'s kept for 30 days before permanent deletion. The same applies if you delete your account.')} />
+          <SRow icon="clockTab" color={LK.warning} title="Data retention" sub="30-day soft delete" chevron last onPress={() => alert('Data retention', 'When you remove a milestone, letter or map pin, it\'s kept for 30 days before permanent deletion. Deleting your account is different — that happens immediately and can\'t be undone.')} />
         </SGroup>
 
         <SectionLabel>Legal</SectionLabel>
