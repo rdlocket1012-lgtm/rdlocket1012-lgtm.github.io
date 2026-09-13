@@ -9,6 +9,71 @@
 
 ---
 
+## Execution log — 2026-09-13
+
+**Phase 1 — done.** History scanned for secrets (clean: no `sk.` token, service-role
+key or `.env` ever committed), branch pushed, `v1.0.0-build17-live` tagged at `c9641ae`
+(verified as the exact commit behind build 17), OTA rollback target recorded.
+
+**Phase 2 — done except §2.3.**
+- §2.1 **account deletion is real and verified against production.** Needed two
+  migrations first: deletion could never have worked, because nine columns
+  referenced `profiles(id)` with NO ACTION. Migration 019 rewrites those delete
+  rules; migration 020 fixes a trigger that silently defeated them (below).
+  End-to-end proof: a throwaway account with a couple, milestone, pin, bucket item,
+  letter and private note deleted itself (HTTP 200, every row gone) while all 22
+  real users, 17 couples, 14 letters and 36 milestones stayed untouched. A
+  two-member fixture confirmed the partner keeps everything with attribution
+  nulled. Zero orphaned references across all nine columns afterwards.
+- §2.2 reunion code removed; the seal-picker `Keyboard.dismiss()` bug fix kept.
+- §2.4 `Alert.prompt` replaced with the existing themed redeem-code screen. Zero
+  native alerts left in app code.
+- §2.5 the four remaining `Alert.alert` matches are all comments — nothing to do.
+- §2.3 support email — **still open, needs a decision.**
+
+**Phase 3 — mostly done.** `my_couple_id()` EXECUTE revoked from PUBLIC (revoking
+from `anon` alone was a no-op — the grant was to PUBLIC). `notify`'s
+`ACTIVITY_TABLES` verified identical to `stores/unseen.store.ts`. The five
+remaining SECURITY DEFINER findings are documented-intentional. Leaked password
+protection is a dashboard toggle and is **still open**.
+
+**Phase 5.2 — done.** `SENTRY_DISABLE_AUTO_UPLOAD=false` in EAS production, so
+build 25 uploads source maps and crash reports arrive symbolicated.
+
+### Two defects found while executing, neither previously known
+
+1. **A trigger was silently defeating foreign keys.** `letters_guard_non_sender_edits`
+   is a BEFORE UPDATE trigger that reverts `sender_id`/`recipient_id` to OLD when
+   `NEW.sender_id != auth.uid()`. During a referential action there is no end user,
+   so `auth.uid()` is NULL, the guard took the "not the sender" branch, and it undid
+   the FK's own `SET NULL` — leaving `letters.sender_id` pointing at a profile row
+   that no longer existed, a state the constraint declares impossible, with no error
+   anywhere. Migration 020 exempts internal/service-role writes. **Recognise this
+   shape again:** a DELETE succeeds, the referenced row is gone, and the referencing
+   column still holds the old id. Any BEFORE UPDATE trigger that rewrites NEW can do
+   this to a SET NULL or CASCADE-to-NULL foreign key.
+2. **Email sign-up could never complete.** `cda12d0` moved password resets off the
+   `locket://` scheme that morning, because Gmail/Outlook/iOS Mail render a custom
+   scheme as unclickable plain text. Sign-up still used
+   `emailRedirectTo: 'locket://confirm-email'` and had the identical bug — and email
+   confirmation is *required* on this project, so the untappable link was the front
+   door for every non-Apple signup. Added `confirm-email/index.html` mirroring the
+   reset-password bridge, and `/confirm-email` to the AASA (both the `docs/` copy and
+   the served `.well-known/` one). **Still needs the Supabase redirect allowlist
+   entry** — `signUp` silently ignores a `redirectTo` that is not allowlisted.
+
+### New blocker found: transactional email will not survive launch
+
+Creating test accounts hit `over_email_send_rate_limit` after two signups. The
+project is on Supabase's **built-in email service**, which is documented as
+development-only and rate-limits to a handful of messages per hour project-wide.
+Since email confirmation is required, at launch new signups will stop being able to
+confirm within minutes of any traffic. **Configure custom SMTP** (Resend, Postmark,
+SES) before release. This also gates §2.3, since the sending domain and the support
+address should agree.
+
+---
+
 ## 0. Where things actually stand
 
 Verified this session, not assumed:
