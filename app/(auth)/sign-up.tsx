@@ -35,11 +35,17 @@ export default function SignUpScreen() {
     const { data: res, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
-      // Deep-link the confirmation back into the app (same mechanism as the
-      // password-reset link), so tapping it opens onboarding instead of the
-      // dashboard Site URL (which 404s). Must be allow-listed in Supabase →
+      // HTTPS, not `locket://` — Gmail, Outlook and several iOS mail clients
+      // render a custom scheme as plain text rather than a tappable link, so a
+      // `locket://` confirmation arrived with nothing to tap and no email
+      // sign-up could ever complete. The landing page forwards the credential
+      // on to `locket://confirm-email`, which app/_layout.tsx already handles.
+      // Same fix as the password-reset link. Must be allow-listed in Supabase →
       // Authentication → URL Configuration → Redirect URLs.
-      options: { data: { display_name: data.name }, emailRedirectTo: 'locket://confirm-email' },
+      options: {
+        data: { display_name: data.name },
+        emailRedirectTo: 'https://rdlocket1012-lgtm.github.io/confirm-email',
+      },
     });
     setLoading(false);
     if (error) { toast.error(error.message); return; }

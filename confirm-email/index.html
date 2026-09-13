@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm your Locket email 💛</title>
+
+  <!-- Smart App Banner — shows "Open in App Store" bar on iOS Safari -->
+  <meta name="apple-itunes-app" content="app-id=6775300058" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #FFF6E3;
+      color: #2A211A;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #FFFBF2;
+      border-radius: 28px;
+      padding: 40px 28px 36px;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 32px rgba(42,33,26,0.10);
+    }
+    .icon {
+      font-size: 56px;
+      line-height: 1;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 15px;
+      color: rgba(42,33,26,0.65);
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    .btn {
+      display: block;
+      background: #2A211A;
+      color: #FFF6E3;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 16px 24px;
+      border-radius: 999px;
+      text-decoration: none;
+      margin-bottom: 12px;
+      transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.8; }
+    .status {
+      font-size: 13px;
+      color: rgba(42,33,26,0.4);
+      margin-top: 20px;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">💛</div>
+    <h1 id="heading">You're confirmed</h1>
+    <p id="blurb">
+      Tap below to open Locket and finish setting up your space together.
+    </p>
+
+    <a id="openBtn" href="#" class="btn">Open in Locket</a>
+    <a id="storeBtn" href="https://apps.apple.com/app/id6775300058" class="btn" style="display:none; background:#E8D5A3; color:#2A211A;">
+      Download Locket on the App Store
+    </a>
+    <p class="status" id="status"></p>
+  </div>
+
+  <script>
+    (function () {
+      var heading = document.getElementById('heading');
+      var blurb   = document.getElementById('blurb');
+      var openBtn = document.getElementById('openBtn');
+      var storeBtn= document.getElementById('storeBtn');
+      var status  = document.getElementById('status');
+
+      // Supabase puts the credential in the query string under PKCE (?code=…)
+      // and in the fragment under the implicit flow (#access_token=…). Merge
+      // both so this page works whichever flow the project is set to.
+      var merged = new URLSearchParams(window.location.search);
+      var hash   = window.location.hash.replace(/^#/, '');
+      if (hash) {
+        new URLSearchParams(hash).forEach(function (value, key) {
+          if (!merged.has(key)) merged.append(key, value);
+        });
+      }
+
+      // An expired or already-used link comes back as an error rather than a
+      // credential. Say so here instead of bouncing into an app that can't act.
+      var err = merged.get('error_description') || merged.get('error');
+      if (err) {
+        heading.textContent = 'This link has expired';
+        blurb.textContent = 'Confirmation links can only be used once. Open Locket and sign in — it will offer to send a fresh one.';
+        openBtn.textContent = 'Open Locket';
+        openBtn.href = 'locket://';
+        return;
+      }
+
+      var hasCredential = merged.has('code') || merged.has('access_token') || merged.has('token_hash');
+      if (!hasCredential) {
+        heading.textContent = 'This link is incomplete';
+        blurb.textContent = 'Some email apps trim long links. Try opening the original email on your phone, or sign in to Locket to get a new one.';
+        openBtn.style.display = 'none';
+        return;
+      }
+
+      var query    = merged.toString();
+      var appUrl   = 'locket://confirm-email' + (query ? '?' + query : '');
+      var storeUrl = 'https://apps.apple.com/app/id6775300058';
+
+      openBtn.href = appUrl;
+
+      openBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        window.location.href = appUrl;
+
+        // After 2 s, if the page is still visible the app isn't installed — go to App Store.
+        var timer = setTimeout(function () {
+          status.textContent = "Looks like Locket isn't installed — taking you to the App Store…";
+          openBtn.style.display = 'none';
+          storeBtn.style.display = 'block';
+          window.location.href = storeUrl;
+        }, 2000);
+
+        // User left the tab → app opened fine, cancel the redirect.
+        document.addEventListener('visibilitychange', function () {
+          if (document.hidden) clearTimeout(timer);
+        });
+      });
+
+      // Auto-attempt on load — helps when tapped from a mail app's link preview.
+      setTimeout(function () { openBtn.click(); }, 400);
+    })();
+  </script>
+</body>
+</html>
