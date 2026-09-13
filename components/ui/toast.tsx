@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { Modal, View, Text, Pressable } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Pressable } from 'react-native';
+import { FullWindowOverlay } from 'react-native-screens';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LK, theme, rgba, shade } from '@/constants/theme';
@@ -14,11 +15,20 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
  * Mounted once in app/_layout.tsx as <ToastHost />; driven imperatively via
  * `toast()` from lib/feedback.ts.
  *
- * ⚠️ Rendered inside a transparent RN <Modal> ON PURPOSE: many of the alerts
- * being replaced fire from inside compose modals (AddMilestoneModal,
+ * ⚠️ Rendered inside a <FullWindowOverlay> ON PURPOSE: many of the alerts being
+ * replaced fire from inside compose modals (AddMilestoneModal,
  * ComposeLetterModal, AddPinModal), and a toast in the root tree would render
- * *behind* those. The Modal is only mounted while a toast is on screen, and its
- * container is pointerEvents="box-none" so the app underneath stays live.
+ * *behind* those.
+ *
+ * This used to be a transparent RN <Modal>. Same goal, wrong tool: an iOS Modal
+ * is its own presentation container, so `pointerEvents="box-none"` is not a
+ * reliable guarantee that taps reach the app underneath — and with toasts now
+ * firing from 74 call sites, a swallowed tap would make the app feel dead every
+ * time one appeared. FullWindowOverlay renders above modals at the window level
+ * without installing a touch-capturing container, which is exactly the job.
+ *
+ * iOS-only by design (it's a UIWindow-level primitive); elsewhere we fall back
+ * to an absolutely-positioned root-tree overlay.
  */
 
 const TONE: Record<ToastTone, { accent: string; icon: string }> = {
@@ -30,13 +40,23 @@ const TONE: Record<ToastTone, { accent: string; icon: string }> = {
 
 export function ToastHost() {
   const item = useFeedbackStore((s) => s.toasts[0]);
-  return (
-    <Modal visible={!!item} transparent animationType="none" statusBarTranslucent>
-      <View pointerEvents="box-none" style={{ flex: 1 }}>
-        {item && <ToastCard key={item.id} item={item} />}
-      </View>
-    </Modal>
+
+  // Nothing on screen → render nothing at all, so the overlay isn't sitting in
+  // the window hierarchy between toasts.
+  if (!item) return null;
+
+  const layer = (
+    <View
+      pointerEvents="box-none"
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+    >
+      <ToastCard key={item.id} item={item} />
+    </View>
   );
+
+  return process.env.EXPO_OS === 'ios'
+    ? <FullWindowOverlay>{layer}</FullWindowOverlay>
+    : layer;
 }
 
 function ToastCard({ item }: { item: ToastItem }) {
@@ -46,6 +66,9 @@ function ToastCard({ item }: { item: ToastItem }) {
   const { accent, icon } = TONE[item.tone];
 
   const progress = useSharedValue(reduced ? 1 : 0);
+  // The exit timer is started from inside the hide timer, so it needs its own
+  // handle — otherwise unmounting mid-fade leaves it to fire on a dead card.
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!reduced) progress.value = withSpring(1, theme.spring.warm);
@@ -53,10 +76,13 @@ function ToastCard({ item }: { item: ToastItem }) {
     const hide = setTimeout(() => {
       if (reduced) { dismissToast(item.id); return; }
       progress.value = withTiming(0, { duration: theme.timing.exit });
-      setTimeout(() => dismissToast(item.id), theme.timing.exit);
+      exitTimer.current = setTimeout(() => dismissToast(item.id), theme.timing.exit);
     }, item.duration);
 
-    return () => clearTimeout(hide);
+    return () => {
+      clearTimeout(hide);
+      if (exitTimer.current) clearTimeout(exitTimer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
