@@ -3,15 +3,20 @@ import { useMapStore } from '@/stores/map.store';
 import { useAuthStore } from '@/stores/auth.store';
 
 export function useMap() {
-  const store = useMapStore();
-  const { profile } = useAuthStore();
+  const pins = useMapStore(s => s.pins);
+  const loading = useMapStore(s => s.loading);
+  const fetchPins = useMapStore(s => s.fetchPins);
+  const addPin = useMapStore(s => s.addPin);
+  const updatePin = useMapStore(s => s.updatePin);
+  const deletePin = useMapStore(s => s.deletePin);
+  const subscribeToPins = useMapStore(s => s.subscribeToPins);
+  const profile = useAuthStore(s => s.profile);
 
   useEffect(() => {
     if (!profile?.couple_id) return;
-    store.fetchPins(profile.couple_id);
-    const unsub = store.subscribeToPins(profile.couple_id);
-    return unsub;
+    fetchPins(profile.couple_id);
+    return subscribeToPins(profile.couple_id);
   }, [profile?.couple_id]);
 
-  return store;
+  return { pins, loading, addPin, updatePin, deletePin };
 }

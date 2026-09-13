@@ -1,28 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, Pressable, Modal, ScrollView, ActivityIndicator, Animated, Easing, Keyboard } from 'react-native';
+import { KeyboardProvider, KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { Image } from 'expo-image';
 import { LK, tint, shade, rgba, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
-import { IconChip, Chip } from '@/components/ui';
+import { ScalePressable } from '@/components/ui/scale-pressable';
+import { Chip } from '@/components/ui/chip';
 import { useLetters } from '@/hooks/useLetters';
 import { useAuth } from '@/hooks/useAuth';
 import { useCouple } from '@/hooks/useCouple';
 import { usePartner } from '@/hooks/usePartner';
 import { notifyPartner } from '@/lib/push';
-
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { uploadVoiceLetter, formatDuration } from '@/lib/audio-letter';
+import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
+import {
+  LOVE_CARD_ILLUSTRATIONS,
+  encodeLoveCard,
+  type IllustrationKey,
+} from '@/constants/love-card-illustrations';
 interface Props {
   onClose: () => void;
   isPremium: boolean;
   onPaywall: () => void;
+  initialMode?: 'text' | 'voice' | 'card';
 }
 
-const SEAL_OPTIONS = [
+type SealOption = {
+  label: string;
+  getValue: (startDate?: string) => string | null;
+};
+
+const SEAL_OPTIONS: SealOption[] = [
   { label: 'Our anniversary', getValue: (startDate: string | undefined) => startDate ?? null },
   { label: 'Dec 31, 2026', getValue: () => '2026-12-31' },
   { label: '1 year from now', getValue: () => { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().split('T')[0]; } },
   { label: '5 years from now', getValue: () => { const d = new Date(); d.setFullYear(d.getFullYear() + 5); return d.toISOString().split('T')[0]; } },
 ];
 
-export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
+export function ComposeLetterModal({ onClose, isPremium, onPaywall, initialMode = 'text' }: Props) {
   const { sendLetter } = useLetters();
   const { profile } = useAuth();
   const { couple } = useCouple();
@@ -30,11 +46,22 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
   const partnerFirstName = partner?.display_name?.split(' ')[0] || 'my love';
   const [text, setText] = useState('');
   const [draftSaved, setDraftSaved] = useState(false);
+  const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  function wrapSelection(open: string, close: string) {
+    const { start, end } = selectionRef.current;
+    if (start === end) return;
+    setText((t) => t.slice(0, start) + open + t.slice(start, end) + close + t.slice(end));
+  }
   const [sealedOpen, setSealedOpen] = useState(false);
   const [sealedDate, setSealedDate] = useState<string | null>(null);
   const [sealedLabel, setSealedLabel] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<'text' | 'voice' | 'card'>(initialMode);
+  const [cardIllus, setCardIllus] = useState<IllustrationKey>('envelope');
+  const [cardMessage, setCardMessage] = useState('');
+  const recorder = useVoiceRecorder();
 
   useEffect(() => {
     if (!text) return;
@@ -51,12 +78,18 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
         couple_id: couple.id,
         sender_id: profile.id,
         recipient_id: null,
-        body_rich_html: `<p>${text.replace(/\n/g, '</p><p>')}</p>`,
+        body_rich_html: text
+          .replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/_([\s\S]*?)_/g, '<em>$1</em>')
+          .split('\n').map(l => `<p>${l}</p>`).join(''),
         is_draft: false,
         is_sealed_until: sealedDate !== null,
         reveal_at: sealedDate,
         sent_at: new Date().toISOString(),
         deleted_at: null,
+        audio_path: null,
+        audio_duration: null,
+        transcript: null,
       });
       const name = (profile?.display_name || 'Your partner').split(' ')[0];
       if (sealedDate) {
@@ -70,109 +103,227 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
     }
   }
 
-  if (sent) {
-    return (
-      <Modal animationType="fade" transparent>
-        <View style={{ flex: 1, backgroundColor: tint(LK.pink, 0.6), alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-          <IconChip color={LK.pink} size={96}>
-            <Icon name="envelope" size={46} color={shade(LK.pink, 0.5)} />
-          </IconChip>
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 30, color: LK.ink, marginTop: 22, letterSpacing: -1, textAlign: 'center' }}>
-            Sealed & sent
-          </Text>
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 15.5, color: LK.ink70, marginTop: 10, lineHeight: 24, maxWidth: 260, textAlign: 'center' }}>
-            Your letter is on its way. It's now read-only — kept forever.
-          </Text>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{ backgroundColor: LK.ink, borderRadius: 9999, paddingHorizontal: 28, paddingVertical: 16, marginTop: 26 }}
-          >
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Back to letters</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-    );
+  async function handleSendVoice() {
+    if (!recorder.audioUri || !couple?.id || !profile?.id) return;
+    setSaving(true);
+    try {
+      const path = await uploadVoiceLetter(recorder.audioUri, couple.id);
+      if (!path) {
+        setSaving(false);
+        return;
+      }
+      const transcript = recorder.transcript.trim();
+      await sendLetter({
+        couple_id: couple.id,
+        sender_id: profile.id,
+        recipient_id: null,
+        // Store transcript as the body too, so voice letters are searchable/readable.
+        body_rich_html: transcript ? `<p>${transcript}</p>` : '<p>🎙️ Voice letter</p>',
+        is_draft: false,
+        is_sealed_until: sealedDate !== null,
+        reveal_at: sealedDate,
+        sent_at: new Date().toISOString(),
+        deleted_at: null,
+        audio_path: path,
+        audio_duration: recorder.seconds,
+        transcript: transcript || null,
+      });
+      const name = (profile?.display_name || 'Your partner').split(' ')[0];
+      notifyPartner('letter', 'A voice letter 🎙️💌', `${name} recorded you something`);
+      setSent(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSendCard() {
+    if (!couple?.id || !profile?.id) return;
+    setSaving(true);
+    try {
+      await sendLetter({
+        couple_id: couple.id,
+        sender_id: profile.id,
+        recipient_id: null,
+        body_rich_html: encodeLoveCard(cardIllus, cardMessage.trim()),
+        is_draft: false,
+        is_sealed_until: false,
+        reveal_at: null,
+        sent_at: new Date().toISOString(),
+        deleted_at: null,
+        audio_path: null,
+        audio_duration: null,
+        transcript: null,
+      });
+      const name = (profile?.display_name || 'Your partner').split(' ')[0];
+      notifyPartner('letter', 'A Love Card 💌', `${name} sent you a Love Card`);
+      setSent(true);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Modal animationType="slide" transparent={false}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#FBF3E0' }}>
+      {/* RN <Modal> renders in its own native window, OUTSIDE the root
+          <KeyboardProvider> — so the lib needs a fresh provider here for its
+          KeyboardAvoidingView to track the keyboard (documented Modal caveat). */}
+      <KeyboardProvider>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, backgroundColor: LK.ivory }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 56, paddingBottom: 6 }}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <ScalePressable onPress={onClose} haptic={false} accessibilityRole="button" accessibilityLabel="Cancel" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15.5, color: LK.ink70 }}>Cancel</Text>
-          </TouchableOpacity>
+          </ScalePressable>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             {text.length > 0 && (
               draftSaved
-                ? <><Icon name="check" size={13} color={LK.mint} /><Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>Draft saved</Text></>
+                ? <><Icon name="check" size={13} color={LK.success} /><Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>Draft saved</Text></>
                 : <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>Saving…</Text>
             )}
           </View>
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!text.trim() || saving}
-            style={{ backgroundColor: text.trim() ? LK.ink : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 20, paddingVertical: 10 }}
-          >
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: text.trim() ? '#fff' : LK.ink70 }}>
-              Seal & send
-            </Text>
-          </TouchableOpacity>
+          {(() => {
+            const canSend =
+              mode === 'text' ? !!text.trim() :
+              mode === 'voice' ? recorder.state === 'done' && !!recorder.audioUri :
+              // Love Card: the pun is the message, so an illustration alone is
+              // enough — the note is optional.
+              true;
+            const onPress =
+              mode === 'text' ? handleSend :
+              mode === 'voice' ? handleSendVoice :
+              handleSendCard;
+            const label = mode === 'card' ? 'Send with love' : 'Seal & send';
+            return (
+              <ScalePressable
+                onPress={onPress}
+                disabled={!canSend || saving}
+                accessibilityLabel={label}
+                style={{ backgroundColor: canSend ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 9999, paddingHorizontal: 20, minHeight: 44, minWidth: 96, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {saving
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: canSend ? '#fff' : LK.ink70 }}>{label}</Text>}
+              </ScalePressable>
+            );
+          })()}
         </View>
 
-        {/* Toolbar */}
+        {/* Mode toggle: Write / Voice / Love Card */}
+        <View style={{ flexDirection: 'row', alignSelf: 'center', backgroundColor: 'rgba(42,33,26,0.06)', borderRadius: 9999, padding: 4, marginTop: 4 }}>
+          {([
+            { id: 'text', icon: 'feather', label: 'Write' },
+            { id: 'voice', icon: 'mic', label: 'Voice' },
+            { id: 'card', icon: 'heart', label: 'Love Card' },
+          ] as const).map((m) => (
+            <ScalePressable
+              key={m.id}
+              onPress={() => setMode(m.id)}
+              scaleTo={0.96}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                backgroundColor: mode === m.id ? LK.ivory : 'transparent',
+                borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 8,
+              }}
+            >
+              <Icon name={m.icon} size={14} color={mode === m.id ? (m.id === 'card' ? LK.coral : LK.espresso) : LK.ink70} />
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: mode === m.id ? LK.espresso : LK.ink70 }}>
+                {m.label}
+              </Text>
+            </ScalePressable>
+          ))}
+        </View>
+
+        {/* Toolbar — only shown in text mode */}
         <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center' }}>
-          <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 18, color: LK.ink }}>B</Text>
-          </View>
-          <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.ink }}>i</Text>
-          </View>
+          <ScalePressable
+            onPress={() => wrapSelection('**', '**')}
+            scaleTo={0.9}
+            haptic={false}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityLabel="Bold"
+          >
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 18, color: LK.espresso }}>B</Text>
+          </ScalePressable>
+          <ScalePressable
+            onPress={() => wrapSelection('_', '_')}
+            scaleTo={0.9}
+            haptic={false}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityLabel="Italic"
+          >
+            <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.espresso }}>i</Text>
+          </ScalePressable>
           <View style={{ flex: 1 }} />
-          <TouchableOpacity
-            onPress={() => isPremium ? setSealedOpen(true) : onPaywall()}
+          <ScalePressable
+            onPress={() => {
+              if (!isPremium) return onPaywall();
+              // The editor autofocuses, so the keyboard is always up by the time
+              // this is tappable. The picker is `inset: 0` + `flex-end`, which
+              // pins its panel to the bottom of the *full* screen — i.e. behind
+              // a ~320pt keyboard, and the panel is only ~270pt tall, so it was
+              // completely covered. All the user ever saw was the scrim dim.
+              Keyboard.dismiss();
+              setSealedOpen(true);
+            }}
+            scaleTo={0.95}
+            accessibilityLabel="Seal until a date"
             style={{
-              backgroundColor: sealedDate ? LK.gold : 'rgba(42,33,26,0.06)',
+              backgroundColor: sealedDate ? LK.marigold : 'rgba(42,33,26,0.06)',
               borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 9,
               flexDirection: 'row', alignItems: 'center', gap: 6,
             }}
           >
-            <Icon name="lock" size={14} color={sealedDate ? shade(LK.gold, 0.6) : LK.ink70} />
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: sealedDate ? shade(LK.gold, 0.6) : LK.ink70 }}>
+            <Icon name="lock" size={14} color={sealedDate ? shade(LK.marigold, 0.6) : LK.ink70} />
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: sealedDate ? shade(LK.marigold, 0.6) : LK.ink70 }}>
               {sealedLabel ?? 'Sealed until'}
             </Text>
             {!isPremium && <Icon name="crown" size={13} color={LK.ink70} />}
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         {/* Editor */}
-        <TextInput
-          autoFocus
-          multiline
-          value={text}
-          onChangeText={setText}
-          placeholder={`Dear ${partnerFirstName},\n\nWrite something they'll keep forever…`}
-          placeholderTextColor="rgba(58,46,34,0.4)"
-          style={{
-            flex: 1,
-            paddingHorizontal: 30,
-            paddingVertical: 8,
-            fontFamily: theme.fonts.serif,
-            fontStyle: 'italic',
-            fontSize: 20,
-            lineHeight: 33,
-            color: '#3a2e22',
-            textAlignVertical: 'top',
-          }}
-        />
+        {mode === 'text' ? (
+          <TextInput
+            autoFocus
+            multiline
+            value={text}
+            onChangeText={setText}
+            onSelectionChange={(e) => { selectionRef.current = e.nativeEvent.selection; }}
+            placeholder={`Dear ${partnerFirstName},\n\nWrite something they'll keep forever…`}
+            placeholderTextColor="rgba(58,46,34,0.4)"
+            style={{
+              flex: 1,
+              paddingHorizontal: 30,
+              paddingVertical: 8,
+              fontFamily: theme.fonts.serif,
+              fontStyle: 'italic',
+              fontSize: 20,
+              lineHeight: 33,
+              color: '#3a2e22',
+              textAlignVertical: 'top',
+            }}
+          />
+        ) : mode === 'voice' ? (
+          <VoiceRecorderPanel recorder={recorder} partnerFirstName={partnerFirstName} />
+        ) : (
+          <LoveCardCompose
+            selectedIllus={cardIllus}
+            message={cardMessage}
+            partnerFirstName={partnerFirstName}
+            onSelectIllus={setCardIllus}
+            onMessageChange={setCardMessage}
+          />
+        )}
 
         {/* Seal until picker */}
         {sealedOpen && (
           <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(20,15,10,0.4)', justifyContent: 'flex-end' } as any}>
-            <TouchableOpacity style={{ flex: 1 }} onPress={() => setSealedOpen(false)} />
-            <View style={{ backgroundColor: LK.cream, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40 }}>
+            <Pressable style={{ flex: 1 }} onPress={() => setSealedOpen(false)} accessibilityLabel="Close" />
+            <View style={{ backgroundColor: LK.parchment, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40 }}>
               <View style={{ width: 38, height: 5, borderRadius: 9999, backgroundColor: 'rgba(42,33,26,0.15)', alignSelf: 'center', marginBottom: 18 }} />
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 23, color: LK.ink }}>Seal until…</Text>
+              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 23, color: LK.espresso }}>Seal until…</Text>
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, marginTop: 6, lineHeight: 21 }}>
                 Your partner won't be able to open this until the date you choose.
               </Text>
@@ -182,7 +333,7 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
                   return (
                     <Chip
                       key={opt.label}
-                      color={LK.gold}
+                      color={LK.marigold}
                       active={sealedDate === val}
                       onPress={() => {
                         setSealedDate(val);
@@ -199,6 +350,360 @@ export function ComposeLetterModal({ onClose, isPremium, onPaywall }: Props) {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* Send peak (§10.5) — overlays the editor in-place; no Modal prop swap
+          (changing `transparent` on a live Modal blanks the screen on iOS). */}
+      {sent && (
+        <SendMomentOverlay
+          visible
+          name="letter-send"
+          message={sealedDate ? `Sealed for ${partnerFirstName}` : `On its way to ${partnerFirstName}`}
+          subMessage={sealedDate ? 'They’ll open it when the day comes' : 'They’ll feel it the moment they open the app'}
+          onDismiss={onClose}
+        />
+      )}
+      </KeyboardProvider>
     </Modal>
+  );
+}
+
+// ── Voice recorder panel ─────────────────────────────────────────────────────
+
+function VoiceRecorderPanel({ recorder, partnerFirstName }: {
+  recorder: ReturnType<typeof useVoiceRecorder>;
+  partnerFirstName: string;
+}) {
+  const { state, seconds, transcript, error, maxSeconds, available, start, stop, reset } = recorder;
+  const pulse = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    if (state === 'recording') {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1.18, duration: 600, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      pulse.stopAnimation();
+      pulse.setValue(1);
+    }
+  }, [state]);
+
+  // Native speech module not in this build — degrade gracefully so the rest of
+  // the composer still works (text + Love Card). Available again after a rebuild.
+  if (!available) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 14 }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(42,33,26,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="mic" size={32} color={LK.ink70} />
+        </View>
+        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 20, color: LK.espresso, textAlign: 'center' }}>
+          Voice letters need an update
+        </Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', lineHeight: 21, maxWidth: 280 }}>
+          This version of the app doesn't include voice recording yet. You can still write a letter or send a Love Card.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30, paddingVertical: 20 }}>
+      {/* Prompt */}
+      {state === 'idle' && (
+        <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 19, color: 'rgba(58,46,34,0.55)', textAlign: 'center', marginBottom: 36, lineHeight: 28 }}>
+          Dear {partnerFirstName},{'\n'}say something they'll keep forever…
+        </Text>
+      )}
+
+      {/* Live transcript while recording / after */}
+      {(state === 'recording' || state === 'done') && transcript ? (
+        <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 19, color: '#3a2e22', textAlign: 'center', marginBottom: 32, lineHeight: 29 }}>
+          "{transcript}"
+        </Text>
+      ) : null}
+
+      {/* Timer */}
+      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 40, color: LK.espresso, letterSpacing: -1, marginBottom: 24 }}>
+        {formatDuration(seconds)}{' '}
+        <Text style={{ fontSize: 18, color: LK.ink70 }}>/ 0:{maxSeconds}</Text>
+      </Text>
+
+      {/* Record / stop button */}
+      {state !== 'done' ? (
+        <Animated.View style={{ transform: [{ scale: state === 'recording' ? pulse : 1 }] }}>
+          <ScalePressable
+            onPress={state === 'recording' ? stop : start}
+            scaleTo={0.94}
+            accessibilityLabel={state === 'recording' ? 'Stop recording' : 'Start recording'}
+            style={{
+              width: 96, height: 96, borderRadius: 48,
+              backgroundColor: state === 'recording' ? LK.coral : LK.blush,
+              alignItems: 'center', justifyContent: 'center',
+              borderWidth: 5, borderColor: state === 'recording' ? tint(LK.coral, 0.5) : tint(LK.blush, 0.5),
+              ...theme.shadow.card,
+            }}
+          >
+            <Icon name={state === 'recording' ? 'pause' : 'mic'} size={40} color={shade(state === 'recording' ? LK.coral : LK.blush, 0.55)} />
+          </ScalePressable>
+        </Animated.View>
+      ) : (
+        <View style={{ alignItems: 'center', gap: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: tint(LK.success, 0.6), borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 10 }}>
+            <Icon name="check" size={18} color={shade(LK.success, 0.5)} />
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: shade(LK.success, 0.5) }}>
+              Recorded · {formatDuration(seconds)}
+            </Text>
+          </View>
+          <ScalePressable onPress={reset} haptic={false} accessibilityLabel="Re-record" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14 }}>
+            <Icon name="sync" size={15} color={LK.ink70} />
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: LK.ink70 }}>Re-record</Text>
+          </ScalePressable>
+        </View>
+      )}
+
+      {/* Hint / error */}
+      <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: error ? LK.coral : LK.ink70, textAlign: 'center', marginTop: 22, lineHeight: 18, maxWidth: 260 }}>
+        {error
+          ? error
+          : state === 'idle'
+          ? 'Tap to record up to 30 seconds. We transcribe it on your device as you speak.'
+          : state === 'recording'
+          ? 'Listening… tap to stop.'
+          : 'Tap "Seal & send" to deliver your voice letter.'}
+      </Text>
+    </ScrollView>
+  );
+}
+
+// ── Love Card compose ────────────────────────────────────────────────────────
+
+function LoveCardCompose({
+  selectedIllus,
+  message,
+  partnerFirstName,
+  onSelectIllus,
+  onMessageChange,
+}: {
+  selectedIllus: IllustrationKey;
+  message: string;
+  partnerFirstName: string;
+  onSelectIllus: (k: IllustrationKey) => void;
+  onMessageChange: (t: string) => void;
+}) {
+  const selected = LOVE_CARD_ILLUSTRATIONS.find((i) => i.key === selectedIllus)!;
+
+  return (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
+      {/* Live card preview (3:4 ratio, §8.1 Love Card spec) */}
+      <View style={{ paddingHorizontal: 40, paddingTop: 16, paddingBottom: 12 }}>
+        <View
+          style={{
+            backgroundColor: LK.vellum,
+            borderRadius: 16,
+            borderCurve: 'continuous',
+            borderWidth: 1.5,
+            borderColor: LK.espresso,
+            aspectRatio: 3 / 4,
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            boxShadow: '0 4px 16px rgba(42,33,26,0.10), 0 1px 3px rgba(42,33,26,0.06)',
+          }}
+        >
+          {/* Inner border */}
+          <View
+            style={{
+              position: 'absolute',
+              inset: 10,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: LK.espresso,
+              pointerEvents: 'none',
+            }}
+          />
+          <Image
+            source={selected.source}
+            style={{ width: '55%', aspectRatio: 1 }}
+            contentFit="contain"
+          />
+          {/* Pun greeting — the hero content (§8.1.4) */}
+          <Text
+            style={{
+              fontFamily: theme.fonts.hand,
+              fontSize: 16,
+              color: LK.espresso,
+              textAlign: 'center',
+              marginTop: 10,
+            }}
+          >
+            {selected.setup}
+          </Text>
+          <Text
+            style={{
+              fontFamily: theme.fonts.heading,
+              fontWeight: '800',
+              fontSize: 28,
+              lineHeight: 32,
+              color: selected.accentColor,
+              textAlign: 'center',
+              paddingHorizontal: 16,
+              marginTop: 2,
+            }}
+            numberOfLines={2}
+          >
+            {selected.punchline}
+          </Text>
+          {message.trim() ? (
+            <Text
+              style={{
+                fontFamily: theme.fonts.serif,
+                fontStyle: 'italic',
+                fontSize: 14,
+                color: LK.sepia,
+                textAlign: 'center',
+                paddingHorizontal: 24,
+                marginTop: 12,
+              }}
+              numberOfLines={3}
+            >
+              {message}
+            </Text>
+          ) : null}
+          <Text
+            style={{
+              fontFamily: theme.fonts.body,
+              fontSize: 12,
+              fontWeight: '500',
+              color: LK.faded,
+              marginTop: 12,
+            }}
+          >
+            for {partnerFirstName}
+          </Text>
+        </View>
+      </View>
+
+      {/* Illustration picker */}
+      <Text
+        style={{
+          fontFamily: theme.fonts.body,
+          fontWeight: '700',
+          fontSize: 11,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: LK.faded,
+          paddingHorizontal: 20,
+          marginBottom: 10,
+        }}
+      >
+        Illustration
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+      >
+        {LOVE_CARD_ILLUSTRATIONS.map((illus) => {
+          const active = illus.key === selectedIllus;
+          return (
+            <ScalePressable
+              key={illus.key}
+              onPress={() => onSelectIllus(illus.key)}
+              scaleTo={0.93}
+              style={{
+                width: 72,
+                alignItems: 'center',
+                gap: 6,
+              }}
+              accessibilityLabel={illus.label}
+            >
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 14,
+                  borderCurve: 'continuous',
+                  backgroundColor: active ? tint(illus.accentColor, 0.82) : LK.ivory,
+                  borderWidth: active ? 2 : 1.5,
+                  borderColor: active ? illus.accentColor : 'rgba(42,33,26,0.10)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Image source={illus.source} style={{ width: 44, height: 44 }} contentFit="contain" />
+              </View>
+              <View
+                style={{
+                  height: 4,
+                  width: 28,
+                  borderRadius: 2,
+                  backgroundColor: illus.accentColor,
+                  opacity: active ? 1 : 0.35,
+                }}
+              />
+            </ScalePressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Message field */}
+      <Text
+        style={{
+          fontFamily: theme.fonts.body,
+          fontWeight: '700',
+          fontSize: 11,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: LK.faded,
+          paddingHorizontal: 20,
+          marginTop: 18,
+          marginBottom: 10,
+        }}
+      >
+        Add a note (optional)
+      </Text>
+      <TextInput
+        value={message}
+        onChangeText={onMessageChange}
+        multiline
+        maxLength={120}
+        placeholder={`a little something extra for ${partnerFirstName}…`}
+        placeholderTextColor="rgba(42,33,26,0.30)"
+        style={{
+          marginHorizontal: 20,
+          backgroundColor: LK.ivory,
+          borderRadius: 14,
+          borderCurve: 'continuous',
+          borderWidth: 1.5,
+          borderColor: 'rgba(42,33,26,0.12)',
+          padding: 16,
+          fontFamily: theme.fonts.serif,
+          fontStyle: 'italic',
+          fontSize: 15,
+          color: LK.espresso,
+          lineHeight: 22,
+          minHeight: 80,
+          textAlignVertical: 'top',
+        }}
+      />
+      <Text
+        style={{
+          alignSelf: 'flex-end',
+          marginRight: 20,
+          marginTop: 6,
+          fontFamily: theme.fonts.body,
+          fontSize: 11,
+          color: LK.faded,
+        }}
+      >
+        {message.length}/120
+      </Text>
+    </ScrollView>
   );
 }

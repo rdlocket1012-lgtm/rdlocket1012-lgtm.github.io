@@ -14,6 +14,9 @@ export type Couple = {
   subscription_status: SubscriptionStatus;
   subscription_tier: SubscriptionTier;
   original_paying_user_id: string | null;
+  /** Us-tab cover photo (Supabase Storage URL). Added with the cover-photo
+   *  migration; undefined until then, so the hero shows the mascot fallback. */
+  cover_photo_url?: string | null;
 };
 
 /** Single source of truth: premium is a property of the shared relationship link. */

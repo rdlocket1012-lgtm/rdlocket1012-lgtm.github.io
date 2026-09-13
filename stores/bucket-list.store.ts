@@ -13,6 +13,9 @@ export type BucketItem = {
   completed_at: string | null;
   deleted_at: string | null;
   created_at: string;
+  latitude: number | null;
+  longitude: number | null;
+  location_name: string | null;
 };
 
 type BucketState = {
@@ -32,13 +35,17 @@ export const useBucketListStore = create<BucketState>((set, get) => ({
 
   fetchItems: async (coupleId) => {
     set({ loading: true });
-    const { data } = await supabase
-      .from('bucket_list_items')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    set({ items: (data as BucketItem[]) ?? [], loading: false });
+    try {
+      const { data, error } = await supabase
+        .from('bucket_list_items')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      if (!error) set({ items: (data as BucketItem[]) ?? [] });
+    } catch { /* network/auth error — keep cached items */ } finally {
+      set({ loading: false });
+    }
   },
 
   addItem: async (data) => {

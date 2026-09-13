@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
+import { routeAfterAuth } from '@/lib/post-auth';
 
 export default function RootIndex() {
   const { session, loading } = useAuth();
@@ -11,14 +12,10 @@ export default function RootIndex() {
 
     async function navigate() {
       if (session) {
-        // Logged-in user — always go straight to tabs.
-        // Back-fill the flags so future cold-starts stay on the fast path.
-        await AsyncStorage.multiSet([
-          ['ai_consent_granted_at', new Date().toISOString()],
-          ['onboarding_done', 'true'],
-          ['has_account', 'true'],
-        ]);
-        router.replace('/(tabs)');
+        await AsyncStorage.setItem('has_account', 'true');
+        // Couple-aware: home if set up, onboarding if not, invite if pending.
+        // Handles being killed mid-onboarding without landing on an empty home.
+        router.replace((await routeAfterAuth(session.user.id)) as never);
         return;
       }
 

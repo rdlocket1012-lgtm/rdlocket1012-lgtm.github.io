@@ -10,6 +10,9 @@ type Profile = {
   birthday: string | null;
   avatar_url: string | null;
   status_emoji: string | null;
+  created_at: string | null;
+  timezone: string | null;
+  nudge_haptics: boolean | null;
 };
 
 type AuthState = {

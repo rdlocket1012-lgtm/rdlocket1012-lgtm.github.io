@@ -9,7 +9,7 @@ export function OfflineBanner() {
   if (isOnline) return null;
   return (
     <View style={{
-      backgroundColor: LK.ink,
+      backgroundColor: LK.espresso,
       paddingHorizontal: 16,
       paddingVertical: 10,
       flexDirection: 'row',

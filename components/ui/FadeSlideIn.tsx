@@ -1,9 +1,18 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, ViewStyle } from 'react-native';
+import React from 'react';
+import { ViewStyle } from 'react-native';
+import { EaseView } from 'react-native-ease';
 
 /**
- * Wraps children in a fade + upward-slide entrance animation.
- * Use `delay` to stagger multiple items on the same screen.
+ * Fade + upward-slide entrance — now powered by react-native-ease.
+ *
+ * Runs on native Core Animation (iOS) / Animator (Android) with **zero
+ * JS-thread overhead** during playback (was the RN `Animated` API). Same props
+ * as before, so existing call-sites need no change. Spring tokens map 1:1 to
+ * EaseView's `transition` config. Declarative entrances only — press/gesture
+ * stays on Reanimated (see DESIGN.md §10.12 / §10.13).
+ *
+ * Prefer `<EaseView>` directly in new code; this wrapper exists to keep the
+ * legacy `FadeSlideIn` API working during migration.
  *
  * Example:
  *   <FadeSlideIn delay={100}><SomeCard /></FadeSlideIn>
@@ -22,31 +31,18 @@ export function FadeSlideIn({
   fromY?: number;
   style?: ViewStyle;
 }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(fromY)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration,
-        delay,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateY, {
-        toValue: 0,
-        delay,
-        useNativeDriver: true,
-        damping: 20,
-        stiffness: 200,
-        mass: 0.8,
-      }),
-    ]).start();
-  }, []);
-
   return (
-    <Animated.View style={[{ opacity, transform: [{ translateY }] }, style]}>
+    <EaseView
+      initialAnimate={{ opacity: 0, translateY: fromY }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{
+        // spring.warm-ish translate to match the previous overshoot feel
+        transform: { type: 'spring', damping: 20, stiffness: 200, mass: 0.8, delay },
+        opacity: { type: 'timing', duration, delay },
+      }}
+      style={style}
+    >
       {children}
-    </Animated.View>
+    </EaseView>
   );
 }
