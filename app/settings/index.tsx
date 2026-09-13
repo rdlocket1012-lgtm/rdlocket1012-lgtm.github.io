@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { requestPermissions, scheduleOnThisDay, cancelOnThisDay } from '@/lib/notifications';
 import { usePrefsStore } from '@/stores/prefs.store';
-import { View, Text, ScrollView, Switch, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, Switch, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import { confirm, alert, toast } from '@/lib/feedback';
 
@@ -184,18 +184,11 @@ export default function SettingsScreen() {
   }
 
   function handleEnterCode() {
-    // ⚠️ Alert.prompt is iOS-only — the optional call silently no-ops on
-    // Android, so this row does nothing there. Needs a themed prompt sheet
-    // (text input) before it can move off Alert like everything else here.
-    Alert.prompt?.(
-      'Enter invite code',
-      'Paste the code or link your partner sent you.',
-      (value?: string) => {
-        if (!value) return;
-        const token = value.includes('token=') ? value.split('token=')[1].trim() : value.trim();
-        if (token) router.push(`/invite?token=${token}`);
-      }
-    );
+    // Routes to the themed redeem-code screen rather than a native prompt.
+    // `Alert.prompt` is iOS-only, so the optional call silently no-opped on
+    // Android and this row did nothing there. redeem-code already does the
+    // same token cleaning and hands off to the /invite?token= join flow.
+    router.push('/(auth)/redeem-code');
   }
 
   async function handleDisconnect() {
