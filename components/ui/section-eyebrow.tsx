@@ -3,36 +3,41 @@ import { View, Text } from 'react-native';
 import { LK, theme } from '@/constants/theme';
 
 /**
- * Region label — uppercase eyebrow, a hairline rule that eats the remaining
- * width, and optional trailing content.
+ * Region heading — a sentence-case title with optional trailing content
+ * (a "See all" link, a progress ring, a count).
  *
- * This is the device that gives a screen named regions instead of a stack of
- * equal-weight cards. Originally local to the Fun tab; lifted here so Home's
- * "Today" / "Your story" split reads in the same language (UX_POLISH_PLAN B1).
+ * This used to be an 11pt uppercase eyebrow trailed by a hairline rule. At that
+ * size the regions read as fine print, not structure: the cards below outweighed
+ * their own headings. Premium references on Mobbin (Alma "Trends", Ahead
+ * "Advice", Bloom "Your Program") all title a region at ~20pt in the display
+ * face and let whitespace do the separating, so this now does the same
+ * (docs/PREMIUM_STANDARD.md §2). The export name stays so call sites don't churn.
  */
 export function SectionEyebrow({
   label,
   trailing,
   handTrailing,
-  color = LK.faded,
-  paddingTop = 24,
+  paddingTop = theme.spacing.lg + 4,
 }: {
   label: string;
   /** Rendered at the far right — a progress ring, a count, a link. */
   trailing?: React.ReactNode;
   /** Short handwritten note before `trailing`. */
   handTrailing?: string;
-  /** Eyebrow + rule tint. Lets a region carry its own accent. */
-  color?: string;
   paddingTop?: number;
 }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: theme.layout.screenX, paddingTop, paddingBottom: 12 }}>
-      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color }}>
+    <View
+      accessibilityRole="header"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: theme.layout.screenX, paddingTop, paddingBottom: 12, minHeight: 44 }}
+    >
+      <Text
+        numberOfLines={1}
+        style={{ flex: 1, fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 20, lineHeight: 25, letterSpacing: -0.4, color: LK.espresso }}
+      >
         {label}
       </Text>
-      <View style={{ flex: 1, height: 1.5, backgroundColor: LK.hairline, borderRadius: 2 }} />
-      {handTrailing ? <Text style={{ fontFamily: theme.fonts.hand, fontSize: 12, color: LK.faded }}>{handTrailing}</Text> : null}
+      {handTrailing ? <Text style={{ fontFamily: theme.fonts.hand, fontSize: 13, color: LK.sepia }}>{handTrailing}</Text> : null}
       {trailing}
     </View>
   );

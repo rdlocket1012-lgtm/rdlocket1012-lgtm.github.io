@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -10,6 +10,7 @@ import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Avatar } from '@/components/ui/avatar';
 import { useLetters } from '@/hooks/useLetters';
 import { useAuth } from '@/hooks/useAuth';
@@ -82,7 +83,7 @@ function LetterBody({ html }: { html: string }) {
 
 export default function LetterReaderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { letters, reactToLetter, deleteLetter } = useLetters();
+  const { letters, loading, reactToLetter, deleteLetter } = useLetters();
   const { profile } = useAuth();
   const { partner } = usePartner();
   const reduced = useReducedMotion();
@@ -97,6 +98,8 @@ export default function LetterReaderScreen() {
   // Held back until the card→letter morph has settled, so the two animations
   // don't fight. Hooks sit above the early return below.
   const [arrival, setArrival] = useState(false);
+  // Set before a delete lands so the screen doesn't flash "not here" on its way out.
+  const leaving = useRef(false);
   useEffect(() => {
     if (!letter || !profile?.id) return;
     const fromPartner = !!letter.sender_id && letter.sender_id !== profile.id;
@@ -115,7 +118,47 @@ export default function LetterReaderScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [letter?.id, profile?.id]);
 
-  if (!letter) return null;
+  // Never a blank page: hold the layout while letters load, say so if it's gone (§1).
+  if (!letter) {
+    if (leaving.current) return <View style={{ flex: 1, backgroundColor: LK.parchment }} />;
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
+        <View style={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 6 }}>
+          <RoundIcon onPress={() => router.back()} accessibilityLabel="Back">
+            <Icon name="chevL" size={20} color={LK.espresso} />
+          </RoundIcon>
+        </View>
+        {loading ? (
+          <View style={{ paddingHorizontal: 30, paddingTop: 18, gap: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 12 }}>
+              <Skeleton width={44} height={44} radius={22} />
+              <View style={{ gap: 6 }}>
+                <Skeleton width={110} height={14} radius={7} />
+                <Skeleton width={80} height={11} radius={6} />
+              </View>
+            </View>
+            {[0.95, 0.9, 0.97, 0.6].map((w, i) => <Skeleton key={i} width={`${w * 100}%` as `${number}%`} height={18} radius={9} />)}
+          </View>
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 14 }}>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>
+              This letter isn’t here any more
+            </Text>
+            <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', lineHeight: 21 }}>
+              It may have been deleted.
+            </Text>
+            <ScalePressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              style={{ borderRadius: 9999, borderWidth: 1.5, borderColor: LK.espresso, paddingHorizontal: 22, minHeight: 44, justifyContent: 'center' }}
+            >
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.espresso }}>Go back</Text>
+            </ScalePressable>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
 
   const bodyText = letter.body_rich_html.replace(/<[^>]+>/g, ''); // for share/copy
   const isMine = !!letter.sender_id && letter.sender_id === profile?.id;
@@ -135,6 +178,7 @@ export default function LetterReaderScreen() {
     });
     if (!ok) return;
     hapticWarn();
+    leaving.current = true;
     await deleteLetter(letter.id);
     router.back();
   }
@@ -178,10 +222,10 @@ export default function LetterReaderScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 6 }}>
-        <RoundIcon onPress={() => router.back()}>
+        <RoundIcon onPress={() => router.back()} accessibilityLabel="Back">
           <Icon name="chevL" size={20} color={LK.espresso} />
         </RoundIcon>
-        <RoundIcon onPress={openMenu}>
+        <RoundIcon onPress={openMenu} accessibilityLabel="More options">
           <Icon name="dots" size={20} color={LK.espresso} />
         </RoundIcon>
       </View>
@@ -203,7 +247,7 @@ export default function LetterReaderScreen() {
               From {isMine ? 'You' : senderName}
             </Text>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>
-              {letter.sent_at ? new Date(letter.sent_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+              {new Date(letter.sent_at ?? letter.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
             </Text>
           </View>
         </EaseView>
@@ -244,7 +288,7 @@ export default function LetterReaderScreen() {
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, letterSpacing: 0.8, textTransform: 'uppercase', color: LK.ink70, marginBottom: 12 }}>
             {letter.reaction ? 'Reacted' : 'React to this letter'}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 8, backgroundColor: LK.vellum, borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 8, ...theme.shadow.sm }}>
+          <View style={{ flexDirection: 'row', gap: 2, backgroundColor: LK.vellum, borderRadius: 9999, borderWidth: 1.5, borderColor: LK.hairline, paddingHorizontal: 6, paddingVertical: 6, ...theme.shadow.sm }}>
             {REACTIONS.map((emoji) => {
               const active = letter.reaction === emoji;
               return (
@@ -252,7 +296,9 @@ export default function LetterReaderScreen() {
                   key={emoji}
                   onPress={() => react(emoji)}
                   scaleTo={0.85}
+                  accessibilityRole="button"
                   accessibilityLabel={`React ${emoji}`}
+                  accessibilityState={{ selected: active }}
                   style={{
                     width: 44, height: 44, borderRadius: 22,
                     alignItems: 'center', justifyContent: 'center',

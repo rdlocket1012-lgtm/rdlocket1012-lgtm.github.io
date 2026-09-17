@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
   useReducedMotion,
 } from 'react-native-reanimated';
-import { LK, rgba, theme } from '@/constants/theme';
+import { LK, rgba, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 
 type Props = {
@@ -47,6 +47,8 @@ export function ChallengeCard({ title, icon, accent, progress, target, daysLeft,
           backgroundColor: LK.ivory,
           borderRadius: 20,
           borderCurve: 'continuous',
+          borderWidth: 1.5,
+          borderColor: LK.hairline,
           padding: 16,
           boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
         } as any}
@@ -55,9 +57,9 @@ export function ChallengeCard({ title, icon, accent, progress, target, daysLeft,
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <View
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
               backgroundColor: rgba(accent, 0.14),
               alignItems: 'center',
               justifyContent: 'center',
@@ -71,9 +73,9 @@ export function ChallengeCard({ title, icon, accent, progress, target, daysLeft,
               flex: 1,
               fontFamily: theme.fonts.body,
               fontWeight: '700',
-              fontSize: 14,
+              fontSize: 15,
               color: LK.espresso,
-              lineHeight: 18,
+              lineHeight: 19,
             }}
           >
             {title}
@@ -81,18 +83,18 @@ export function ChallengeCard({ title, icon, accent, progress, target, daysLeft,
           {isComplete ? (
             <View
               style={{
-                backgroundColor: rgba('#5FC79B', 0.16),
+                backgroundColor: rgba(LK.success, 0.16),
                 borderRadius: 9999,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
               }}
             >
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: '#5FC79B' }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(LK.success, 0.45) }}>
                 Done ✓
               </Text>
             </View>
           ) : (
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, color: LK.faded }}>
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 12, color: LK.ink70 }}>
               {daysLeft === 1 ? '1 day left' : `${daysLeft} days left`}
             </Text>
           )}
@@ -101,9 +103,9 @@ export function ChallengeCard({ title, icon, accent, progress, target, daysLeft,
         {/* Progress bar */}
         <View
           style={{
-            height: 6,
-            backgroundColor: rgba(LK.espresso, 0.1),
-            borderRadius: 3,
+            height: 8,
+            backgroundColor: rgba(accent, 0.14),
+            borderRadius: 4,
             overflow: 'hidden',
           }}
         >
@@ -111,8 +113,10 @@ export function ChallengeCard({ title, icon, accent, progress, target, daysLeft,
             style={{
               height: '100%',
               width: `${Math.round(pct * 100)}%`,
-              backgroundColor: isComplete ? '#5FC79B' : accent,
-              borderRadius: 3,
+              backgroundColor: isComplete ? LK.success : accent,
+              borderRadius: 4,
+              // A 0% bar reads as broken; a nub reads as "ready to start".
+              minWidth: 8,
             }}
           />
         </View>
@@ -121,14 +125,17 @@ export function ChallengeCard({ title, icon, accent, progress, target, daysLeft,
         <Text
           style={{
             fontFamily: theme.fonts.body,
-            fontSize: 12,
-            color: LK.sepia,
+            fontSize: 12.5,
+            fontWeight: '500',
+            color: LK.ink70,
             marginTop: 8,
           }}
         >
           {isComplete
             ? 'Challenge complete — your streak is protected this week'
-            : `${progress} / ${target} · ${progress === 0 ? 'get started!' : 'keep it up!'}`}
+            : progress === 0
+              ? `${target} to go this week`
+              : `${progress} of ${target} · ${target - progress} to go`}
         </Text>
       </View>
     </Animated.View>

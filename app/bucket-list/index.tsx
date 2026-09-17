@@ -19,6 +19,9 @@ import { FREE_LIMITS } from '@/constants/free-limits';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { ScratchCard } from '@/components/bucket/ScratchCard';
 import { dateIdeasForDay } from '@/constants/date-ideas';
+import { Image } from 'expo-image';
+
+const EMPTY_BUCKET_ILLUS = require('../../assets/illustrations/empty-states/no-bucket-list.png');
 
 const SCRATCH_COLORS = [LK.coral, LK.marigold, LK.lilac, LK.success, LK.blush, LK.sky];
 
@@ -131,7 +134,7 @@ export default function BucketListScreen() {
             <ScalePressable
               onPress={() => atCap ? setSheet('paywall') : openAdd()}
               accessibilityLabel={atCap ? 'Upgrade to add more' : 'Add to list'}
-              style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: atCap ? tint(LK.marigold, 0.7) : LK.espresso, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: atCap ? tint(LK.marigold, 0.7) : LK.espresso, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm }}
             >
               <Icon name={atCap ? 'lock' : 'plus'} size={atCap ? 19 : 22} color={atCap ? shade(LK.marigold, 0.5) : '#fff'} />
             </ScalePressable>
@@ -144,7 +147,7 @@ export default function BucketListScreen() {
           showsHorizontalScrollIndicator={false}
           data={[{ id: 'all', label: 'All', icon: 'star', color: LK.espresso }, ...BUCKET_CATEGORIES]}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 8 }}
+          contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingTop: 12, gap: 8, paddingBottom: 8 }}
           renderItem={({ item: cat }) => {
             const on = catFilter === cat.id;
             const col = cat.id === 'all' ? LK.espresso : cat.color;
@@ -152,7 +155,10 @@ export default function BucketListScreen() {
               <ScalePressable
                 onPress={() => setCatFilter(cat.id)}
                 scaleTo={0.95}
-                accessibilityLabel={`Filter ${cat.label}`}
+                haptic={false}
+                accessibilityRole="button"
+                accessibilityLabel={`Show ${cat.label}`}
+                accessibilityState={{ selected: on }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: on ? col : tint(col, 0.7), borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 9 }}
               >
                 <Icon name={cat.icon} size={13} color={on ? '#fff' : shade(col, 0.55)} />
@@ -163,7 +169,7 @@ export default function BucketListScreen() {
         />
 
         {/* Scratch-Off mode toggle */}
-        <View style={{ paddingHorizontal: 20, paddingBottom: 6 }}>
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingBottom: 6 }}>
           <ScalePressable
             onPress={() => setScratchMode((s) => !s)}
             scaleTo={0.98}
@@ -179,7 +185,7 @@ export default function BucketListScreen() {
         </View>
 
         {scratchMode && (
-          <View style={{ paddingHorizontal: 18, paddingTop: 8, gap: 12 }}>
+          <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 8, gap: 12 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 13.5, color: LK.ink70, lineHeight: 20, paddingHorizontal: 4 }}>
               Today's surprise date ideas — scratch the foil to reveal each one. You and your partner see the same set today.
             </Text>
@@ -191,7 +197,7 @@ export default function BucketListScreen() {
 
         {!scratchMode && (<>
         {/* Filter + count */}
-        <View style={{ paddingHorizontal: 20, paddingBottom: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingBottom: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flexDirection: 'row', backgroundColor: 'rgba(42,33,26,0.06)', borderRadius: 9999, padding: 4 }}>
             {(['todo', 'done'] as const).map((k) => {
               const label = k === 'todo' ? 'To Do' : 'Done';
@@ -201,6 +207,10 @@ export default function BucketListScreen() {
                   key={k}
                   onPress={() => setFilter(k)}
                   scaleTo={0.96}
+                  haptic={false}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${label}, ${count}`}
+                  accessibilityState={{ selected: filter === k }}
                   style={{ backgroundColor: filter === k ? LK.ivory : 'transparent', borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                 >
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: filter === k ? LK.espresso : LK.ink70 }}>{label}</Text>
@@ -216,7 +226,7 @@ export default function BucketListScreen() {
 
         {/* Cap meter */}
         {!isPremium && items.length > 0 && (
-          <ScalePressable onPress={() => setSheet('paywall')} scaleTo={0.98} accessibilityLabel="See Premium options" containerStyle={{ marginHorizontal: 20, marginBottom: 4 }} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', padding: 14, ...theme.shadow.sm }}>
+          <ScalePressable onPress={() => setSheet('paywall')} scaleTo={0.98} accessibilityLabel="See Premium options" containerStyle={{ marginHorizontal: theme.layout.screenX, marginBottom: 4 }} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 14, ...theme.shadow.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: atCap ? shade(LK.marigold, 0.5) : LK.espresso }}>
                 {atCap ? 'Free limit reached' : `${items.length} of ${FREE_LIMITS.BUCKET_LIST_ITEMS} on Free`}
@@ -233,7 +243,7 @@ export default function BucketListScreen() {
         )}
 
         {/* Items */}
-        <View style={{ paddingHorizontal: 18, paddingTop: 14, gap: 12 }}>
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 14, gap: 12 }}>
           {/* Loading has to come BEFORE the empty check: `items` is [] until the
               fetch lands, so a user with a full list used to be shown the
               "you have nothing yet" pitch and then a pop. */}
@@ -241,13 +251,7 @@ export default function BucketListScreen() {
             [0, 1, 2, 3].map((i) => <Skeleton key={i} height={68} radius={theme.radii.sm} />)
           ) : items.length === 0 ? (
             <View style={{ alignItems: 'center', paddingTop: 40, gap: 14 }}>
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 4 }}>
-                {[LK.sky, LK.coral, LK.lilac].map((col, i) => (
-                  <View key={i} style={{ width: 58, height: 58, borderRadius: 20, backgroundColor: tint(col, 0.7), alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name={['plane', 'fork', 'mug'][i]} size={26} color={shade(col, 0.5)} />
-                  </View>
-                ))}
-              </View>
+              <Image source={EMPTY_BUCKET_ILLUS} style={{ width: 128, height: 128, marginBottom: 4 }} contentFit="contain" accessible={false} />
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 26, color: LK.espresso, textAlign: 'center', maxWidth: 260, lineHeight: 30 }}>
                 What do you dream of doing together?
               </Text>
@@ -260,18 +264,47 @@ export default function BucketListScreen() {
               </ScalePressable>
             </View>
           ) : list.length === 0 ? (
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', paddingTop: 40 }}>
-              {filter === 'done' ? 'Nothing crossed off yet — go make a memory.' : 'All done! Dream up something new.'}
-            </Text>
+            // Empty *view*, not an empty list. A category filter is the usual
+            // cause, so name it and offer the way back; otherwise the next step.
+            <View style={{ alignItems: 'center', paddingTop: 40, gap: 14 }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, textAlign: 'center', maxWidth: 280, lineHeight: 21 }}>
+                {catFilter !== 'all'
+                  ? `Nothing ${filter === 'done' ? 'crossed off' : 'left to do'} in ${BUCKET_CATEGORIES.find((c) => c.id === catFilter)?.label ?? 'this category'}.`
+                  : filter === 'done'
+                    ? 'Nothing crossed off yet — go make a memory.'
+                    : 'All done! Dream up something new.'}
+              </Text>
+              {catFilter !== 'all' ? (
+                <ScalePressable
+                  onPress={() => setCatFilter('all')}
+                  haptic={false}
+                  accessibilityRole="button"
+                  style={{ borderRadius: 9999, borderWidth: 1.5, borderColor: LK.espresso, paddingHorizontal: 20, minHeight: 44, justifyContent: 'center' }}
+                >
+                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso }}>Show all</Text>
+                </ScalePressable>
+              ) : filter === 'todo' ? (
+                <ScalePressable
+                  onPress={() => atCap ? setSheet('paywall') : openAdd()}
+                  accessibilityRole="button"
+                  style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 22, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                >
+                  <Icon name="plus" size={16} color="#fff" />
+                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: '#fff' }}>Add something new</Text>
+                </ScalePressable>
+              ) : null}
+            </View>
           ) : list.map((it, idx) => {
             const catDef = BUCKET_CATEGORIES.find((c) => c.id === it.category);
             const color = catDef?.color ?? LK.sky;
             return (
-              <Animated.View key={it.id} entering={stagger(idx)} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 15, flexDirection: 'row', gap: 13, ...theme.shadow.card, opacity: it.is_done ? 0.92 : 1 }}>
+              <Animated.View key={it.id} entering={stagger(idx)} style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 15, flexDirection: 'row', gap: 13, ...theme.shadow.card, opacity: it.is_done ? 0.92 : 1 }}>
                 <ScalePressable
                   onPress={() => toggleItem(it.id, !it.is_done)}
                   scaleTo={0.9}
-                  accessibilityLabel={it.is_done ? 'Mark as not done' : 'Mark as done'}
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={it.title}
+                  accessibilityState={{ checked: it.is_done }}
                   containerStyle={{ flexShrink: 0, marginLeft: -7 }}
                   style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
                 >
@@ -307,7 +340,7 @@ export default function BucketListScreen() {
                     )}
                     {it.is_done && it.completed_at && (
                       <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: LK.ink70 }}>
-                        Done {new Date(it.completed_at).toLocaleDateString()}
+                        Done {new Date(it.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </Text>
                     )}
                   </View>

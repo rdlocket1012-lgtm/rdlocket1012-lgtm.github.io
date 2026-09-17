@@ -51,7 +51,7 @@ export default function NotesScreen() {
         title="My Notes"
         onBack={() => router.back()}
         right={
-          <RoundIcon onPress={() => router.push('/notes/compose')}>
+          <RoundIcon onPress={() => router.push('/notes/compose')} accessibilityLabel="New note">
             <Icon name="pen" size={20} color={LK.espresso} />
           </RoundIcon>
         }
@@ -59,8 +59,8 @@ export default function NotesScreen() {
 
       {/* Private indicator eyebrow */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 22, paddingTop: 8, paddingBottom: 8 }}>
-        <Image source="sf:lock.fill" style={{ width: 11, height: 11 }} contentFit="contain" tintColor={LK.faded} />
-        <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, color: LK.faded }}>
+        <Image source="sf:lock.fill" style={{ width: 12, height: 12 }} contentFit="contain" tintColor={LK.ink70} />
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70 }}>
           private — only you can see this
         </Text>
       </View>
@@ -116,7 +116,7 @@ function NoteCard({
           borderRadius: 20,
           borderCurve: 'continuous',
           borderWidth: 1.5,
-          borderColor: 'rgba(42,33,26,0.10)',
+          borderColor: LK.hairline,
           overflow: 'hidden',
           minHeight: 96,
           ...theme.shadow.card,
@@ -133,7 +133,7 @@ function NoteCard({
                 fontFamily: theme.fonts.body,
                 fontWeight: '500',
                 fontSize: 12,
-                color: LK.faded,
+                color: LK.ink70,
               }}
             >
               {date}
@@ -155,6 +155,7 @@ function NoteCard({
               fontSize: 14,
               color: LK.sepia,
               lineHeight: 21,
+              paddingRight: 28,
             }}
           >
             {preview}
@@ -169,7 +170,7 @@ function NoteCard({
             containerStyle={{ position: 'absolute', bottom: 14, right: 16 }}
             accessibilityLabel="Delete note"
           >
-            <Icon name="trash" size={14} color={LK.faded} />
+            <Icon name="trash" size={15} color={LK.ink70} />
           </ScalePressable>
         </View>
       </View>

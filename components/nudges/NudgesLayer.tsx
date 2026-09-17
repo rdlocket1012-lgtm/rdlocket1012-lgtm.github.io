@@ -353,7 +353,14 @@ function RadialMenu({ onClose, partnerName, partnerAsleep, partnerSilent, onSpar
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, marginTop: 22 }}>
               {ACTIONS.map((a) => (
-                <Pressable key={a.key} onPress={handlers[a.key]} style={{ alignItems: 'center', gap: 8, width: 76 }}>
+                <ScalePressable
+                  key={a.key}
+                  onPress={handlers[a.key]}
+                  haptic={false}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Send ${a.label}`}
+                  style={{ alignItems: 'center', gap: 8, width: 76 }}
+                >
                   <View style={{
                     width: 72, height: 72, borderRadius: 36,
                     backgroundColor: tint(a.color, 0.66),
@@ -365,7 +372,7 @@ function RadialMenu({ onClose, partnerName, partnerAsleep, partnerSilent, onSpar
                   <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: LK.ink70, textAlign: 'center' }}>
                     {a.label}
                   </Text>
-                </Pressable>
+                </ScalePressable>
               ))}
             </View>
             {/* Partner muted buzzing — nudges still land, just silently */}

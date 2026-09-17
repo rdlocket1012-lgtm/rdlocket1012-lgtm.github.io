@@ -16,6 +16,7 @@ import { usePartner } from '@/hooks/usePartner';
 import { useSelfPerson } from '@/hooks/useSelfPerson';
 import { DETAIL_DEFS } from '@/constants/categories';
 import { zodiacSign } from '@/utils/zodiac';
+import { parseLocalDate } from '@/utils/date';
 import type { Detail, Person } from '@/stores/details.store';
 
 export default function AboutUsScreen() {
@@ -35,16 +36,16 @@ export default function AboutUsScreen() {
         eyebrow="Your details"
         title="About Us"
         onBack={() => router.back()}
-        right={<RoundIcon onPress={() => router.push(`/profile/edit?person=${selfPerson}`)}><Icon name="pen" size={18} color={LK.espresso} /></RoundIcon>}
+        right={<RoundIcon onPress={() => router.push(`/profile/edit?person=${selfPerson}`)} accessibilityLabel="Edit your details"><Icon name="pen" size={18} color={LK.espresso} /></RoundIcon>}
       />
 
       <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.ink70, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 8, lineHeight: 22 }}>
         The details you never want to forget — for birthdays, gifts and little surprises.
       </Text>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 80 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingBottom: 80 }}>
         {/* Couple hero card (§13.26) */}
-        <View style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.lg, borderCurve: 'continuous', padding: 22, marginBottom: 14, alignItems: 'center', ...theme.shadow.card }}>
+        <View style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 22, marginBottom: 14, alignItems: 'center', ...theme.shadow.card }}>
           <View style={{ flexDirection: 'row' }}>
             <Avatar initial={myInitial} imageUrl={profile?.avatar_url} color={LK.coral} size={64} style={{ marginRight: -20, zIndex: 2, borderWidth: 3, borderColor: LK.vellum }} />
             <Avatar initial={partnerInitial} imageUrl={partner?.avatar_url ?? undefined} color={LK.sky} size={64} style={{ borderWidth: 3, borderColor: LK.vellum }} />
@@ -54,7 +55,7 @@ export default function AboutUsScreen() {
           </Text>
           {couple?.start_date && (
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.sepia, marginTop: 2 }}>
-              Since {new Date(couple.start_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+              Since {parseLocalDate(couple.start_date.slice(0, 10)).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
             </Text>
           )}
           {dayCount > 0 && (
@@ -73,6 +74,8 @@ export default function AboutUsScreen() {
           color={LK.coral}
           name={profile?.display_name ?? 'You'}
           subtitle="Your profile"
+          action="Edit"
+          emptyLine="Add your birthday, favourites and sizes so gifts are easy."
           details={details.filter((d) => d.person === selfPerson)}
           onPress={() => router.push(`/profile/edit?person=${selfPerson}`)}
         />
@@ -83,6 +86,8 @@ export default function AboutUsScreen() {
           color={LK.sky}
           name={partnerName}
           subtitle={partner ? 'Tap to ask a question' : 'Not yet joined'}
+          action="Ask"
+          emptyLine={`Nothing here yet. Ask ${partnerName.split(' ')[0]} what they love.`}
           details={details.filter((d) => d.person === partnerPerson && d.key !== 'name')}
           onPress={() => router.push(`/profile/edit?person=${partnerPerson}`)}
         />
@@ -91,8 +96,12 @@ export default function AboutUsScreen() {
   );
 }
 
-function ProfileCard({ initial, avatarUrl, color, name, subtitle, details, onPress }: {
+function ProfileCard({ initial, avatarUrl, color, name, subtitle, action, emptyLine, details, onPress }: {
   initial: string;
+  /** The badge names what the tap does: you edit your own card, you ask on theirs. */
+  action: 'Edit' | 'Ask';
+  /** Shown instead of a column of em-dashes when nothing is filled in (§4). */
+  emptyLine: string;
   avatarUrl: string | null;
   color: string;
   name: string;
@@ -118,13 +127,16 @@ function ProfileCard({ initial, avatarUrl, color, name, subtitle, details, onPre
     .filter((d) => !DETAIL_DEFS.some((def) => def.key === d.key))
     .map((d) => ({ key: d.key, icon: 'help', label: d.label, value: d.value, isQuestion: d.is_question }));
   const allRows = [...rows, ...customRows];
+  const hasAnything = allRows.some((r) => r.value || r.isQuestion);
 
   return (
     <ScalePressable
       onPress={onPress}
       scaleTo={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={`${name}. ${action === 'Edit' ? 'Edit your details' : 'Ask a question'}`}
       containerStyle={{ marginBottom: 14 }}
-      style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', padding: 18, ...theme.shadow.card }}
+      style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 18, ...theme.shadow.card }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 }}>
         {avatarUrl ? (
@@ -139,10 +151,13 @@ function ProfileCard({ initial, avatarUrl, color, name, subtitle, details, onPre
           <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 2 }}>{subtitle}</Text>
         </View>
         <View style={{ backgroundColor: tint(color, 0.7), borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 5 }}>
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(color, 0.5) }}>Edit</Text>
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(color, 0.5) }}>{action}</Text>
         </View>
       </View>
 
+      {!hasAnything ? (
+        <Text style={{ fontFamily: theme.fonts.hand, fontSize: 16, lineHeight: 22, color: LK.sepia }}>{emptyLine}</Text>
+      ) : (
       <View style={{ gap: 10 }}>
         {allRows.slice(0, 8).map((row) => (
           <View key={row.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -157,6 +172,7 @@ function ProfileCard({ initial, avatarUrl, color, name, subtitle, details, onPre
           </View>
         ))}
       </View>
+      )}
     </ScalePressable>
   );
 }

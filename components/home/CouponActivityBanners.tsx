@@ -110,7 +110,7 @@ function PendingApprovalCard({
             <Icon name="gift" size={22} color={shade(accent, 0.5)} />
           </View>
           <View style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 10.5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: shade(accent, 0.5) }}>
+            <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: shade(accent, 0.5) }}>
               Coupon request
             </Text>
             <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 17, color: LK.espresso, lineHeight: 21, marginTop: 1 }}>

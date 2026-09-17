@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SectionEyebrow } from '@/components/ui/section-eyebrow';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { useDismissalsStore } from '@/stores/activity-dismissals.store';
@@ -87,7 +88,7 @@ export default function NotificationsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <ScreenHeader eyebrow="What's new" title="Activity" onBack={() => router.back()} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingBottom: 80 }}>
         {isEmpty ? (
           <View style={{ alignItems: 'center', paddingTop: 80, gap: 14 }}>
             <IconChip color={LK.sage} size={64}>
@@ -99,6 +100,14 @@ export default function NotificationsScreen() {
             <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, textAlign: 'center', maxWidth: 250, lineHeight: 21 }}>
               Letters, coupons, drawings and memories from your partner will show up here.
             </Text>
+            <ScalePressable
+              onPress={() => router.push('/letters')}
+              accessibilityRole="button"
+              containerStyle={{ marginTop: 4 }}
+              style={{ borderRadius: 9999, borderWidth: 1.5, borderColor: LK.espresso, paddingHorizontal: 22, minHeight: 44, justifyContent: 'center' }}
+            >
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.espresso }}>Write them a letter</Text>
+            </ScalePressable>
           </View>
         ) : (
           <>
@@ -129,10 +138,11 @@ export default function NotificationsScreen() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginBottom: 22 }}>
-      <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: LK.ink70, marginBottom: 10 }}>
-        {title}
-      </Text>
+    <View style={{ marginBottom: 8 }}>
+      {/* SectionEyebrow carries its own gutter; the list already has one. */}
+      <View style={{ marginHorizontal: -theme.layout.screenX }}>
+        <SectionEyebrow label={title} paddingTop={16} />
+      </View>
       <View style={{ gap: 8 }}>{children}</View>
     </View>
   );
@@ -143,15 +153,16 @@ function FeedRow({ item }: { item: Feed }) {
     <ScalePressable
       scaleTo={0.98}
       onPress={item.onPress}
-      accessibilityLabel={item.title}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: LK.ivory, borderRadius: theme.radii.sm, padding: 13, ...theme.shadow.sm }}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.unseen ? 'New: ' : ''}${item.title}, ${item.subtitle}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 13, ...theme.shadow.sm }}
     >
       <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: tint(item.color, 0.6), alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <Icon name={item.icon} size={20} color={shade(item.color, 0.5)} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 15.5, color: LK.espresso }}>{item.title}</Text>
-        <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.sepia, marginTop: 2 }}>{item.subtitle}</Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 2 }}>{item.subtitle}</Text>
       </View>
       {item.unseen && (
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LK.coral, flexShrink: 0 }} />

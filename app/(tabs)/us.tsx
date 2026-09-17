@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useTabBarClearance } from '@/components/ui/locket-tab-bar';
 import { LK, shade, theme } from '@/constants/theme';
 import { useCouple } from '@/hooks/useCouple';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +12,7 @@ import { usePartner } from '@/hooks/usePartner';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { Avatar } from '@/components/ui/avatar';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { TabHeader } from '@/components/ui/TabHeader';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { DoodleBackground } from '@/components/ui/doodle-background';
@@ -46,6 +48,7 @@ type Feature = {
 };
 
 export default function UsScreen() {
+  const bottomClearance = useTabBarClearance();
   const { couple } = useCouple();
   const { profile } = useAuth();
   const { partner } = usePartner();
@@ -91,19 +94,21 @@ export default function UsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
-      {/* Header (56pt) */}
-      <View style={{ height: 56, paddingHorizontal: theme.layout.screenX, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 20, color: LK.espresso, letterSpacing: -0.5 }}>Us</Text>
-        <RoundIcon onPress={() => router.push('/settings')}>
-          <Icon name="gear" size={22} color={LK.espresso} strokeWidth={1.6} />
-        </RoundIcon>
-      </View>
+      <TabHeader
+        eyebrow="Just the two of you"
+        title="Us"
+        right={
+          <RoundIcon onPress={() => router.push('/settings')} accessibilityLabel="Settings">
+            <Icon name="gear" size={22} color={LK.espresso} strokeWidth={1.6} />
+          </RoundIcon>
+        }
+      />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomClearance }}>
         {/* Cover photo hero card */}
         <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 6 }}>
-          <Pressable onPress={() => router.push('/profile/about')} accessibilityRole="button" accessibilityLabel="About us">
-            <View style={{ height: 180, borderRadius: theme.radii.md, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: LK.parchmentDeep, ...theme.shadow.card }}>
+          <ScalePressable scaleTo={0.985} onPress={() => router.push('/profile/about')} accessibilityRole="button" accessibilityLabel="About us">
+            <View style={{ height: 196, borderRadius: theme.radii.lg, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: LK.parchmentDeep, ...theme.shadow.card }}>
               {coverUrl ? (
                 <Image source={{ uri: coverUrl }} style={{ position: 'absolute', inset: 0 }} contentFit="cover" transition={200} />
               ) : (
@@ -131,17 +136,19 @@ export default function UsScreen() {
               </View>
 
               {/* Camera edit button (top-right) */}
-              <Pressable
+              <ScalePressable
                 onPress={changeCover}
                 accessibilityRole="button"
                 accessibilityLabel="Change cover photo"
-                hitSlop={8}
-                style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,253,247,0.45)', alignItems: 'center', justifyContent: 'center' }}
+                hitSlop={6}
+                scaleTo={0.9}
+                containerStyle={{ position: 'absolute', top: 12, right: 12 }}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,253,247,0.82)', alignItems: 'center', justifyContent: 'center' }}
               >
                 {uploading ? <ActivityIndicator size="small" color={LK.espresso} /> : <Icon name="camera" size={17} color={LK.espresso} strokeWidth={1.9} />}
-              </Pressable>
+              </ScalePressable>
             </View>
-          </Pressable>
+          </ScalePressable>
         </View>
 
         {/* Letters — wide hero row */}
@@ -235,7 +242,7 @@ function FeatureCard({ feature, width }: { feature: Feature; width: number }) {
         </View>
         <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso }}>{feature.title}</Text>
-          <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 11, color: LK.sepia, marginTop: 2 }}>
+          <Text numberOfLines={2} style={{ fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 12, lineHeight: 16, color: LK.sepia, marginTop: 2 }}>
             {feature.blurb}
           </Text>
         </View>

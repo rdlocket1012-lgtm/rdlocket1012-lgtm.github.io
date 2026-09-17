@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
-  Pressable,
   Text,
   View,
   useWindowDimensions,
@@ -14,13 +13,15 @@ import Transition from 'react-native-screen-transitions';
 import { useDrawStore, type Drawing } from '@/stores/draw.store';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
-import { LK, theme } from '@/constants/theme';
+import { LK, tint, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { RoundIcon } from '@/components/ui/round-icon';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 const SHADOW_DEFAULT = '0 2px 8px rgba(42,33,26,0.07)';
+const EMPTY_DRAW_ILLUS = require('../../assets/illustrations/mascot/drawing.png');
 
 // ─── Skeleton cell ────────────────────────────────────────────────────────────
 
@@ -42,7 +43,7 @@ function DrawingCell({
   onLongPress: () => void;
 }) {
   const ts = new Date(drawing.created_at);
-  const label = ts.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const label = ts.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
   return (
     <View style={{ gap: 6 }}>
@@ -76,8 +77,8 @@ function DrawingCell({
       <Text
         style={{
           fontFamily: theme.fonts.body,
-          fontSize: 10,
-          color: LK.faded,
+          fontSize: 11.5,
+          color: LK.ink70,
           textAlign: 'center',
         }}
       >
@@ -88,38 +89,33 @@ function DrawingCell({
 }
 
 // ─── Empty states ─────────────────────────────────────────────────────────────
+// One recipe for both tabs (PREMIUM_STANDARD §4, §6): illustration on a tint,
+// one line, one way forward. Nothing arriving yet is still an invitation to draw.
 
-function EmptyReceived({ partnerName }: { partnerName: string }) {
+function DrawEmpty({ line, cta }: { line: string; cta: string }) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 40, paddingVertical: 60 }}>
-      <Image source="sf:pencil.and.outline" style={{ width: 48, height: 48 }} tintColor={LK.faded} />
-      <Text style={{ fontFamily: theme.fonts.hand, fontSize: 16, color: LK.sepia, textAlign: 'center' }}>
-        {`waiting for a drawing\nfrom ${partnerName || 'your person'}`}
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 40, paddingVertical: 48 }}>
+      <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: tint(LK.coral, 0.8), alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] }}>
+        <Image source={EMPTY_DRAW_ILLUS} style={{ width: 92, height: 92 }} contentFit="contain" accessible={false} />
+      </View>
+      <Text style={{ fontFamily: theme.fonts.hand, fontSize: 18, lineHeight: 24, color: LK.sepia, textAlign: 'center', maxWidth: 260 }}>
+        {line}
       </Text>
-    </View>
-  );
-}
-
-function EmptySent({ partnerName }: { partnerName: string }) {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 40, paddingVertical: 60 }}>
-      <Text style={{ fontFamily: theme.fonts.hand, fontSize: 16, color: LK.sepia, textAlign: 'center' }}>
-        {`draw ${partnerName || 'them'} something little`}
-      </Text>
-      <Pressable
+      <ScalePressable
         onPress={() => router.push('/draw/compose')}
+        accessibilityRole="button"
         style={{
           backgroundColor: LK.coral,
           borderRadius: 99,
           borderCurve: 'continuous',
           paddingHorizontal: 24,
-          paddingVertical: 12,
+          paddingVertical: 13,
         }}
       >
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.vellum }}>
-          Draw now
+          {cta}
         </Text>
-      </Pressable>
+      </ScalePressable>
     </View>
   );
 }
@@ -135,7 +131,7 @@ export default function DrawGalleryScreen() {
 
   const coupleId = profile?.couple_id ?? null;
   const userId = profile?.id ?? null;
-  const partnerName = partner?.display_name ?? '';
+  const partnerName = partner?.display_name?.trim().split(' ')[0] ?? '';
 
   useEffect(() => {
     if (!coupleId || !userId) return;
@@ -169,11 +165,14 @@ export default function DrawGalleryScreen() {
       }}
     >
       {(['received', 'sent'] as const).map((t) => (
-        <Pressable
+        <ScalePressable
           key={t}
           onPress={() => setTab(t)}
+          haptic={false}
+          accessibilityRole="button"
+          accessibilityState={{ selected: tab === t }}
+          containerStyle={{ flex: 1 }}
           style={{
-            flex: 1,
             paddingVertical: 8,
             borderRadius: 99,
             borderCurve: 'continuous',
@@ -191,7 +190,7 @@ export default function DrawGalleryScreen() {
           >
             {t === 'received' ? 'Received' : 'Sent'}
           </Text>
-        </Pressable>
+        </ScalePressable>
       ))}
     </View>
   );
@@ -205,7 +204,7 @@ export default function DrawGalleryScreen() {
       title="Draw"
       onBack={() => router.back()}
       right={
-        <RoundIcon onPress={() => router.push('/draw/compose')}>
+        <RoundIcon onPress={() => router.push('/draw/compose')} accessibilityLabel="New drawing">
           <Icon name="pen" size={20} color={LK.coral} />
         </RoundIcon>
       }
@@ -238,8 +237,8 @@ export default function DrawGalleryScreen() {
         ListHeaderComponent={() => segmentTabs}
         ListEmptyComponent={
           tab === 'received'
-            ? <EmptyReceived partnerName={partnerName} />
-            : <EmptySent partnerName={partnerName} />
+            ? <DrawEmpty line={`nothing from ${partnerName || 'your person'} yet — start the conversation`} cta="Draw them something" />
+            : <DrawEmpty line={`draw ${partnerName || 'them'} something little`} cta="Draw now" />
         }
         renderItem={({ item }) => (
           <DrawingCell

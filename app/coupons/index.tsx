@@ -15,6 +15,7 @@ import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { NewTag } from '@/components/ui/NewTag';
+import { SectionEyebrow } from '@/components/ui/section-eyebrow';
 import { useCoupons } from '@/hooks/useCoupons';
 import { useCouple } from '@/hooks/useCouple';
 import { usePartner } from '@/hooks/usePartner';
@@ -141,6 +142,20 @@ export default function CouponsScreen() {
     }
   }
 
+  async function confirmDelete(c: Coupon) {
+    const ok = await confirm({
+      title: `Delete "${c.title}"?`,
+      message: iGifted(c)
+        ? `${partnerName} won’t be able to redeem it any more.`
+        : `It was a gift from ${partnerName}. This can’t be undone.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+      icon: 'trash',
+    });
+    if (!ok) return;
+    try { await deleteCoupon(c.id); } catch (e: any) { toast.error(e?.message ?? 'Couldn’t delete that coupon.'); }
+  }
+
   async function handleCancelRequest(c: Coupon) {
     try { await cancelRequest(c.id); } catch (e: any) { toast.error(e?.message ?? 'Couldn’t cancel that request.'); }
   }
@@ -185,7 +200,7 @@ export default function CouponsScreen() {
         <ScreenHeader eyebrow="Little favours" title="Love Coupons" onBack={() => router.back()} />
         {/* Shimmer placeholders (§10.6). These were static opacity-stepped blocks —
             exactly the "static grey block" Skeleton exists to replace. */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, gap: 12 }}>
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 20, gap: 12 }}>
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} height={100} radius={20} />
           ))}
@@ -223,7 +238,7 @@ export default function CouponsScreen() {
           disabled={restoring}
           scaleTo={0.98}
           accessibilityLabel="Save your streak"
-          containerStyle={{ marginHorizontal: 20, marginBottom: 14 }}
+          containerStyle={{ marginHorizontal: theme.layout.screenX, marginBottom: 14 }}
           style={{
             backgroundColor: tint(LK.coral, 0.85),
             borderRadius: 18,
@@ -253,7 +268,7 @@ export default function CouponsScreen() {
       )}
 
       {/* Segmented tabs */}
-      <View style={{ flexDirection: 'row', marginHorizontal: 20, marginBottom: 14, backgroundColor: 'rgba(42,33,26,0.06)', borderRadius: 9999, padding: 4 }}>
+      <View style={{ flexDirection: 'row', marginHorizontal: theme.layout.screenX, marginTop: 10, marginBottom: 14, backgroundColor: 'rgba(42,33,26,0.06)', borderRadius: 9999, padding: 4 }}>
         {(['mine', 'theirs'] as const).map((tab) => {
           const label = tab === 'mine' ? 'Mine to use' : 'Theirs to use';
           const count = tab === 'mine' ? forMe.length : iGave.length;
@@ -263,7 +278,10 @@ export default function CouponsScreen() {
               key={tab}
               onPress={() => setActiveTab(tab)}
               scaleTo={0.97}
-              accessibilityLabel={label}
+              haptic={false}
+              accessibilityRole="button"
+              accessibilityLabel={count > 0 ? `${label}, ${count}` : label}
+              accessibilityState={{ selected: on }}
               containerStyle={{ flex: 1 }}
               style={{ backgroundColor: on ? LK.vellum : 'transparent', borderRadius: 9999, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, ...( on ? theme.shadow.sm : {}) }}
             >
@@ -279,7 +297,7 @@ export default function CouponsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
-        <View style={{ paddingHorizontal: 18, gap: 10 }}>
+        <View style={{ paddingHorizontal: theme.layout.screenX, gap: 10 }}>
 
           {/* ── Active tab list ─────────────────────────────── */}
           {tabList.length === 0 ? (
@@ -308,11 +326,21 @@ export default function CouponsScreen() {
                 </ScalePressable>
               </View>
             ) : (
-              <View style={{ backgroundColor: tint(activeTab === 'mine' ? LK.blush : LK.sky, 0.5), borderRadius: 18, padding: 20, alignItems: 'center', gap: 8 }}>
+              <View style={{ backgroundColor: tint(activeTab === 'mine' ? LK.blush : LK.sky, 0.5), borderRadius: 20, borderCurve: 'continuous', padding: 20, alignItems: 'center', gap: 10 }}>
                 <Icon name={activeTab === 'mine' ? 'gift' : 'envelope'} size={24} color={shade(activeTab === 'mine' ? LK.blush : LK.sky, 0.45)} />
-                <Text style={{ fontFamily: theme.fonts.body, fontSize: 13.5, color: shade(activeTab === 'mine' ? LK.blush : LK.sky, 0.5), textAlign: 'center', lineHeight: 20 }}>
-                  {activeTab === 'mine' ? `Nothing gifted to you yet — hint hint` : `Tap + to create a coupon for ${partnerName}`}
+                <Text style={{ fontFamily: theme.fonts.body, fontSize: 14, color: shade(activeTab === 'mine' ? LK.blush : LK.sky, 0.55), textAlign: 'center', lineHeight: 20 }}>
+                  {activeTab === 'mine'
+                    ? `Nothing to use right now. Gifts from ${partnerName} land here.`
+                    : `Coupons you gift ${partnerName} wait here until they use them.`}
                 </Text>
+                <ScalePressable
+                  onPress={openCreate}
+                  accessibilityRole="button"
+                  style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 20, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7 }}
+                >
+                  <Icon name="plus" size={16} color="#fff" />
+                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14.5, color: '#fff' }}>Gift {partnerName} a coupon</Text>
+                </ScalePressable>
               </View>
             )
           ) : (
@@ -327,7 +355,7 @@ export default function CouponsScreen() {
                   onCancelRequest={() => handleCancelRequest(c)}
                   onApprove={() => confirmApprove(c)}
                   onDecline={() => confirmDecline(c)}
-                  onDelete={() => deleteCoupon(c.id)}
+                  onDelete={() => confirmDelete(c)}
                 />
               </Animated.View>
             ))
@@ -336,17 +364,15 @@ export default function CouponsScreen() {
           {/* ── Redeemed ─────────────────────────────────────── */}
           {redeemed.length > 0 && (
             <>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 }}>
-                <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, color: LK.sepia, textTransform: 'uppercase', letterSpacing: 0.8 }}>Redeemed</Text>
-                <View style={{ flex: 1, height: 1, backgroundColor: LK.hairline }} />
+              <View style={{ marginHorizontal: -theme.layout.screenX }}>
+                <SectionEyebrow label="Redeemed" paddingTop={16} handTrailing={`${redeemed.length} used`} />
               </View>
               {redeemed.map((c) => (
                 <CouponCard
                   key={c.id}
                   c={c}
                   mode="redeemed"
-                  onDelete={() => deleteCoupon(c.id)}
+                  onDelete={() => confirmDelete(c)}
                 />
               ))}
             </>
@@ -406,11 +432,12 @@ export default function CouponsScreen() {
                         onPress={() => { setPicked(i); setTitle(''); }}
                         scaleTo={0.98}
                         accessibilityLabel={t.title}
+                        accessibilityState={{ selected: on }}
                         style={{
                           flexDirection: 'row', alignItems: 'center', gap: 12,
                           backgroundColor: on ? tint(col, 0.6) : LK.ivory,
                           borderRadius: 16, borderCurve: 'continuous', padding: 13,
-                          borderWidth: on ? 2 : 0, borderColor: on ? col : 'transparent',
+                          borderWidth: on ? 2 : 1.5, borderColor: on ? col : LK.hairline,
                           ...theme.shadow.sm,
                         }}
                       >
@@ -433,14 +460,14 @@ export default function CouponsScreen() {
                   onChangeText={(t) => { setTitle(t); setPicked(null); }}
                   placeholder="e.g. One spontaneous adventure"
                   placeholderTextColor={LK.ink70}
-                  style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso, marginBottom: 10, ...theme.shadow.sm }}
+                  style={{ backgroundColor: LK.ivory, borderRadius: 16, borderWidth: 1.5, borderColor: LK.hairline, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso, marginBottom: 10, ...theme.shadow.sm }}
                 />
                 <TextInput
                   value={desc}
                   onChangeText={setDesc}
                   placeholder="Add a little detail (optional)"
                   placeholderTextColor={LK.ink70}
-                  style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso, ...theme.shadow.sm }}
+                  style={{ backgroundColor: LK.ivory, borderRadius: 16, borderWidth: 1.5, borderColor: LK.hairline, padding: 14, fontFamily: theme.fonts.body, fontSize: 16, color: LK.espresso, ...theme.shadow.sm }}
                 />
               </ScrollView>
             </View>
@@ -495,7 +522,7 @@ function CouponCard({
               ) : null}
             </View>
             <View style={{ backgroundColor: tint(LK.gold, 0.65), borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 4 }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 10.5, color: shade(LK.gold, 0.5) }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.gold, 0.5) }}>
                 Streak Saved ✦
               </Text>
             </View>
@@ -551,9 +578,25 @@ function CouponCard({
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.sepia, marginTop: 2 }}>{c.description}</Text>
             ) : null}
           </View>
-          {/* State badge */}
-          <View style={{ backgroundColor: badgeBg, borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 4, flexShrink: 0, marginTop: 1 }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 10.5, color: badgeColor }}>{badgeLabel}</Text>
+          {/* State badge + delete. The trash used to float at a fixed offset and
+              landed on the badge; in the row it can't collide with anything. */}
+          <View style={{ alignItems: 'flex-end', gap: 10, flexShrink: 0, marginTop: 1 }}>
+            <View style={{ backgroundColor: badgeBg, borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 4 }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: badgeColor }}>{badgeLabel}</Text>
+            </View>
+            {onDelete && !isPending && !isRedeemed && (
+              <ScalePressable
+                onPress={onDelete}
+                scaleTo={0.88}
+                haptic={false}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${c.title}`}
+                hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+                style={{ padding: 2 }}
+              >
+                <Icon name="trash" size={15} color={LK.ink70} />
+              </ScalePressable>
+            )}
           </View>
         </View>
 
@@ -635,19 +678,6 @@ function CouponCard({
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 14, letterSpacing: 0.3, color: '#fff' }}>Approve</Text>
             </ScalePressable>
           </View>
-        )}
-        {/* Trash — hidden while a request is in flight */}
-        {onDelete && !isPending && !isRedeemed && (
-          <ScalePressable
-            onPress={onDelete}
-            scaleTo={0.88}
-            haptic={false}
-            accessibilityLabel="Delete coupon"
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            containerStyle={{ position: 'absolute', top: 15, right: 50 }}
-          >
-            <Icon name="trash" size={15} color="rgba(42,33,26,0.25)" />
-          </ScalePressable>
         )}
       </View>
     </View>

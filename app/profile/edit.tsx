@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   View, Text, TextInput, ScrollView,
   ActivityIndicator, Linking,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -34,7 +34,7 @@ export default function EditProfileScreen() {
 
   const { profile } = useAuth();
   const { partner } = usePartner();
-  const partnerName = partner?.display_name || 'your partner';
+  const partnerName = partner?.display_name?.trim().split(' ')[0] || 'your partner';
   const { details, upsertDetail } = useDetails();
   const coupleId = profile?.couple_id ?? null;
 
@@ -139,7 +139,7 @@ export default function EditProfileScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 22, paddingTop: 16, paddingBottom: 12 }}>
           <ScalePressable onPress={() => router.back()} haptic={false} accessibilityRole="button" accessibilityLabel="Cancel" style={{ minHeight: 44, justifyContent: 'center', paddingRight: 8 }}>
@@ -250,7 +250,8 @@ export default function EditProfileScreen() {
                 <ScalePressable
                   onPress={addQuestion}
                   disabled={!customQ.trim()}
-                  accessibilityLabel="Add"
+                  accessibilityRole="button"
+                  accessibilityLabel="Add detail"
                   style={{ backgroundColor: customQ.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Icon name="plus" size={20} color={customQ.trim() ? '#fff' : LK.ink70} />
@@ -266,8 +267,12 @@ export default function EditProfileScreen() {
 
               {/* Read-only facts they've shared */}
               <SectionLabel>What {partnerName} has shared</SectionLabel>
-              <View style={{ backgroundColor: LK.ivory, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 4, marginBottom: 22, ...theme.shadow.sm }}>
-                {DETAIL_DEFS.map((def, i) => {
+              <View style={{ backgroundColor: LK.ivory, borderRadius: 16, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, paddingHorizontal: 14, paddingVertical: 4, marginBottom: 22, ...theme.shadow.sm }}>
+                {!DETAIL_DEFS.some((def) => detailValue(def.key)) ? (
+                  <Text style={{ fontFamily: theme.fonts.hand, fontSize: 16, lineHeight: 22, color: LK.sepia, paddingVertical: 12 }}>
+                    Nothing shared yet — ask {partnerName} something below to get them started.
+                  </Text>
+                ) : DETAIL_DEFS.map((def, i) => {
                   const v = detailValue(def.key);
                   return (
                     <View key={def.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: 'rgba(42,33,26,0.06)' }}>
@@ -286,7 +291,7 @@ export default function EditProfileScreen() {
                 <>
                   <SectionLabel>Questions you asked</SectionLabel>
                   {askedOfMe.map((d) => (
-                    <View key={d.id} style={{ backgroundColor: LK.ivory, borderRadius: 16, padding: 14, marginBottom: 10, ...theme.shadow.sm }}>
+                    <View key={d.id} style={{ backgroundColor: LK.ivory, borderRadius: 16, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 14, marginBottom: 10, ...theme.shadow.sm }}>
                       <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso, marginBottom: 4 }}>{d.label}</Text>
                       <Text style={{ fontFamily: theme.fonts.body, fontSize: 13.5, color: d.value ? LK.ink70 : shade(LK.marigold, 0.5), fontStyle: d.value ? 'normal' : 'italic' }}>
                         {d.value || `Waiting for ${partnerName} to answer…`}
@@ -309,7 +314,8 @@ export default function EditProfileScreen() {
                 <ScalePressable
                   onPress={addQuestion}
                   disabled={!customQ.trim()}
-                  accessibilityLabel="Add"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ask ${partnerName}`}
                   style={{ backgroundColor: customQ.trim() ? LK.espresso : 'rgba(42,33,26,0.15)', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
                 >
                   <Icon name="plus" size={20} color={customQ.trim() ? '#fff' : LK.ink70} />
@@ -396,7 +402,11 @@ function ChipPicker({ options, value, onChange, multiSelect, allowOther }: {
               key={opt}
               onPress={() => toggle(opt)}
               scaleTo={0.95}
+              haptic={false}
+              hitSlop={{ top: 4, bottom: 4 }}
+              accessibilityRole="button"
               accessibilityLabel={opt}
+              accessibilityState={{ selected: active }}
               style={{
                 paddingHorizontal: 14, paddingVertical: 8, borderRadius: 9999,
                 backgroundColor: active ? LK.espresso : LK.ivory,
@@ -414,7 +424,11 @@ function ChipPicker({ options, value, onChange, multiSelect, allowOther }: {
           <ScalePressable
             onPress={() => setShowOther((s) => !s)}
             scaleTo={0.95}
-            accessibilityLabel="Other"
+            haptic={false}
+            hitSlop={{ top: 4, bottom: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel="Other answer"
+            accessibilityState={{ expanded: showOther }}
             style={{
               paddingHorizontal: 14, paddingVertical: 8, borderRadius: 9999,
               backgroundColor: showOther ? tint(LK.marigold, 0.6) : LK.ivory,
@@ -468,7 +482,7 @@ function ColorChipPicker({ colors, value, onChange, multiSelect }: {
         const active = selected.includes(c.label);
         const isLight = ['White', 'Nude', 'Yellow'].includes(c.label);
         return (
-          <ScalePressable key={c.label} onPress={() => toggle(c.label)} scaleTo={0.92} accessibilityLabel={c.label} style={{ alignItems: 'center', gap: 4 }}>
+          <ScalePressable key={c.label} onPress={() => toggle(c.label)} scaleTo={0.92} haptic={false} accessibilityRole="button" accessibilityLabel={c.label} accessibilityState={{ selected: active }} style={{ alignItems: 'center', gap: 4 }}>
             <View style={{
               width: 40, height: 40, borderRadius: 20,
               backgroundColor: c.hex,
@@ -478,7 +492,7 @@ function ColorChipPicker({ colors, value, onChange, multiSelect }: {
             }}>
               {active && <Icon name="check" size={16} color={isLight ? LK.espresso : '#fff'} />}
             </View>
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 10, color: active ? LK.espresso : LK.ink70, fontWeight: active ? '700' : '400' }}>
+            <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, color: active ? LK.espresso : LK.ink70, fontWeight: active ? '700' : '400' }}>
               {c.label}
             </Text>
           </ScalePressable>
@@ -501,15 +515,17 @@ function FieldLabel({ icon, label }: { icon: string; label: string }) {
   );
 }
 
+// Region title — same metrics as SectionEyebrow (PREMIUM_STANDARD §2), inline
+// because this form lays out inside its own gutter.
 function SectionLabel({ children, style }: { children: React.ReactNode; style?: object }) {
   return (
-    <Text style={[{
-      fontFamily: theme.fonts.body,
-      fontSize: 12,
-      fontWeight: '800',
-      letterSpacing: 0.8,
-      textTransform: 'uppercase',
-      color: LK.ink70,
+    <Text accessibilityRole="header" style={[{
+      fontFamily: theme.fonts.heading,
+      fontSize: 20,
+      lineHeight: 25,
+      fontWeight: '700',
+      letterSpacing: -0.4,
+      color: LK.espresso,
       marginBottom: 12,
     }, style]}>
       {children}
@@ -520,6 +536,8 @@ function SectionLabel({ children, style }: { children: React.ReactNode; style?: 
 const inputStyle = {
   backgroundColor: LK.ivory,
   borderRadius: 16,
+  borderWidth: 1.5,
+  borderColor: LK.hairline,
   padding: 14,
   fontFamily: theme.fonts.body,
   fontSize: 16,

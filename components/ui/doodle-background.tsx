@@ -54,11 +54,20 @@ const GENERAL_MEDIUM: Mark[] = [
   { source: require('@/assets/doodles/star-cluster.svg'), left: '80%', top: '62%', size: 26, rotate: -8, opacity: 0.26 },
 ];
 
+// General light — two deliberate marks, no dot-trio. At light density the
+// three-dot mark reads as dust on the card, not as ink (PREMIUM_STANDARD §6).
+const GENERAL_LIGHT: Mark[] = [
+  { source: require('@/assets/doodles/wavy-line.svg'), left: '74%', top: '6%', size: 30, rotate: 10, opacity: 0.16 },
+  { source: require('@/assets/doodles/star-cluster.svg'), left: '6%', top: '64%', size: 22, rotate: -8, opacity: 0.16 },
+];
+
 function getMarks(group: DoodleGroup, density: Density): Mark[] {
   if (group === 'lilac') return density === 'light' ? LILAC_LIGHT : LILAC_MEDIUM;
   if (group === 'coral') return CORAL_MEDIUM;
   if (group === 'sage') return SAGE_MEDIUM;
-  return GENERAL_MEDIUM;
+  // `light` used to fall through to MEDIUM here, so every light request
+  // (Us feature cards) silently rendered the busier set.
+  return density === 'light' ? GENERAL_LIGHT : GENERAL_MEDIUM;
 }
 
 function groupColor(group: DoodleGroup): string {

@@ -14,6 +14,8 @@ const BRUSH_SIZES: Array<{ label: string; value: number; dot: number }> = [
 
 // Cozy Scrapbook ink set — one warm, one cool, plus the playful accents (§3).
 const PALETTE = [LK.espresso, LK.coral, LK.blush, LK.marigold, LK.gold, LK.sage, LK.sky, LK.lilac];
+// VoiceOver names for the swatches — a hex code isn't a colour anyone can hear.
+const PALETTE_NAMES = ['Espresso', 'Coral', 'Blush', 'Marigold', 'Gold', 'Sage', 'Sky', 'Lilac'];
 
 const HAIRLINE = 'rgba(42,33,26,0.15)';
 
@@ -103,7 +105,7 @@ export function DrawToolbar({
     >
       {/* Colours */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        {PALETTE.map((c) => {
+        {PALETTE.map((c, i) => {
           const active = !erasing && color === c;
           return (
             <ScalePressable
@@ -112,7 +114,9 @@ export function DrawToolbar({
               scaleTo={0.85}
               onPress={() => { onColorChange(c); if (erasing) onEraserToggle(); }}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-              accessibilityLabel={`Pen colour ${c}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${PALETTE_NAMES[i]} pen`}
+              accessibilityState={{ selected: active }}
               style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}
             >
               {/* Active ring */}
@@ -169,7 +173,9 @@ export function DrawToolbar({
                 haptic={false}
                 scaleTo={0.88}
                 onPress={() => { onBrushChange(b.value); if (erasing) onEraserToggle(); }}
+                accessibilityRole="button"
                 accessibilityLabel={`Nib ${b.label}`}
+                accessibilityState={{ selected: active }}
                 style={{
                   width: 38,
                   height: 38,

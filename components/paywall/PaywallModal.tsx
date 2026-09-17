@@ -417,7 +417,7 @@ export function PaywallModal({ onClose }: Props) {
               interpolated from the live offering — never hardcoded. An introductory
               free trial has to be disclosed too: its length, and the price it
               converts to. */}
-          <Text style={{ fontFamily: theme.fonts.body, fontSize: 10.5, color: LK.ink70, textAlign: 'center', lineHeight: 16, marginTop: 12 }}>
+          <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, textAlign: 'center', lineHeight: 16, marginTop: 12 }}>
             Locket Premium is an auto-renewable subscription. Your subscription renews
             automatically
             {monthly || annual

@@ -135,7 +135,7 @@ export default function ComposeDrawScreen() {
       {/* Header — custom bar (X · title · Send). Top padding clears the notch
           manually since the native modal doesn't supply a top safe-area inset. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: topInset + 8, paddingBottom: 10 }}>
-        <RoundIcon onPress={handleClose}>
+        <RoundIcon onPress={handleClose} accessibilityLabel="Close">
           <Icon name="x" size={20} color={LK.espresso} />
         </RoundIcon>
 

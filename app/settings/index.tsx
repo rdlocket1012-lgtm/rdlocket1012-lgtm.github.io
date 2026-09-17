@@ -54,6 +54,7 @@ import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { restorePurchases } from '@/lib/revenuecat';
 import { usePartner } from '@/hooks/usePartner';
 import { shareInvite } from '@/lib/invite';
+import { parseLocalDate } from '@/utils/date';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -229,13 +230,13 @@ export default function SettingsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
       <ScreenHeader eyebrow="You & the app" title="Settings" onBack={() => router.back()} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 80 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingTop: 14, paddingBottom: 80 }}>
         {/* Profile card (§13.28) — tap to edit your profile */}
         <ScalePressable
           scaleTo={0.98}
           onPress={() => router.push('/profile/edit')}
           accessibilityLabel="Edit profile"
-          style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.md, borderCurve: 'continuous', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 10, ...theme.shadow.card }}
+          style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.md, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 10, ...theme.shadow.card }}
         >
           <Avatar initial={((profile?.display_name || 'Y').charAt(0) || 'Y').toUpperCase()} imageUrl={profile?.avatar_url} color={LK.coral} size={56} />
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -250,7 +251,7 @@ export default function SettingsScreen() {
         </ScalePressable>
 
         {/* Relationship banner */}
-        <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 4, ...theme.shadow.card }}>
+        <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13, marginBottom: 4, ...theme.shadow.card }}>
           <View style={{ flexDirection: 'row' }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: LK.coral, alignItems: 'center', justifyContent: 'center', marginRight: -14, zIndex: 2, borderWidth: 2.5, borderColor: LK.ivory }}>
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: '#fff' }}>{((profile?.display_name || 'Y').charAt(0) || 'Y').toUpperCase()}</Text>
@@ -266,16 +267,18 @@ export default function SettingsScreen() {
             )}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso }}>{couple?.nickname ?? 'Your relationship'}</Text>
-            <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>
-              {couple?.start_date ? `Together since ${new Date(couple.start_date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}` : ''}
-            </Text>
+            <Text numberOfLines={1} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso }}>{couple?.nickname ?? 'Your relationship'}</Text>
+            {couple?.start_date ? (
+              <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70 }}>
+                Together since {parseLocalDate(couple.start_date.slice(0, 10)).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+              </Text>
+            ) : null}
           </View>
           {isPremium
             ? <View style={{ backgroundColor: tint(LK.marigold, 0.7), borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 6 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: shade(LK.marigold, 0.5) }}>Premium</Text>
               </View>
-            : <ScalePressable onPress={() => setSheet('paywall')} accessibilityLabel="Upgrade to Premium" style={{ backgroundColor: LK.marigold, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 8 }}>
+            : <ScalePressable onPress={() => setSheet('paywall')} accessibilityRole="button" accessibilityLabel="Upgrade to Premium" hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }} style={{ backgroundColor: LK.marigold, borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 8 }}>
                 <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.espresso }}>Upgrade</Text>
               </ScalePressable>
           }
@@ -286,7 +289,7 @@ export default function SettingsScreen() {
             scaleTo={0.98}
             onPress={() => shareInvite()}
             accessibilityLabel="Invite your partner"
-            style={{ marginTop: 8, backgroundColor: tint(LK.sky, 0.7), borderRadius: theme.radii.sm, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, ...theme.shadow.sm }}
+            style={{ marginTop: 8, backgroundColor: tint(LK.sky, 0.7), borderRadius: theme.radii.sm, borderCurve: 'continuous', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, ...theme.shadow.sm }}
           >
             <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: LK.sky, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="heart" size={19} color={shade(LK.sky, 0.5)} />
@@ -379,7 +382,7 @@ export default function SettingsScreen() {
 
 function SectionLabel({ children, danger }: { children: React.ReactNode; danger?: boolean }) {
   return (
-    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: danger ? LK.danger : shade(LK.marigold, 0.5), paddingVertical: 8, paddingHorizontal: 8 }}>
+    <Text accessibilityRole="header" style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: danger ? LK.danger : shade(LK.marigold, 0.5), paddingTop: 16, paddingBottom: 8, paddingHorizontal: 8 }}>
       {children}
     </Text>
   );
@@ -387,7 +390,7 @@ function SectionLabel({ children, danger }: { children: React.ReactNode; danger?
 
 function SGroup({ children }: { children: React.ReactNode }) {
   return (
-    <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, overflow: 'hidden', ...theme.shadow.sm, marginBottom: 4 }}>
+    <View style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, overflow: 'hidden', ...theme.shadow.sm, marginBottom: 4 }}>
       {children}
     </View>
   );
@@ -418,6 +421,8 @@ function SRow({ icon, color, title, sub, chevron, toggle, value, onToggle, onPre
       haptic={isPressable}
       disabled={!isPressable}
       onPress={toggle ? undefined : onPress}
+      accessible={!toggle}
+      accessibilityRole={isPressable ? 'button' : undefined}
       accessibilityLabel={title}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: LK.hairline, minHeight: 52 }}
     >
@@ -428,7 +433,7 @@ function SRow({ icon, color, title, sub, chevron, toggle, value, onToggle, onPre
         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 15.5, color: titleColor }}>{title}</Text>
         {sub && <Text style={{ fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.ink70, marginTop: 2, lineHeight: 18 }}>{sub}</Text>}
       </View>
-      {toggle && <Switch value={value} onValueChange={onToggle} trackColor={{ true: LK.success, false: 'rgba(42,33,26,0.18)' }} />}
+      {toggle && <Switch value={value} onValueChange={onToggle} accessibilityLabel={title} accessibilityHint={sub} trackColor={{ true: LK.success, false: 'rgba(42,33,26,0.18)' }} />}
       {chevron && !toggle && <Icon name="chevR" size={16} color={LK.ink70} />}
     </ScalePressable>
   );

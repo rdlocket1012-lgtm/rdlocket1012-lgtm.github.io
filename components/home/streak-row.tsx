@@ -45,26 +45,39 @@ export function StreakRow({ current, best, pausedActive, pauseEndDate }: Props) 
         backgroundColor: LK.ivory,
         borderRadius: 20,
         borderCurve: 'continuous',
-        padding: 16,
+        paddingVertical: 12,
+        paddingLeft: 12,
+        paddingRight: 14,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 12,
+        borderWidth: 1.5,
+        borderColor: LK.hairline,
         boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
       } as any}
     >
-      <StreakMascot size={52} active={current > 0} />
-      <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 24, color: current > 0 ? LK.coral : LK.espresso, letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>
-        {current}
-      </Text>
-      <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.sepia, flex: 1 }}>
-        {current === 0 ? 'start a new streak today' : 'day streak'}
-      </Text>
-      {best > 0 && (
-        <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '700', color: LK.faded }}>
-          best: {best}
+      <StreakMascot size={48} active={current > 0} />
+      {/* A zero never sits beside a big "best" (docs/PREMIUM_STANDARD.md §4).
+          Alma and Yazio both frame an empty streak as the next action, and keep
+          the record as quiet context rather than a scoreboard. */}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        {current > 0 ? (
+          <Text numberOfLines={1} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 17, color: LK.espresso, letterSpacing: -0.3 }}>
+            <Text style={{ color: LK.coral, fontVariant: ['tabular-nums'] }}>{current}</Text>
+            {' day streak'}
+          </Text>
+        ) : (
+          <Text numberOfLines={1} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 16, color: LK.espresso, letterSpacing: -0.3 }}>
+            Start a streak today
+          </Text>
+        )}
+        <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 12.5, color: LK.ink70, marginTop: 2 }}>
+          {current > 0
+            ? best > current ? `Your best is ${best} days` : 'Your best yet — keep it going'
+            : best > 0 ? `Answer the daily quiz together · best ${best}` : 'Answer the daily quiz together'}
         </Text>
-      )}
-      <Icon name="chevR" size={16} color={LK.faded} />
+      </View>
+      <Icon name="chevR" size={16} color={LK.sepia} />
     </ScalePressable>
   );
 }

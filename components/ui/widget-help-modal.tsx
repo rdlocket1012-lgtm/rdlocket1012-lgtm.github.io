@@ -1,6 +1,7 @@
 import { Modal, View, Text, Pressable } from 'react-native';
 import { LK, theme, rgba } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 
 /**
  * How-to sheet for adding the Locket home-screen widget. iOS does not allow an
@@ -55,13 +56,14 @@ export function WidgetHelpModal({ visible, onClose }: { visible: boolean; onClos
             ))}
           </View>
 
-          <Pressable
+          <ScalePressable
             onPress={onClose}
             accessibilityRole="button"
-            style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 14, alignItems: 'center', marginTop: 22 }}
+            containerStyle={{ marginTop: 22 }}
+            style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingVertical: 14, alignItems: 'center' }}
           >
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 15, color: '#fff' }}>Got it</Text>
-          </Pressable>
+          </ScalePressable>
         </Pressable>
       </Pressable>
     </Modal>

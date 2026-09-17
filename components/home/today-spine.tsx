@@ -10,7 +10,7 @@ const GAP = 14;       // vertical gap between items
 /**
  * The "Today" connector spine (UX_POLISH_PLAN B1).
  *
- * Strings the day's actions onto one dashed rail with node dots, so they read as
+ * Strings the day's actions onto one rail with node dots, so they read as
  * a single unit rather than three more cards in a stack. Pattern borrowed from
  * Paired's home, which is the clearest solution to "what do I do right now" in
  * this category.
@@ -21,8 +21,9 @@ const GAP = 14;       // vertical gap between items
  * gap) rather than as one absolute line, so it needs no measurement and can't
  * overshoot past the final node.
  *
- * Note: `borderStyle: 'dashed'` may render solid on some Android versions. That
- * degrades to a plain rail, which still reads correctly.
+ * The rail is a solid hairline, not a dashed border: iOS doesn't draw
+ * `borderStyle: 'dashed'` on a single side, so the old rail was invisible and
+ * the nodes read as stray dots.
  */
 export function TodaySpine({ children }: { children: React.ReactNode }) {
   const items = React.Children.toArray(children).filter(Boolean);
@@ -63,9 +64,9 @@ export function TodaySpine({ children }: { children: React.ReactNode }) {
                     flex: 1,
                     marginTop: 4,
                     marginBottom: -GAP,
-                    borderLeftWidth: 1.5,
-                    borderLeftColor: rgba(LK.coral, 0.35),
-                    borderStyle: 'dashed',
+                    width: 1.5,
+                    borderRadius: 1,
+                    backgroundColor: rgba(LK.coral, 0.3),
                   }}
                 />
               )}

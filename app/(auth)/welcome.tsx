@@ -71,8 +71,8 @@ function PairingSteps() {
               <Icon name={s.icon} size={18} color={LK.espresso} strokeWidth={1.9} />
             </View>
             <Text style={{
-              fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 10,
-              letterSpacing: 1, textTransform: 'uppercase', color: LK.ink70,
+              fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11,
+              letterSpacing: 0.6, textTransform: 'uppercase', color: LK.ink70,
             }}>
               {s.label}
             </Text>

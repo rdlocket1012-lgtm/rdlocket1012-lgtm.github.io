@@ -190,7 +190,7 @@ export default function MapScreen() {
           />
           <View style={{ paddingTop: insets.top + 8, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ backgroundColor: rgba('#ffffff', 0.92), borderRadius: 22, ...theme.shadow.sm }}>
-              <RoundIcon onPress={() => router.back()}><Icon name="chevL" size={20} color={LK.espresso} /></RoundIcon>
+              <RoundIcon onPress={() => router.back()} accessibilityLabel="Back"><Icon name="chevL" size={20} color={LK.espresso} /></RoundIcon>
             </View>
             <MapControls view={view} setView={setView} onAdd={handleAddPress} atCap={atCap} floating />
           </View>
@@ -211,7 +211,7 @@ export default function MapScreen() {
           <ScrollView
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingTop: 8, paddingBottom: 120, gap: 10 }}
+            contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingTop: 8, paddingBottom: insets.bottom + 48, gap: 10 }}
           >
             {loading ? (
               <View style={{ paddingTop: 20, gap: 10 }}>
@@ -233,11 +233,29 @@ export default function MapScreen() {
                 <Text style={{ fontFamily: theme.fonts.hand, fontSize: 18, color: LK.sepia, textAlign: 'center', maxWidth: 260, lineHeight: 24 }}>
                   every pin a place that means something
                 </Text>
+                <ScalePressable
+                  onPress={handleAddPress}
+                  accessibilityRole="button"
+                  containerStyle={{ marginTop: 8 }}
+                  style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 28, paddingVertical: 14 }}
+                >
+                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: '#fff' }}>Pin your first place</Text>
+                </ScalePressable>
               </View>
             ) : visiblePins.length === 0 ? (
-              <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.sepia, textAlign: 'center', paddingTop: 48 }}>
-                No pins in this filter yet.
-              </Text>
+              <View style={{ alignItems: 'center', paddingTop: 48, gap: 14 }}>
+                <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.sepia, textAlign: 'center' }}>
+                  No places in {catLabel(filter)} yet.
+                </Text>
+                <ScalePressable
+                  onPress={() => setFilter('all')}
+                  haptic={false}
+                  accessibilityRole="button"
+                  style={{ borderRadius: 9999, borderWidth: 1.5, borderColor: LK.espresso, paddingHorizontal: 20, paddingVertical: 10, minHeight: 44, justifyContent: 'center' }}
+                >
+                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso }}>Show all</Text>
+                </ScalePressable>
+              </View>
             ) : visiblePins.map((pin) => {
               const cc = catColor(pin.category);
               return (
@@ -246,13 +264,13 @@ export default function MapScreen() {
                   scaleTo={0.98}
                   onPress={() => setSelected(pin)}
                   accessibilityLabel={pin.name}
-                  style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 13, ...theme.shadow.sm }}
+                  style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 13, ...theme.shadow.sm }}
                 >
                   <IconChip color={cc.base} size={46}>
                     <Icon name={PIN_ICON[pin.category] ?? 'mapPin'} size={22} color={cc.deep} />
                   </IconChip>
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>{pin.name}</Text>
+                    <Text numberOfLines={2} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 18, color: LK.espresso }}>{pin.name}</Text>
                     <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 2 }}>
                       {[pin.place_name, pin.visited_date
                         ? new Date(pin.visited_date).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
@@ -284,8 +302,11 @@ export default function MapScreen() {
       )}
 
       {/* ── Stats bar ────────────────────────────────────────────────────── */}
-      {view === 'map' && (
-        <View style={{ position: 'absolute', left: 14, right: 14, bottom: 90 }}>
+      {/* Hidden on a fresh map: a 0 · 0 · 0 bar reads as a loss, and the
+          first-use hint above already carries the next action. Map is a stack
+          screen, so it sits on the home-indicator inset, not a tab bar. */}
+      {view === 'map' && (pins.length > 0 || wishlistPins.length > 0) && (
+        <View style={{ position: 'absolute', left: 14, right: 14, bottom: insets.bottom + 16 }}>
           <View style={{ backgroundColor: rgba('#ffffff', 0.92), borderRadius: 22, padding: 14, ...theme.shadow.card }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}>
               <StatCell n={String(pins.length)} label="visited" />
@@ -350,6 +371,8 @@ function PinDetailSheet({ pin, onClose, onEdit, catLabel }: {
   }
 
   const cc = catColor(pin.category);
+  const insets = useSafeAreaInsets();
+  const subtitle = pin.place_name ?? pin.country;
 
   return (
     <View style={{ position: 'absolute', inset: 0 }}>
@@ -359,7 +382,7 @@ function PinDetailSheet({ pin, onClose, onEdit, catLabel }: {
 
       <Animated.View style={{
         backgroundColor: LK.parchment, borderTopLeftRadius: 32, borderTopRightRadius: 32,
-        paddingBottom: 120, ...theme.shadow.card,
+        paddingBottom: insets.bottom + 28, ...theme.shadow.card,
         transform: [{ translateY }],
       }}>
         {/* Drag handle */}
@@ -385,9 +408,11 @@ function PinDetailSheet({ pin, onClose, onEdit, catLabel }: {
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 25, color: LK.espresso, letterSpacing: -0.5 }}>
                 {pin.name}
               </Text>
-              <Text style={{ fontFamily: theme.fonts.body, fontSize: 13.5, fontWeight: '700', color: cc.deep, marginTop: 4 }}>
-                {pin.place_name ?? pin.country ?? ''}
-              </Text>
+              {subtitle ? (
+                <Text style={{ fontFamily: theme.fonts.body, fontSize: 13.5, fontWeight: '700', color: cc.deep, marginTop: 4 }}>
+                  {subtitle}
+                </Text>
+              ) : null}
             </View>
             <ScalePressable
               onPress={onEdit}

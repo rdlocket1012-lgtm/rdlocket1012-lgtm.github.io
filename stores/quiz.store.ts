@@ -138,7 +138,21 @@ export const useQuizStore = create<QuizState>((set, get) => ({
         .select()
         .single();
 
-      set({ today: (created as QuizRow) ?? null });
+      if (created) {
+        set({ today: created as QuizRow });
+        return;
+      }
+
+      // Insert lost the race: both partners opened Home at once and the other
+      // phone created today's row first (unique couple_id + quiz_date). Read
+      // theirs, or the quiz silently vanishes for the whole day.
+      const { data: existing } = await supabase
+        .from('daily_quiz')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .eq('quiz_date', date)
+        .maybeSingle();
+      set({ today: (existing as QuizRow) ?? null });
     } catch { /* network/auth error — leave today as null */ } finally {
       set({ loading: false });
     }

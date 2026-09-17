@@ -15,7 +15,7 @@ export function ScreenHeader({ eyebrow, title, onBack, right }: {
     <View style={{ paddingHorizontal: 22, paddingTop: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 46 }}>
         {onBack ? (
-          <RoundIcon onPress={onBack}><Icon name="chevL" size={20} color={LK.espresso} /></RoundIcon>
+          <RoundIcon onPress={onBack} accessibilityLabel="Back"><Icon name="chevL" size={20} color={LK.espresso} /></RoundIcon>
         ) : (
           <View style={{ width: 44, height: 44 }} />
         )}

@@ -9,6 +9,7 @@ import Transition from 'react-native-screen-transitions';
 import { useDrawStore } from '@/stores/draw.store';
 import { useAuth } from '@/hooks/useAuth';
 import { usePartner } from '@/hooks/usePartner';
+import { ScalePressable } from '@/components/ui/scale-pressable';
 import { LK, theme } from '@/constants/theme';
 
 const SHADOW_FLOATING = '0 8px 28px rgba(42,33,26,0.14)';
@@ -85,19 +86,21 @@ export default function DrawViewerScreen() {
       </View>
 
       <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
-        <Pressable
+        <ScalePressable
           onPress={handleSave}
+          accessibilityRole="button"
           style={{ backgroundColor: LK.ivory, borderRadius: 99, borderCurve: 'continuous', paddingHorizontal: 20, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}
         >
           <Image source="sf:square.and.arrow.down" style={{ width: 16, height: 16 }} tintColor={LK.espresso} />
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 14, color: LK.espresso }}>Save</Text>
-        </Pressable>
-        <Pressable
+        </ScalePressable>
+        <ScalePressable
           onPress={() => router.back()}
+          accessibilityRole="button"
           style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 99, borderCurve: 'continuous', paddingHorizontal: 20, paddingVertical: 10 }}
         >
           <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 14, color: LK.ivory }}>Close</Text>
-        </Pressable>
+        </ScalePressable>
       </View>
     </View>
   );

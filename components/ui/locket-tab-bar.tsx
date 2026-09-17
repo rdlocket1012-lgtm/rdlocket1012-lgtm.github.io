@@ -21,13 +21,22 @@ import { impact } from '@/lib/haptics';
  * overlay and does NOT change the selected tab.
  *
  * Passed to expo-router's <Tabs tabBar={…}>. Rendered absolutely so it floats
- * over content (screens clear it with paddingBottom: 80).
+ * over content (screens clear it with `useTabBarClearance()` below).
  */
 
 const TRAY_HEIGHT = 64;
 const TRAY_BOTTOM_GAP = 8;
 const FAB_SIZE = 54;
 const FAB_BOTTOM = TRAY_HEIGHT - 26; // pops ~28px above the tray top
+
+/**
+ * Bottom padding a tab screen's scroll content needs so its last item can scroll
+ * clear of the floating tray + FAB (which overlay the scene, not push it up).
+ */
+export function useTabBarClearance() {
+  const insets = useSafeAreaInsets();
+  return insets.bottom + TRAY_BOTTOM_GAP + TRAY_HEIGHT + 24;
+}
 const PILL = rgba(LK.coral, 0.12);
 const INACTIVE_INK = 'rgba(42,33,26,0.35)';
 

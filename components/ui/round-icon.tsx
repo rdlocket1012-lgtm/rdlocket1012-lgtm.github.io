@@ -3,13 +3,22 @@ import { View, type ViewStyle } from 'react-native';
 import { LK, theme } from '@/constants/theme';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 
-type RoundIconProps = { children: React.ReactNode; onPress?: () => void; badge?: boolean; style?: ViewStyle };
+type RoundIconProps = {
+  children: React.ReactNode;
+  onPress?: () => void;
+  badge?: boolean;
+  style?: ViewStyle;
+  /** Icon-only button — VoiceOver has nothing to read without this. */
+  accessibilityLabel?: string;
+};
 
-export function RoundIcon({ children, onPress, badge, style }: RoundIconProps) {
+export function RoundIcon({ children, onPress, badge, style, accessibilityLabel }: RoundIconProps) {
   return (
     <ScalePressable
       onPress={onPress}
       scaleTo={0.92}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       style={[{
         width: 44, height: 44, borderRadius: 22,

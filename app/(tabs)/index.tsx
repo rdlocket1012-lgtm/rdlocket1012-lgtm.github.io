@@ -17,7 +17,9 @@ import { IconChip } from '@/components/ui/icon-chip';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { DoodleBackground } from '@/components/ui/doodle-background';
-import { TYPE_ICON } from '@/constants/milestone-types';
+import { TYPE_ICON, MILESTONE_ILLUS, MILESTONE_TYPES } from '@/constants/milestone-types';
+import { Image } from 'expo-image';
+import type { Milestone } from '@/stores/milestones.store';
 import { DailyQuizCard } from '@/components/quiz/DailyQuizCard';
 import { ChallengeCard } from '@/components/ui/ChallengeCard';
 import { BadgeUnlockOverlay } from '@/components/ui/BadgeUnlockOverlay';
@@ -35,6 +37,8 @@ import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { syncWidget } from '@/lib/widget-bridge';
 import { parseLocalDate } from '@/utils/date';
 import { useBiteFx } from '@/stores/bite-fx.store';
+import { useQuizStore } from '@/stores/quiz.store';
+import { useTabBarClearance } from '@/components/ui/locket-tab-bar';
 import { BiteAvatarFx } from '@/components/nudges/BiteAvatarFx';
 import { CountUp } from '@/components/onboarding/CountUp';
 import { useUnseenStore } from '@/stores/unseen.store';
@@ -43,6 +47,7 @@ import type { MascotAnimationName } from '@/components/ui/mascot-animation';
 import { SendMomentOverlay } from '@/components/ui/send-moment-overlay';
 import { WidgetHelpModal } from '@/components/ui/widget-help-modal';
 import { SectionEyebrow } from '@/components/ui/section-eyebrow';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { TodaySpine } from '@/components/home/today-spine';
 import { StreakRow } from '@/components/home/streak-row';
 import { claimPremiumMoment, badgeMoment, PEAK_HANDOFF_MS } from '@/lib/premium-moments';
@@ -54,6 +59,10 @@ import { claimPremiumMoment, badgeMoment, PEAK_HANDOFF_MS } from '@/lib/premium-
 // tapped it set the old key and never saw it again. Bump the key so the fixed
 // CTA (now opens the how-to sheet) reappears once.
 const WIDGET_CTA_KEY = 'lk.widgetCtaDismissed.v2';
+
+const STORY_CARD_W = 156;
+const STORY_CARD_H = 204;
+const STORY_MEDIA_H = 116;
 
 export default function HomeScreen() {
   const { dayCount, couple, isPremium } = useCouple();
@@ -84,6 +93,11 @@ export default function HomeScreen() {
   const hasUnread = activityCount > 0;
   const partnerFirst = (partner?.display_name || 'Partner').split(' ')[0];
   const feisty = useBiteFx((s) => s.feisty);
+  const bottomClearance = useTabBarClearance();
+  // DailyQuizCard renders nothing until today's row exists. The spine can't see
+  // through the FadeSlideIn wrapper, so gate here or it draws an empty node.
+  const hasQuizToday = useQuizStore((s) => !!s.today);
+  const quizLoading = useQuizStore((s) => s.loading);
 
   const myInitial = ((profile?.display_name || user?.email || 'Y').charAt(0) || 'Y').toUpperCase();
   const partnerInitial = ((partner?.display_name || '?').charAt(0) || '?').toUpperCase();
@@ -201,7 +215,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomClearance }}>
         {/* ── Header: avatars + presence (left) · bell (right) ─────────────── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.layout.screenX, paddingTop: 16, paddingBottom: 8 }}>
           <ScalePressable scaleTo={0.98} onPress={() => router.push('/profile/about')} containerStyle={{ flex: 1, minWidth: 0 }} style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }} accessibilityLabel="About us">
@@ -223,7 +237,7 @@ export default function HomeScreen() {
                 {isPremium && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: tint(LK.marigold, 0.7), borderRadius: 9999, paddingHorizontal: 7, paddingVertical: 2 }}>
                     <Icon name="crown" size={11} color={shade(LK.marigold, 0.55)} />
-                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 9.5, letterSpacing: 0.4, color: shade(LK.marigold, 0.55) }}>PREMIUM</Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11, letterSpacing: 0.4, color: shade(LK.marigold, 0.55) }}>PREMIUM</Text>
                   </View>
                 )}
               </View>
@@ -250,7 +264,7 @@ export default function HomeScreen() {
           </ScalePressable>
           {/* Right: bell → activity feed (recent letters + upcoming dates). Coral dot when unread. */}
           <View style={{ flexShrink: 0 }}>
-            <RoundIcon onPress={() => router.push('/notifications')}>
+            <RoundIcon onPress={() => router.push('/notifications')} accessibilityLabel={hasUnread ? `Activity, ${activityCount} new` : 'Activity'}>
               <Icon name="bell" size={22} color={LK.espresso} strokeWidth={1.7} />
             </RoundIcon>
             {hasUnread && (
@@ -265,7 +279,7 @@ export default function HomeScreen() {
             <ScalePressable scaleTo={0.985} onPress={() => router.push('/(tabs)/timeline')} accessibilityLabel="Open timeline">
               <View style={{ backgroundColor: LK.vellum, borderRadius: theme.radii.lg, borderCurve: 'continuous', paddingTop: 18, paddingBottom: widgetCtaVisible ? 0 : 22, alignItems: 'center', overflow: 'hidden', ...theme.shadow.card }}>
                 {/* §13.13 Zone A: decorative ink layer — the scrapbook page under the counter */}
-                <DoodleBackground group="general" density="medium" />
+                <DoodleBackground group="general" density="light" />
                 <MascotAnimation name={isAnniversary ? 'anniversary' : 'lo-kit-idle'} size={104} />
                 <Animated.View style={pulseStyle}>
                   <CountUp
@@ -285,7 +299,7 @@ export default function HomeScreen() {
                   <>
                     <View style={{ height: 1, alignSelf: 'stretch', backgroundColor: LK.hairline, marginTop: 18, marginHorizontal: 18 }} />
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'center', marginVertical: 14, paddingLeft: 14, paddingRight: 6, paddingVertical: 4, borderRadius: 9999, backgroundColor: LK.ivory, borderWidth: 1.5, borderColor: rgba(LK.gold, 0.5) }}>
-                      <Pressable
+                      <ScalePressable
                         onPress={(e) => { e.stopPropagation?.(); setWidgetHelpOpen(true); }}
                         accessibilityRole="button"
                         accessibilityLabel="How to add the Locket widget to your home screen"
@@ -294,16 +308,17 @@ export default function HomeScreen() {
                       >
                         <Icon name="house" size={14} color={LK.gold} strokeWidth={2} />
                         <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 12, color: LK.gold }}>Add to Home Screen</Text>
-                      </Pressable>
-                      <Pressable
+                      </ScalePressable>
+                      <ScalePressable
                         onPress={(e) => { e.stopPropagation?.(); dismissWidgetCta(); }}
                         accessibilityRole="button"
-                        accessibilityLabel="Dismiss"
-                        hitSlop={10}
+                        accessibilityLabel="Dismiss widget tip"
+                        hitSlop={14}
+                        scaleTo={0.85}
                         style={{ padding: 6 }}
                       >
                         <Icon name="x" size={13} color={rgba(LK.gold, 0.6)} strokeWidth={2} />
-                      </Pressable>
+                      </ScalePressable>
                     </View>
                   </>
                 )}
@@ -340,11 +355,22 @@ export default function HomeScreen() {
             The day's actions, strung on one connector spine so they read as a
             single unit instead of three more cards in the stack (§B1). Coral is
             this region's accent; Your story below owns Marigold. */}
-        <SectionEyebrow label="Today" color={shade(LK.coral, 0.3)} paddingTop={22} />
+        <SectionEyebrow label="Today" />
         <TodaySpine>
-          <FadeSlideIn delay={nextDelay()}>
-            <DailyQuizCard bare hideStreak onReveal={handleReveal} />
-          </FadeSlideIn>
+          {hasQuizToday ? (
+            <FadeSlideIn delay={nextDelay()}>
+              <DailyQuizCard bare hideStreak onReveal={handleReveal} />
+            </FadeSlideIn>
+          ) : quizLoading ? (
+            // Hold the quiz's place while it loads, so the cards below don't
+            // jump down when it lands.
+            <View key="quiz-skeleton" style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', padding: 18, gap: 12 }}>
+              <Skeleton width={96} height={12} />
+              <Skeleton width="85%" height={20} />
+              <Skeleton height={44} radius={14} />
+              <Skeleton height={44} radius={14} />
+            </View>
+          ) : null}
 
           {showChallenge && challenge.def && (
             <FadeSlideIn delay={nextDelay()}>
@@ -381,16 +407,15 @@ export default function HomeScreen() {
         {hasStory && (
           <SectionEyebrow
             label="Your story"
-            color={shade(LK.marigold, 0.4)}
             trailing={
               <ScalePressable
                 onPress={() => router.push('/(tabs)/timeline')}
-                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel="See all of your story"
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: LK.ivory, borderRadius: 9999, borderWidth: 1.5, borderColor: LK.hairline, paddingLeft: 12, paddingRight: 8, height: 30 }}
               >
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: shade(LK.marigold, 0.5) }}>See all</Text>
-                <Icon name="chevR" size={13} color={shade(LK.marigold, 0.5)} />
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.espresso }}>See all</Text>
+                <Icon name="chevR" size={14} color={LK.sepia} />
               </ScalePressable>
             }
           />
@@ -400,9 +425,6 @@ export default function HomeScreen() {
         {memory && memoryColor && (
           <FadeSlideIn delay={nextDelay()}>
             <View style={{ paddingHorizontal: theme.layout.screenX }}>
-              <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso, marginBottom: 10, paddingHorizontal: 2 }}>
-                On this day
-              </Text>
               {/* SOURCE for the card → milestone-detail morph (§10.13). Same
                   group/id as the timeline + story-strip triggers; pairs are keyed
                   per source screen so the duplicate id is unambiguous. */}
@@ -427,7 +449,7 @@ export default function HomeScreen() {
                   <View style={{ position: 'absolute', top: 14, left: 14, backgroundColor: rgba('#ffffff', 0.9), borderRadius: 9999, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                     <Icon name="sparkle" size={14} color={LK.warning} />
                     <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11.5, color: LK.espresso }}>
-                      {memoryYearsAgo} year{memoryYearsAgo === 1 ? '' : 's'} ago today
+                      On this day · {memoryYearsAgo} year{memoryYearsAgo === 1 ? '' : 's'} ago
                     </Text>
                   </View>
                   <View style={{ position: 'absolute', left: 20, bottom: 18, right: 20 }}>
@@ -467,42 +489,19 @@ export default function HomeScreen() {
             "See all", so this no longer prints a duplicate header. */}
         {story.length > 0 && (
           <FadeSlideIn delay={nextDelay()}>
-            <View style={{ paddingTop: 14 }}>
+            <View style={{ paddingTop: 2 }}>
               <FlatList
                 data={story}
                 keyExtractor={(m) => m.id}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
-                renderItem={({ item }) => {
-                  const c = catColor(item.type);
-                  return (
-                    // SOURCE for the card → milestone-detail morph (§10.13) —
-                    // shares group="milestone" with the timeline + On-this-day triggers.
-                    <Transition.Boundary.Trigger
-                      group="milestone"
-                      id={item.id}
-                      onPress={() => router.push(`/milestone/${item.id}`)}
-                      accessibilityLabel={item.title}
-                      style={{ width: 160, height: 180 }}
-                    >
-                      <View style={{ flex: 1, backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', overflow: 'hidden', ...theme.shadow.sm }}>
-                        <View style={{ flex: 1, padding: 14, justifyContent: 'space-between' }}>
-                          <IconChip color={c.base} size={44}>
-                            <Icon name={TYPE_ICON[item.type] ?? 'heart'} size={21} color={c.deep} />
-                          </IconChip>
-                          <View>
-                            <Text numberOfLines={2} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 16, color: LK.espresso, lineHeight: 19 }}>{item.title}</Text>
-                            <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, marginTop: 3 }}>
-                              {parseLocalDate(item.milestone_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={{ height: 4, backgroundColor: c.base }} />
-                      </View>
-                    </Transition.Boundary.Trigger>
-                  );
-                }}
+                decelerationRate="fast"
+                snapToInterval={STORY_CARD_W + 12}
+                snapToAlignment="start"
+                // Room for the card shadow — a horizontal list clips its children.
+                style={{ marginVertical: -8 }}
+                contentContainerStyle={{ paddingHorizontal: theme.layout.screenX, paddingVertical: 8, gap: 12 }}
+                renderItem={({ item }) => <StoryCard milestone={item} />}
               />
             </View>
           </FadeSlideIn>
@@ -555,5 +554,60 @@ export default function HomeScreen() {
       <BadgeUnlockOverlay badge={peakMoment ? null : badge.celebrating} onDismiss={dismissBadge} />
       <WidgetHelpModal visible={widgetHelpOpen} onClose={() => setWidgetHelpOpen(false)} />
     </SafeAreaView>
+  );
+}
+
+/** True when a title has no letters or digits — "✨", "💛💛". */
+function isSymbolOnly(title: string) {
+  // Explicit ranges (Latin, Greek→CJK, Hangul) rather than \p{L}: keeps the
+  // regex safe on every Hermes version.
+  return !/[0-9A-Za-z\u00C0-\u024F\u0370-\u1FFF\u3040-\u9FFF\uAC00-\uD7AF]/.test(title);
+}
+
+/**
+ * "Your story" card. Media on top, words underneath — the silhouette every
+ * premium memory shelf on Mobbin uses (Ahead, Nibble, Apple Photos). The old
+ * card was a 44px icon chip floating in 180pt of empty ivory, so a short title
+ * left most of the card blank. Now the top zone is always full: the couple's
+ * own first photo, or the milestone's kawaii sticker on a category tint.
+ */
+function StoryCard({ milestone: m }: { milestone: Milestone }) {
+  const c = catColor(m.type);
+  const cover = m.photos?.[0];
+  const typeLabel = MILESTONE_TYPES.find((t) => t.id === m.type)?.label ?? 'Memory';
+  // An emoji-only title can't carry the card on its own — lead with the type
+  // and keep their emoji beside it.
+  const symbolOnly = isSymbolOnly(m.title);
+  const title = symbolOnly ? `${typeLabel} ${m.title}`.trim() : m.title;
+
+  return (
+    <Transition.Boundary.Trigger
+      group="milestone"
+      id={m.id}
+      onPress={() => router.push(`/milestone/${m.id}`)}
+      accessibilityLabel={`${title}, ${parseLocalDate(m.milestone_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+      style={{ width: STORY_CARD_W, height: STORY_CARD_H }}
+    >
+      <View style={{ flex: 1, backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, overflow: 'hidden', ...theme.shadow.sm }}>
+        <View style={{ height: STORY_MEDIA_H, backgroundColor: tint(c.base, 0.72), alignItems: 'center', justifyContent: 'center' }}>
+          {cover ? (
+            <Image source={{ uri: cover }} style={{ position: 'absolute', inset: 0 }} contentFit="cover" transition={200} accessible={false} />
+          ) : (
+            <Image source={MILESTONE_ILLUS[m.type] ?? MILESTONE_ILLUS.custom} style={{ width: 78, height: 78, transform: [{ rotate: '-4deg' }] }} contentFit="contain" accessible={false} />
+          )}
+        </View>
+        <View style={{ flex: 1, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12, justifyContent: 'space-between' }}>
+          <Text numberOfLines={2} style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 15, color: LK.espresso, lineHeight: 19 }}>
+            {title}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.base }} />
+            <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 12, color: LK.ink70 }}>
+              {parseLocalDate(m.milestone_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Transition.Boundary.Trigger>
   );
 }

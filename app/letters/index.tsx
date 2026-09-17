@@ -25,6 +25,7 @@ import {
 } from '@/constants/love-card-illustrations';
 
 const EMPTY_ILLUS = require('../../assets/illustrations/empty-states/no-letters.png');
+const EMPTY_CARDS_ILLUS = require('../../assets/illustrations/love-cards/envelope.png');
 type Segment = 'received' | 'sent' | 'cards';
 
 function timeAgo(iso: string | null): string {
@@ -97,7 +98,7 @@ export default function LettersScreen() {
         onBack={() => router.back()}
         right={
           <View>
-            <RoundIcon onPress={handleCompose}><Icon name="feather" size={21} color={LK.espresso} /></RoundIcon>
+            <RoundIcon onPress={handleCompose} accessibilityLabel="Write a letter"><Icon name="feather" size={21} color={LK.espresso} /></RoundIcon>
             {atCap && (
               <View style={{ position: 'absolute', top: -1, right: -1, width: 18, height: 18, borderRadius: 9, backgroundColor: LK.gold, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: LK.parchment }}>
                 <Icon name="lock" size={9} color="#fff" strokeWidth={2.5} />
@@ -112,15 +113,17 @@ export default function LettersScreen() {
         {([['received', 'Received'], ['sent', 'Sent'], ['cards', 'Love Cards']] as const).map(([id, label]) => {
           const active = seg === id;
           return (
-            <Pressable
+            <ScalePressable
               key={id}
               onPress={() => setSeg(id)}
+              haptic={false}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRadius: 9999, backgroundColor: active ? LK.vellum : 'transparent', ...(active ? theme.shadow.sm : null) }}
+              containerStyle={{ flex: 1 }}
+              style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 9, minHeight: 36, borderRadius: 9999, backgroundColor: active ? LK.vellum : 'transparent', ...(active ? theme.shadow.sm : null) }}
             >
               <Text style={{ fontFamily: theme.fonts.body, fontWeight: '600', fontSize: 13.5, color: active ? LK.espresso : LK.sepia }}>{label}</Text>
-            </Pressable>
+            </ScalePressable>
           );
         })}
       </View>
@@ -140,7 +143,7 @@ export default function LettersScreen() {
             illustration
             title={seg === 'sent' ? 'Nothing sent yet' : 'No letters yet'}
             line={seg === 'sent' ? 'Write something they’ll keep forever.' : 'Your first letter is the hardest to start.'}
-            cta={atCap ? undefined : 'Write a letter'}
+            cta={atCap ? 'Unlock more letters' : 'Write a letter'}
             onCta={handleCompose}
           />
         ) : (
@@ -181,9 +184,9 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
       group="letter"
       id={l.id}
       onPress={onPress}
-      accessibilityLabel={`Letter from ${senderName}`}
+      accessibilityLabel={`${unread ? 'Unread letter' : 'Letter'} from ${senderName}`}
     >
-      <View style={{ flexDirection: 'row', backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', overflow: 'hidden', ...theme.shadow.sm }}>
+      <View style={{ flexDirection: 'row', backgroundColor: LK.ivory, borderRadius: theme.radii.md, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, overflow: 'hidden', ...theme.shadow.sm }}>
         <View style={{ width: 4, backgroundColor: LK.gold }} />
         <View style={{ flex: 1, padding: 16, flexDirection: 'row', gap: 13 }}>
           <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: LK.gold, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -191,8 +194,11 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.espresso }}>{senderName}</Text>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 12, color: LK.faded, flexShrink: 0 }}>{timeAgo(l.sent_at ?? l.created_at)}</Text>
+              <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: LK.espresso }}>{senderName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                {unread && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LK.gold }} />}
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: unread ? '700' : '500', fontSize: 12, color: unread ? shade(LK.gold, 0.5) : LK.ink70 }}>{timeAgo(l.sent_at ?? l.created_at)}</Text>
+              </View>
             </View>
             {isVoice ? (
               <View style={{ alignSelf: 'flex-start', marginTop: 7, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: tint(LK.blush, 0.6), borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 5 }}>
@@ -201,11 +207,11 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
                   Voice · {fmtDuration(l.audio_duration)}
                 </Text>
               </View>
-            ) : (
+            ) : preview ? (
               <Text numberOfLines={2} style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 14.5, color: LK.sepia, marginTop: 4, lineHeight: 21 }}>
-                {preview ? `“${preview.slice(0, 90)}${preview.length > 90 ? '…' : ''}”` : ''}
+                {`“${preview.slice(0, 90)}${preview.length > 90 ? '…' : ''}”`}
               </Text>
-            )}
+            ) : null}
             {l.reaction ? (
               <View style={{ alignSelf: 'flex-start', marginTop: 8, backgroundColor: tint(LK.blush, 0.5), borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 3 }}>
                 <Text style={{ fontSize: 14 }}>{l.reaction}</Text>
@@ -213,7 +219,6 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
             ) : null}
           </View>
         </View>
-        {unread && <View style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: LK.gold }} />}
       </View>
     </Transition.Boundary.Trigger>
   );
@@ -221,8 +226,13 @@ function LetterCard({ l, mine, senderName, unread, onPress }: { l: Letter; mine:
 
 function SealedCard({ l, premium, onPaywall }: { l: Letter; premium: boolean; onPaywall: () => void }) {
   return (
-    <ScalePressable scaleTo={0.98} onPress={premium ? undefined : onPaywall} accessibilityLabel="Sealed letter">
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: tint(LK.marigold, 0.7), borderRadius: theme.radii.md, borderCurve: 'continuous', padding: 16, ...theme.shadow.sm }}>
+    <ScalePressable
+      scaleTo={0.98}
+      onPress={premium ? undefined : onPaywall}
+      disabled={premium}
+      accessibilityLabel={`Sealed letter${l.reveal_at ? `, opens ${new Date(l.reveal_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: tint(LK.marigold, 0.7), borderRadius: theme.radii.md, borderCurve: 'continuous', borderWidth: 1.5, borderColor: rgba(LK.marigold, 0.55), padding: 16, ...theme.shadow.sm }}>
         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: LK.marigold, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon name="lock" size={21} color={shade(LK.marigold, 0.6)} />
         </View>
@@ -256,15 +266,15 @@ function LoveCardsGrid({
   if (cards.length === 0) {
     return (
       <View style={{ alignItems: 'center', paddingTop: 56, paddingHorizontal: theme.layout.screenX, gap: 16 }}>
-        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: tint(LK.blush, 0.7), alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="heart" size={32} color={shade(LK.blush, 0.4)} />
+        <View style={{ width: 112, height: 112, borderRadius: 56, backgroundColor: tint(LK.blush, 0.7), alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] }}>
+          <Image source={EMPTY_CARDS_ILLUS} style={{ width: 84, height: 84 }} contentFit="contain" accessible={false} />
         </View>
         <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 22, color: LK.espresso, textAlign: 'center' }}>No love cards yet</Text>
         <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, textAlign: 'center', lineHeight: 24, maxWidth: 260 }}>
           Send {partnerName} an illustrated card
         </Text>
         <ScalePressable scaleTo={0.97} onPress={onCompose} style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8 }}>
-          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Send one first</Text>
+          <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 16, color: '#fff' }}>Send a love card</Text>
         </ScalePressable>
       </View>
     );
@@ -288,10 +298,10 @@ function LoveCardsGrid({
         const illus = getIllustration(payload.illus);
         const fromMe = card.sender_id === myId;
         return (
-          <ScalePressable
-            scaleTo={0.97}
+          <View
             key={card.id}
             style={{ width: cardW }}
+            accessible
             accessibilityLabel={`Love card: ${illus.setup} ${illus.punchline}${payload.message.trim() ? `. ${payload.message}` : ''}`}
           >
             <View
@@ -339,11 +349,11 @@ function LoveCardsGrid({
                   {payload.message}
                 </Text>
               ) : null}
-              <Text style={{ fontFamily: theme.fonts.body, fontSize: 11, fontWeight: '500', color: LK.faded, marginTop: 8 }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, fontWeight: '600', color: LK.ink70, marginTop: 8 }}>
                 {fromMe ? `You → ${partnerName}` : `${partnerName} → You`}
               </Text>
             </View>
-          </ScalePressable>
+          </View>
         );
       })}
     </ScrollView>

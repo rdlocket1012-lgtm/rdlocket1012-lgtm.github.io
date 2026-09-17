@@ -121,7 +121,8 @@ Scale: Day number 72–84/800 · Display 32–34/800 · Title 19–20/700 · Bod
 ### Layout
 - Screen background: **Parchment `#F3E9D2` — every root**
 - Horizontal gutter: 20px · Vertical section gap: 24px · Within zone: 16px
-- `paddingBottom: 80` on all ScrollView/FlatList — clears floating nav
+- Tab roots: `paddingBottom: useTabBarClearance()` (from `components/ui/locket-tab-bar.tsx`) — the floating tray + FAB overlay the scene, and a fixed 80 left the last card under them. Stack screens: `paddingBottom: 80`.
+- Premium bar for every screen: `docs/PREMIUM_STANDARD.md` (Mobbin-referenced checklist)
 - Spacing grid: `4 8 12 16 24 32 48 64 80 96` only
 - **Tabs:** Home · Timeline · ⊕FAB · Fun · Us. Map lives inside Us hub — not a tab.
 

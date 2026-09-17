@@ -4,9 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 import Animated, { FadeInUp, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
+import { useTabBarClearance } from '@/components/ui/locket-tab-bar';
 import { LK, theme, shade, rgba } from '@/constants/theme';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { SectionEyebrow } from '@/components/ui/section-eyebrow';
+import { TabHeader } from '@/components/ui/TabHeader';
 import { Icon } from '@/components/ui/Icon';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import MascotAnimation from '@/components/ui/mascot-animation';
@@ -40,6 +42,7 @@ const stagger = (i: number) =>
  * per-deck play history yet (game_sessions isn't built), so decks show none.
  */
 export default function FunScreen() {
+  const bottomClearance = useTabBarClearance();
   const { items } = useBucketList();
   const { width } = useWindowDimensions();
   const reduced = useReducedMotion();
@@ -67,16 +70,11 @@ export default function FunScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
-      {/* Header (56pt) */}
-      <View style={{ height: 56, paddingHorizontal: theme.layout.screenX, justifyContent: 'center' }}>
-        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 20, color: LK.espresso, letterSpacing: -0.5 }}>Fun</Text>
-        <Text style={{ fontFamily: theme.fonts.hand, fontSize: 13, color: LK.sepia, marginTop: -1 }}>pick something together</Text>
-      </View>
+      <TabHeader eyebrow="Pick something together" title="Fun" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: bottomClearance }}
       >
         {/* ── Hero: featured This or That ───────────────────────────────── */}
         <Animated.View entering={stagger(0)} style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 8 }}>
@@ -186,7 +184,7 @@ export default function FunScreen() {
           trailing={
             items.length > 0 ? (
               <ProgressRing size={32} strokeWidth={3} progress={doneTotal / items.length} color={LK.sage}>
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 9, color: LK.sepia }}>
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 10, color: LK.sepia }}>
                   {doneTotal}/{items.length}
                 </Text>
               </ProgressRing>
@@ -217,20 +215,20 @@ export default function FunScreen() {
             <ScalePressable scaleTo={0.95} onPress={() => router.push('/bucket-list')} accessibilityLabel="Add a new dream">
               <View
                 style={{
-                  width: 104,
-                  height: 104,
+                  width: 112,
+                  height: 112,
                   borderRadius: theme.radii.sm,
                   borderCurve: 'continuous',
                   borderWidth: 1.5,
-                  borderColor: 'rgba(42,33,26,0.22)',
+                  borderColor: 'rgba(42,33,26,0.28)',
                   borderStyle: 'dashed',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
                 }}
               >
-                <Icon name="plus" size={20} color={LK.faded} />
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, color: LK.faded, textAlign: 'center' }}>
+                <Icon name="plus" size={20} color={LK.sepia} />
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12, color: LK.sepia, textAlign: 'center' }}>
                   New dream
                 </Text>
               </View>
@@ -264,7 +262,7 @@ function DeckBlock({
           </View>
           <View style={{ padding: 12, paddingTop: 10 }}>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso }}>{name}</Text>
-            <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 11, color: LK.sepia, marginTop: 3 }}>{blurb}</Text>
+            <Text numberOfLines={2} style={{ fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 12, lineHeight: 16, color: LK.sepia, marginTop: 3, minHeight: 32 }}>{blurb}</Text>
           </View>
         </View>
       </ScalePressable>
@@ -313,7 +311,7 @@ function CreativeRow({
               {live && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: LK.danger, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 3 }}>
                   <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: LK.vellum }} />
-                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 9, letterSpacing: 0.5, color: LK.vellum }}>LIVE</Text>
+                  <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 11, letterSpacing: 0.5, color: LK.vellum }}>LIVE</Text>
                 </View>
               )}
             </View>
@@ -341,8 +339,8 @@ function BucketTile({
     <ScalePressable scaleTo={0.95} onPress={onPress} accessibilityLabel={`${label} — ${total ? `${done} of ${total} done` : 'nothing yet'}`}>
       <View
         style={{
-          width: 104,
-          height: 104,
+          width: 112,
+          height: 112,
           backgroundColor: LK.ivory,
           borderRadius: theme.radii.sm,
           borderCurve: 'continuous',
@@ -355,13 +353,16 @@ function BucketTile({
       >
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <Icon name={icon} size={24} color={color} />
-          <ProgressRing size={30} progress={total ? done / total : 0} color={color}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 8.5, color: total ? LK.espresso : LK.faded }}>
-              {total ? `${done}/${total}` : '—'}
-            </Text>
-          </ProgressRing>
+          {/* Ring carries the shape of progress; the count moved to a legible
+              line below — 8.5pt inside a 30pt ring was unreadable. */}
+          <ProgressRing size={26} progress={total ? done / total : 0} color={color} />
         </View>
-        <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.espresso }}>{label}</Text>
+        <View>
+          <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, color: LK.espresso }}>{label}</Text>
+          <Text numberOfLines={1} style={{ fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 11.5, color: LK.ink70, marginTop: 1 }}>
+            {total ? `${done} of ${total} done` : 'Add a dream'}
+          </Text>
+        </View>
       </View>
     </ScalePressable>
   );

@@ -55,7 +55,7 @@ export default function DangerZoneScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8 }}>
-        <RoundIcon onPress={() => router.back()}>
+        <RoundIcon onPress={() => router.back()} accessibilityLabel="Back">
           <Icon name="chevL" size={20} color={LK.espresso} />
         </RoundIcon>
       </View>

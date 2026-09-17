@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
+import { SectionEyebrow } from '@/components/ui/section-eyebrow';
 import { DateField } from '@/components/ui/DateField';
 import { useConnectionCalendar, type CalEvent } from '@/hooks/useConnectionCalendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
@@ -178,16 +179,16 @@ export default function CalendarScreen() {
 
         {/* â”€â”€ Month card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <FadeSlideIn delay={60}>
-          <View style={{ marginHorizontal: 20, marginTop: 14, backgroundColor: LK.ivory, borderRadius: theme.radii.lg, padding: 16, ...theme.shadow.card }}>
+          <View style={{ marginHorizontal: theme.layout.screenX, marginTop: 14, backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 16, ...theme.shadow.card }}>
             {/* Month nav */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <ScalePressable onPress={() => shiftMonth(-1)} scaleTo={0.9} accessibilityLabel="Previous month" style={navBtn}>
+              <ScalePressable onPress={() => shiftMonth(-1)} scaleTo={0.9} hitSlop={6} accessibilityLabel="Previous month" style={navBtn}>
                 <Icon name="chevL" size={20} color={LK.espresso} />
               </ScalePressable>
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 19, color: LK.espresso }}>
                 {MONTHS[viewMonth]} {viewYear}
               </Text>
-              <ScalePressable onPress={() => shiftMonth(1)} scaleTo={0.9} accessibilityLabel="Next month" style={navBtn}>
+              <ScalePressable onPress={() => shiftMonth(1)} scaleTo={0.9} hitSlop={6} accessibilityLabel="Next month" style={navBtn}>
                 <Icon name="chevR" size={20} color={LK.espresso} />
               </ScalePressable>
             </View>
@@ -212,6 +213,9 @@ export default function CalendarScreen() {
                     onPress={() => setSelectedDay(cell.dateStr)}
                     scaleTo={0.9}
                     haptic={false}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${new Date(cell.dateStr + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}${isToday ? ', today' : ''}${dayEvents.length ? `, ${dayEvents.length} ${dayEvents.length === 1 ? 'event' : 'events'}` : ''}`}
+                    accessibilityState={{ selected: isSelected }}
                     containerStyle={{ width: `${100 / 7}%`, aspectRatio: 1 }}
                     style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
                   >
@@ -244,7 +248,7 @@ export default function CalendarScreen() {
 
         {/* â”€â”€ Selected-day events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {selectedDay && (
-          <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
+          <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 17, color: LK.espresso }}>
                 {new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -268,15 +272,15 @@ export default function CalendarScreen() {
               </View>
             ) : (
               <Text style={{ fontFamily: theme.fonts.body, fontSize: 13.5, color: LK.ink70, lineHeight: 20 }}>
-                Nothing on this day. Tap "Add" to add a birthday or special date.
+                Nothing on this day yet.
               </Text>
             )}
           </View>
         )}
 
         {/* â”€â”€ Upcoming list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
-          <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 19, color: LK.espresso, marginBottom: 12 }}>Coming up</Text>
+        <SectionEyebrow label="Coming up" />
+        <View style={{ paddingHorizontal: theme.layout.screenX }}>
           {upcoming.length === 0 ? (
             <View style={{ alignItems: 'center', paddingTop: 12, gap: 12 }}>
               <Image
@@ -438,8 +442,8 @@ function EventRow({ event, dateLabel, onPress, onSync }: { event: CalEvent; date
     <ScalePressable
       onPress={onPress}
       scaleTo={0.98}
-      accessibilityLabel={event.title}
-      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', overflow: 'hidden', ...theme.shadow.sm }}
+      accessibilityLabel={dateLabel ? `${event.title}, ${dateLabel}` : event.title}
+      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, overflow: 'hidden', ...theme.shadow.sm }}
     >
       {/* 4px left accent bar per §13.24 spec */}
       <View style={{ width: 4, alignSelf: 'stretch', backgroundColor: event.color }} />
@@ -457,7 +461,7 @@ function EventRow({ event, dateLabel, onPress, onSync }: { event: CalEvent; date
         </View>
         {event.recurring && (
           <View style={{ backgroundColor: tint(LK.marigold, 0.6), borderRadius: 9999, paddingHorizontal: 9, paddingVertical: 4, flexShrink: 0 }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 10.5, color: shade(LK.marigold, 0.5) }}>Yearly</Text>
+            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11, color: shade(LK.marigold, 0.5) }}>Yearly</Text>
           </View>
         )}
         {onSync && (
@@ -465,7 +469,7 @@ function EventRow({ event, dateLabel, onPress, onSync }: { event: CalEvent; date
             onPress={onSync}
             scaleTo={0.9}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel="Add to phone calendar"
+            accessibilityLabel={`Add ${event.title} to phone calendar`}
             containerStyle={{ flexShrink: 0 }}
             style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: tint(LK.sky, 0.6), alignItems: 'center', justifyContent: 'center' }}
           >

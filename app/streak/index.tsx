@@ -10,6 +10,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { StreakMascot } from '@/components/ui/streak-mascot';
 import { ChallengeCard } from '@/components/ui/ChallengeCard';
 import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
+import { SectionEyebrow } from '@/components/ui/section-eyebrow';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
 import { useStreakPause } from '@/hooks/useStreakPause';
 import { useChallengesStore } from '@/stores/challenges.store';
@@ -31,6 +32,8 @@ function BadgeTile({ badge, unlocked }: { badge: StreakBadge; unlocked: boolean 
       }}
     >
       <View
+        accessible
+        accessibilityLabel={`${badge.title}, ${unlocked ? 'unlocked' : 'locked'}. ${badge.blurb}`}
         style={{
           width: 70,
           height: 70,
@@ -56,7 +59,7 @@ function BadgeTile({ badge, unlocked }: { badge: StreakBadge; unlocked: boolean 
           fontFamily: theme.fonts.body,
           fontWeight: '700',
           fontSize: 12.5,
-          color: unlocked ? LK.espresso : LK.ink45,
+          color: unlocked ? LK.espresso : LK.ink70,
           marginTop: 8,
           textAlign: 'center',
         }}
@@ -67,8 +70,8 @@ function BadgeTile({ badge, unlocked }: { badge: StreakBadge; unlocked: boolean 
         numberOfLines={1}
         style={{
           fontFamily: theme.fonts.body,
-          fontSize: 10.5,
-          color: unlocked ? LK.ink70 : LK.ink45,
+          fontSize: 11,
+          color: LK.ink70,
           marginTop: 1,
           textAlign: 'center',
         }}
@@ -91,6 +94,8 @@ function InfoCard({ icon, accent, title, children }: {
         backgroundColor: LK.ivory,
         borderRadius: 20,
         borderCurve: 'continuous',
+        borderWidth: 1.5,
+        borderColor: LK.hairline,
         padding: 16,
         flexDirection: 'row',
         gap: 13,
@@ -205,7 +210,10 @@ export default function StreakScreen() {
                   backgroundColor: LK.vellum,
                   borderRadius: theme.radii.lg,
                   borderCurve: 'continuous',
+                  borderWidth: 1.5,
+                  borderColor: LK.hairline,
                   paddingVertical: 26,
+                  paddingHorizontal: 20,
                   alignItems: 'center',
                   ...theme.shadow.card,
                 }}
@@ -226,9 +234,25 @@ export default function StreakScreen() {
                     {streak.current}
                   </Text>
                 </View>
-                <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, marginTop: 2 }}>
-                  {streak.current === 1 ? 'day streak' : 'day streak'}
-                </Text>
+                {streak.current > 0 ? (
+                  <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, marginTop: 2 }}>
+                    day streak
+                  </Text>
+                ) : (
+                  // Zero is the next action, never a loss (PREMIUM_STANDARD §4).
+                  <View style={{ alignItems: 'center', gap: 12, marginTop: 4 }}>
+                    <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, textAlign: 'center' }}>
+                      Start a streak today
+                    </Text>
+                    <ScalePressable
+                      onPress={() => router.navigate('/(tabs)')}
+                      accessibilityRole="button"
+                      style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 22, minHeight: 44, justifyContent: 'center' }}
+                    >
+                      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: '#fff' }}>Answer today's quiz together</Text>
+                    </ScalePressable>
+                  </View>
+                )}
                 {streak.freezeActive && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, backgroundColor: rgba(LK.sky, 0.14), borderRadius: 9999, paddingHorizontal: 11, paddingVertical: 5 }}>
                     <Icon name="shield" size={13} color={shade(LK.sky, 0.4)} strokeWidth={2} />
@@ -237,17 +261,20 @@ export default function StreakScreen() {
                     </Text>
                   </View>
                 )}
+                {/* A record is quiet context — with no record yet, there's nothing to show. */}
+                {best > 0 && (
                 <View style={{ flexDirection: 'row', gap: 28, marginTop: 18 }}>
                   <View style={{ alignItems: 'center' }}>
                     <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso }}>{best}</Text>
-                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, marginTop: 1 }}>best ever</Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70, marginTop: 1 }}>best ever</Text>
                   </View>
                   <View style={{ width: 1, backgroundColor: LK.hairline }} />
                   <View style={{ alignItems: 'center' }}>
                     <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso }}>{earned}/{STREAK_BADGES.length}</Text>
-                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.ink70, marginTop: 1 }}>badges</Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70, marginTop: 1 }}>badges</Text>
                   </View>
                 </View>
+                )}
               </View>
             </View>
           </FadeSlideIn>
@@ -284,7 +311,7 @@ export default function StreakScreen() {
                     onPress={confirmResume}
                     scaleTo={0.96}
                     accessibilityLabel="Resume your streak now"
-                    style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 16, minHeight: 40, justifyContent: 'center', ...theme.shadow.sm }}
+                    style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center', ...theme.shadow.sm }}
                   >
                     <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: '#fff' }}>Resume</Text>
                   </ScalePressable>
@@ -298,6 +325,8 @@ export default function StreakScreen() {
                     backgroundColor: LK.ivory,
                     borderRadius: 20,
                     borderCurve: 'continuous',
+                    borderWidth: 1.5,
+                    borderColor: LK.hairline,
                     padding: 16,
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -316,7 +345,7 @@ export default function StreakScreen() {
                       Pause your streak so a break won't cost your run
                     </Text>
                   </View>
-                  <Icon name="chevR" size={18} color={LK.ink45} />
+                  <Icon name="chevR" size={18} color={LK.ink70} />
                 </ScalePressable>
               )}
             </View>
@@ -331,6 +360,8 @@ export default function StreakScreen() {
                     backgroundColor: LK.ivory,
                     borderRadius: 20,
                     borderCurve: 'continuous',
+                    borderWidth: 1.5,
+                    borderColor: LK.hairline,
                     padding: 16,
                     boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
                   } as any}
@@ -342,12 +373,12 @@ export default function StreakScreen() {
                     <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso }}>
                       Next: {goal.title}
                     </Text>
-                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 11.5, color: LK.faded }}>
-                      {Math.max(0, goal.days - best)} days to go
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70 }}>
+                      {Math.max(0, goal.days - best)} {goal.days - best === 1 ? 'day' : 'days'} to go
                     </Text>
                   </View>
                   <View style={{ height: 6, backgroundColor: rgba(LK.espresso, 0.1), borderRadius: 3, overflow: 'hidden' }}>
-                    <View style={{ height: '100%', width: `${Math.round(pct * 100)}%`, backgroundColor: goal.accent, borderRadius: 3 }} />
+                    <View style={{ height: '100%', width: `${Math.max(4, Math.round(pct * 100))}%`, backgroundColor: goal.accent, borderRadius: 3 }} />
                   </View>
                 </View>
               </View>
@@ -357,10 +388,8 @@ export default function StreakScreen() {
           {/* ── This week's challenge ──────────────────────────────────────── */}
           {chDef && (
             <FadeSlideIn delay={130}>
-              <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 26 }}>
-                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, letterSpacing: 0.5, textTransform: 'uppercase', color: LK.espresso, marginBottom: 14 }}>
-                  This week's challenge
-                </Text>
+              <SectionEyebrow label="This week's challenge" />
+              <View style={{ paddingHorizontal: theme.layout.screenX }}>
                 <ChallengeCard
                   title={chDef.title}
                   icon={chDef.icon}
@@ -376,10 +405,8 @@ export default function StreakScreen() {
 
           {/* ── Badge grid ─────────────────────────────────────────────────── */}
           <FadeSlideIn delay={150}>
-            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 26 }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, letterSpacing: 0.5, textTransform: 'uppercase', color: LK.espresso, marginBottom: 16 }}>
-                Achievements
-              </Text>
+            <SectionEyebrow label="Achievements" handTrailing={`${earned} of ${STREAK_BADGES.length}`} />
+            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 4 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -BADGE_COL_GAP / 2 }}>
                 {STREAK_BADGES.map((b) => (
                   <BadgeTile key={b.key} badge={b} unlocked={best >= b.days} />
@@ -390,10 +417,8 @@ export default function StreakScreen() {
 
           {/* ── How it works ───────────────────────────────────────────────── */}
           <FadeSlideIn delay={190}>
-            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 14 }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13, letterSpacing: 0.5, textTransform: 'uppercase', color: LK.espresso, marginBottom: 14 }}>
-                How it works
-              </Text>
+            <SectionEyebrow label="How it works" paddingTop={8} />
+            <View style={{ paddingHorizontal: theme.layout.screenX }}>
               <View style={{ gap: 12 }}>
                 <InfoCard icon="star" accent={LK.coral} title="Building your streak">
                   Your streak grows by one each day you <Text style={{ fontWeight: '700', color: LK.espresso }}>both</Text> answer the Daily Match. Today never counts against you until the day ends — so there's no rush.

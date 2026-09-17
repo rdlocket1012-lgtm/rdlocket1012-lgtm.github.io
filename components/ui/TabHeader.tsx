@@ -9,7 +9,7 @@ import { LK, theme } from '@/constants/theme';
  * content edge line up.
  */
 export function TabHeader({ eyebrow, title, right, accent }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   right?: React.ReactNode;
   /** Optional color for the title (defaults to ink). */
@@ -18,20 +18,23 @@ export function TabHeader({ eyebrow, title, right, accent }: {
   return (
     <View style={{
       paddingHorizontal: theme.layout.screenX,
-      paddingTop: 16,
+      paddingTop: 12,
+      paddingBottom: 8,
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
     }}>
       <View style={{ flex: 1 }}>
-        <Text style={{
-          fontFamily: theme.fonts.body, fontSize: 12.5, fontWeight: '800',
-          letterSpacing: 1.5, textTransform: 'uppercase', color: theme.text.secondary,
-          marginBottom: 2, marginLeft: 1,
-        }}>
-          {eyebrow}
-        </Text>
-        <Text style={{
+        {eyebrow ? (
+          <Text numberOfLines={1} style={{
+            fontFamily: theme.fonts.body, fontSize: 12.5, fontWeight: '800',
+            letterSpacing: 1.5, textTransform: 'uppercase', color: theme.text.secondary,
+            marginBottom: 2, marginLeft: 1,
+          }}>
+            {eyebrow}
+          </Text>
+        ) : null}
+        <Text accessibilityRole="header" numberOfLines={1} style={{
           fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 40,
           letterSpacing: -1.5, color: accent ?? LK.espresso, lineHeight: 44,
         }}>

@@ -6,12 +6,14 @@ import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeInUp, ReduceMotion } from 'react-native-reanimated';
 import Transition from 'react-native-screen-transitions';
 import { useUnseenStore } from '@/stores/unseen.store';
+import { useTabBarClearance } from '@/components/ui/locket-tab-bar';
 import { LK, shade, catColor, theme, rgba } from '@/constants/theme';
 import { useMilestones } from '@/hooks/useMilestones';
 import { useCouple } from '@/hooks/useCouple';
 import { FREE_LIMITS } from '@/constants/free-limits';
 import { MILESTONE_ILLUS, MILESTONE_FILTERS, typeGroup, type MilestoneFilterId } from '@/constants/milestone-types';
 import { RoundIcon } from '@/components/ui/round-icon';
+import { TabHeader } from '@/components/ui/TabHeader';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { Icon } from '@/components/ui/Icon';
 import { AddMilestoneModal } from '@/components/milestone/AddMilestoneModal';
@@ -27,6 +29,7 @@ const BORDER = 'rgba(42,33,26,0.15)';
 const EMPTY_ILLUS = require('../../assets/illustrations/empty-states/no-milestones.png');
 
 export default function TimelineScreen() {
+  const bottomClearance = useTabBarClearance();
   const { milestones } = useMilestones();
   const { isPremium } = useCouple();
   const [filter, setFilter] = useState<MilestoneFilterId>('all');
@@ -101,18 +104,22 @@ export default function TimelineScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
-      {/* Header (56pt) */}
-      <View style={{ height: 56, paddingHorizontal: theme.layout.screenX, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 20, color: LK.espresso, letterSpacing: -0.5 }}>Timeline</Text>
-        <View>
-          <RoundIcon onPress={handleAdd}><Icon name="plus" size={22} color={LK.espresso} /></RoundIcon>
-          {atCap && (
-            <View style={{ position: 'absolute', top: -1, right: -1, width: 18, height: 18, borderRadius: 9, backgroundColor: LK.gold, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: LK.parchment }}>
-              <Icon name="lock" size={9} color="#fff" strokeWidth={2.5} />
-            </View>
-          )}
-        </View>
-      </View>
+      {/* Large-title header — same metrics as ScreenHeader on every sub-screen,
+          so a tab root no longer looks lighter than the pages under it. */}
+      <TabHeader
+        eyebrow={milestones.length > 0 ? `${milestones.length} ${milestones.length === 1 ? 'memory' : 'memories'}` : 'Your story'}
+        title="Timeline"
+        right={
+          <View>
+            <RoundIcon onPress={handleAdd} accessibilityLabel="Add a memory"><Icon name="plus" size={22} color={LK.espresso} /></RoundIcon>
+            {atCap && (
+              <View style={{ position: 'absolute', top: -1, right: -1, width: 18, height: 18, borderRadius: 9, backgroundColor: LK.gold, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: LK.parchment }}>
+                <Icon name="lock" size={9} color="#fff" strokeWidth={2.5} />
+              </View>
+            )}
+          </View>
+        }
+      />
 
       {/* Category filter chips (sticky below header) */}
       <FlatList
@@ -154,20 +161,22 @@ export default function TimelineScreen() {
         sections={sections}
         keyExtractor={(m) => m.id}
         stickySectionHeadersEnabled
-        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 80, flexGrow: 1 }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: bottomClearance, flexGrow: 1 }}
         ListHeaderComponent={nearCap ? (
-          <Pressable
+          <ScalePressable
+            scaleTo={0.98}
             onPress={() => setSheet('paywall')}
-            style={{ marginHorizontal: theme.layout.screenX, marginBottom: 8, backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, ...theme.shadow.sm }}
+            accessibilityRole="button"
+            containerStyle={{ marginHorizontal: theme.layout.screenX, marginBottom: 8 }}
+            style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.sm, borderCurve: 'continuous', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, ...theme.shadow.sm }}
           >
             <Icon name="lock" size={15} color={LK.gold} strokeWidth={2} />
             <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '500', fontSize: 12, color: LK.sepia }}>
               {milestones.length} of {FREE_LIMITS.MILESTONES} milestones used
             </Text>
             <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 12.5, color: LK.gold }}>Go unlimited →</Text>
-          </Pressable>
+          </ScalePressable>
         ) : null}
         renderSectionHeader={({ section }) => (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: theme.layout.screenX, paddingTop: 8, paddingBottom: 6, backgroundColor: LK.parchment }}>
@@ -198,10 +207,15 @@ export default function TimelineScreen() {
               </ScalePressable>
             </View>
           ) : (
-            <View style={{ alignItems: 'center', paddingTop: 56, paddingHorizontal: 30, gap: 8 }}>
-              <Text style={{ fontFamily: theme.fonts.body, fontSize: 14.5, color: LK.sepia, textAlign: 'center' }}>
-                No milestones in this filter yet.
+            <View style={{ alignItems: 'center', paddingTop: 48, paddingHorizontal: 30, gap: 12 }}>
+              <Image source={EMPTY_ILLUS} style={{ width: 96, height: 96, opacity: 0.9 }} contentFit="contain" accessible={false} />
+              <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 16, color: LK.sepia, textAlign: 'center' }}>
+                Nothing here yet.
               </Text>
+              {/* An empty filter is a dead end without a way back. */}
+              <ScalePressable scaleTo={0.97} onPress={() => setFilter('all')} accessibilityRole="button" style={{ backgroundColor: LK.ivory, borderWidth: 1.5, borderColor: BORDER, borderRadius: 9999, paddingHorizontal: 18, height: 40, justifyContent: 'center' }}>
+                <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso }}>Show all memories</Text>
+              </ScalePressable>
             </View>
           )
         }
