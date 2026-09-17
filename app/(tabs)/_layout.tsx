@@ -1,108 +1,111 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { View, Text, Platform, ColorValue } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { LK, theme, tint } from '@/constants/theme';
-import { Icon } from '@/components/ui/Icon';
+import React, { useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
+import { withLayoutContext } from 'expo-router';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { LK } from '@/constants/theme';
 import { useUnseen } from '@/hooks/useUnseen';
+import { useCoupons } from '@/hooks/useCoupons';
+import { useDateReminders } from '@/hooks/useDateReminders';
+import { useDismissalsStore } from '@/stores/activity-dismissals.store';
+import { useAuth } from '@/hooks/useAuth';
+import { usePartner } from '@/hooks/usePartner';
+import { useLiveLaunch } from '@/stores/live.store';
+import { useNudgeLaunch } from '@/stores/nudge-launch.store';
+import { usePartnerTime } from '@/hooks/usePartnerTime';
+import { LiveLayer, type LiveHandle } from '@/components/live/LiveLayer';
+import { NudgesLayer } from '@/components/nudges/NudgesLayer';
+import LocketTabBar from '@/components/ui/locket-tab-bar';
 
-type TabIconProps = { name: string; label: string; focused: boolean; color: ColorValue; accent: string; badge?: number };
-
-function TabIcon({ name, label, focused, accent, badge = 0 }: TabIconProps) {
-  const color = focused ? accent : LK.ink70;
-  return (
-    <View style={{ alignItems: 'center', justifyContent: 'center', gap: 4, width: 84, paddingTop: 8 }}>
-      <View
-        style={{
-          width: 40,
-          height: 30,
-          borderRadius: 15,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: focused ? tint(accent, 0.7) : 'transparent',
-        }}
-      >
-        <Icon name={name} size={22} color={color} strokeWidth={focused ? 2.5 : 1.9} />
-        {badge > 0 && (
-          <View style={{
-            position: 'absolute', top: -2, right: 4,
-            minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4,
-            backgroundColor: LK.coral, alignItems: 'center', justifyContent: 'center',
-            borderWidth: 1.5, borderColor: LK.ivory,
-          }}>
-            <Text style={{ fontFamily: theme.fonts.body, fontWeight: '800', fontSize: 9.5, color: '#fff' }}>
-              {badge > 9 ? '9+' : badge}
-            </Text>
-          </View>
-        )}
-      </View>
-      <Text
-        numberOfLines={1}
-        style={{
-          fontFamily: theme.fonts.body,
-          fontWeight: focused ? '800' : '600',
-          fontSize: 11,
-          color,
-        }}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-const hapticTab = {
-  tabPress: () => {
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch { /* no-op */ }
-  },
-};
+// Swipe-enabled pager (react-native-pager-view) wired into expo-router's
+// file-based routing. Replaces bottom <Tabs> so the four main pages can be
+// dragged left/right; the floating LocketTabBar + center FAB still float over it.
+const { Navigator } = createMaterialTopTabNavigator();
+const SwipeTabs = withLayoutContext(Navigator);
 
 export default function TabsLayout() {
-  const counts = useUnseen();
-  const usBadge = counts.letters + counts.coupons;
+  // Keep unread counts live for the whole app (the tab bar reads them for badges).
+  useUnseen();
+  // Keep coupon rows loaded app-wide so Home can surface redeem/approval banners
+  // (shares one realtime channel with the Coupons screen via ref-counting).
+  useCoupons();
+  // Keep OS-scheduled birthday/anniversary reminders in step with the calendar.
+  useDateReminders();
+
+  const { profile } = useAuth();
+  const { partner } = usePartner();
+  const partnerTime = usePartnerTime();
+
+  // Load this user's dismissed Activity rows once, so the feed can filter them.
+  useEffect(() => { void useDismissalsStore.getState().fetch(); }, [profile?.id]);
+
+  // ── This or That live layer ────────────────────────────────────────────────
+  // Mounted here so the invite, "both online" banner, and game overlay appear
+  // from ANY tab, not just when the user is on Home.
+  const liveRef = useRef<LiveHandle>(null);
+  const pendingCategory = useLiveLaunch((s) => s.pendingCategory);
+  const launchNonce = useLiveLaunch((s) => s.nonce);
+  const consumeLaunch = useLiveLaunch((s) => s.consume);
+
+  useEffect(() => {
+    if (pendingCategory) {
+      liveRef.current?.start(pendingCategory);
+      consumeLaunch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCategory, launchNonce]);
+
+  // ── Nudges layer ───────────────────────────────────────────────────────────
+  // Mounted here so the send-nudge menu and incoming nudge overlays (hug, kiss,
+  // bite, thumb-kiss) surface from ANY tab via the center FAB or push.
+  const [nudgeOpen, setNudgeOpen] = useState(false);
+  const nudgePending = useNudgeLaunch((s) => s.pending);
+  const nudgeNonce = useNudgeLaunch((s) => s.nonce);
+  const consumeNudge = useNudgeLaunch((s) => s.consume);
+
+  useEffect(() => {
+    if (nudgePending) {
+      setNudgeOpen(true);
+      consumeNudge();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nudgePending, nudgeNonce]);
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: LK.ivory,
-          borderTopColor: LK.line,
-          borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
-          paddingTop: 4,
-        },
-        tabBarShowLabel: false,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        listeners={hapticTab}
-        options={{
-          tabBarIcon: ({ focused, color }) => <TabIcon name="homeTab" label="Home" focused={focused} color={color} accent={LK.coral} />,
+    <View style={{ flex: 1 }}>
+      <SwipeTabs
+        tabBarPosition="bottom"
+        screenOptions={{
+          swipeEnabled: true,
+          lazy: true,
+          animationEnabled: true,
+          sceneStyle: { backgroundColor: LK.parchment },
+          lazyPlaceholder: () => <View style={{ flex: 1, backgroundColor: LK.parchment }} />,
         }}
+        tabBar={(props) => <LocketTabBar {...props} />}
+      >
+        <SwipeTabs.Screen name="index" />
+        <SwipeTabs.Screen name="timeline" />
+        <SwipeTabs.Screen name="fun" />
+        <SwipeTabs.Screen name="us" />
+      </SwipeTabs>
+
+      <LiveLayer
+        ref={liveRef}
+        coupleId={profile?.couple_id ?? null}
+        userId={profile?.id ?? null}
+        partnerName={partner?.display_name ?? null}
+        myName={profile?.display_name ?? null}
       />
-      <Tabs.Screen
-        name="timeline"
-        listeners={hapticTab}
-        options={{
-          tabBarIcon: ({ focused, color }) => <TabIcon name="sparkle" label="Timeline" focused={focused} color={color} accent={LK.gold} badge={counts.milestones} />,
-        }}
+
+      <NudgesLayer
+        open={nudgeOpen}
+        onClose={() => setNudgeOpen(false)}
+        coupleId={profile?.couple_id ?? null}
+        userId={profile?.id ?? null}
+        partnerName={partner?.display_name ?? null}
+        partnerAsleep={!!partnerTime?.asleep}
+        partnerSilent={partner?.nudge_haptics === false}
       />
-      <Tabs.Screen
-        name="map"
-        listeners={hapticTab}
-        options={{
-          tabBarIcon: ({ focused, color }) => <TabIcon name="mapPin" label="Map" focused={focused} color={color} accent={LK.lilac} />,
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        listeners={hapticTab}
-        options={{
-          tabBarIcon: ({ focused, color }) => <TabIcon name="heart" label="Us" focused={focused} color={color} accent={LK.pink} badge={usBadge} />,
-        }}
-      />
-    </Tabs>
+    </View>
   );
 }

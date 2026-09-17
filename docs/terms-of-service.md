@@ -68,4 +68,4 @@ These terms are governed by the laws of your country of residence.
 
 ## 9. Contact
 
-**hello@locket.app**
+**hello@locketfortwo.com**

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, KeyboardAvoidingView, Platform, SafeAreaView, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
+import { alert, toast } from '@/lib/feedback';
 import { LK, theme } from '@/constants/theme';
-import { Btn } from '@/components/ui';
+import { Btn } from '@/components/ui/btn';
+import { AnimatedField } from '@/components/ui/AnimatedField';
 
 const schema = z.object({
   password: z
@@ -31,24 +33,23 @@ export default function ResetPasswordScreen() {
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: data.password });
     setLoading(false);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { toast.error(error.message); return; }
 
     // Mark onboarding so routing works correctly
     await AsyncStorage.setItem('ai_consent_granted_at', new Date().toISOString());
     await AsyncStorage.setItem('onboarding_done', 'true');
 
-    Alert.alert('Password updated', 'You can now sign in with your new password.', [
-      { text: 'Continue', onPress: () => router.replace('/(tabs)') },
-    ]);
+    await alert('Password updated', 'You can now sign in with your new password.', 'Continue');
+    router.replace('/(tabs)');
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={{ flex: 1, padding: 30, justifyContent: 'center' }}>
 
           <View style={{ marginBottom: 36 }}>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.ink, letterSpacing: -1 }}>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.espresso, letterSpacing: -1 }}>
               New password
             </Text>
             <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.ink70, marginTop: 8 }}>
@@ -57,40 +58,36 @@ export default function ResetPasswordScreen() {
           </View>
 
           <View style={{ gap: 16, marginBottom: 28 }}>
-            <View>
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="New password"
-                    placeholderTextColor={LK.ink70}
-                    secureTextEntry
-                    value={value}
-                    onChangeText={onChange}
-                  />
-                )}
-              />
-              {errors.password && <Text style={errorStyle}>{errors.password.message}</Text>}
-            </View>
-            <View>
-              <Controller
-                control={control}
-                name="confirm"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={inputStyle}
-                    placeholder="Confirm password"
-                    placeholderTextColor={LK.ink70}
-                    secureTextEntry
-                    value={value}
-                    onChangeText={onChange}
-                  />
-                )}
-              />
-              {errors.confirm && <Text style={errorStyle}>{errors.confirm.message}</Text>}
-            </View>
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <AnimatedField
+                  placeholder="New password"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.password?.message}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="confirm"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <AnimatedField
+                  placeholder="Confirm password"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.confirm?.message}
+                />
+              )}
+            />
           </View>
 
           <Btn full kind="primary" onPress={handleSubmit(onSubmit)} disabled={loading}>
@@ -104,10 +101,3 @@ export default function ResetPasswordScreen() {
     </SafeAreaView>
   );
 }
-
-const inputStyle = {
-  backgroundColor: LK.ivory, borderRadius: 16,
-  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink,
-  shadowColor: LK.ink, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-};
-const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.destructive, marginTop: 5 };

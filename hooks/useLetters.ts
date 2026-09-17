@@ -3,15 +3,20 @@ import { useLettersStore } from '@/stores/letters.store';
 import { useAuthStore } from '@/stores/auth.store';
 
 export function useLetters() {
-  const store = useLettersStore();
-  const { profile } = useAuthStore();
+  const letters = useLettersStore(s => s.letters);
+  const loading = useLettersStore(s => s.loading);
+  const fetchLetters = useLettersStore(s => s.fetchLetters);
+  const sendLetter = useLettersStore(s => s.sendLetter);
+  const reactToLetter = useLettersStore(s => s.reactToLetter);
+  const deleteLetter = useLettersStore(s => s.deleteLetter);
+  const subscribeToLetters = useLettersStore(s => s.subscribeToLetters);
+  const profile = useAuthStore(s => s.profile);
 
   useEffect(() => {
     if (!profile?.couple_id) return;
-    store.fetchLetters(profile.couple_id);
-    const unsub = store.subscribeToLetters(profile.couple_id);
-    return unsub;
+    fetchLetters(profile.couple_id);
+    return subscribeToLetters(profile.couple_id);
   }, [profile?.couple_id]);
 
-  return store;
+  return { letters, loading, sendLetter, reactToLetter, deleteLetter };
 }

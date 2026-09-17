@@ -98,6 +98,8 @@ export function resolveComments(row: QuizRow): { myComment: string | null; partn
 type QuizState = {
   today: QuizRow | null;
   loading: boolean;
+  /** Last fetch ended with no row (network/auth error). Drives Home's retry card. */
+  failed: boolean;
   fetchToday: (coupleId: string) => Promise<void>;
   /** Submit both the current user's self answer and their guess of the partner. */
   submit: (self: string, guess: string) => Promise<void>;
@@ -108,36 +110,58 @@ type QuizState = {
 export const useQuizStore = create<QuizState>((set, get) => ({
   today: null,
   loading: false,
+  failed: false,
 
   fetchToday: async (coupleId) => {
-    set({ loading: true });
-    const date = todayISO();
-    const { data } = await supabase
-      .from('daily_quiz')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .eq('quiz_date', date)
-      .maybeSingle();
+    set({ loading: true, failed: false });
+    try {
+      const date = todayISO();
+      const { data } = await supabase
+        .from('daily_quiz')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .eq('quiz_date', date)
+        .maybeSingle();
 
-    if (data) {
-      set({ today: data as QuizRow, loading: false });
-      return;
+      if (data) {
+        set({ today: data as QuizRow });
+        return;
+      }
+
+      // No row yet — this user creates it and becomes the "creator".
+      const myId = useAuthStore.getState().profile?.id;
+      const { data: created } = await supabase
+        .from('daily_quiz')
+        .insert({
+          couple_id: coupleId,
+          quiz_date: date,
+          question_id: questionIndexForDate(new Date()),
+          created_by: myId ?? null,
+        })
+        .select()
+        .single();
+
+      if (created) {
+        set({ today: created as QuizRow });
+        return;
+      }
+
+      // Insert lost the race: both partners opened Home at once and the other
+      // phone created today's row first (unique couple_id + quiz_date). Read
+      // theirs, or the quiz silently vanishes for the whole day.
+      const { data: existing } = await supabase
+        .from('daily_quiz')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .eq('quiz_date', date)
+        .maybeSingle();
+      set({ today: (existing as QuizRow) ?? null, failed: !existing });
+    } catch {
+      // network/auth error — keep any row we already have, flag it for a retry
+      set({ failed: !get().today });
+    } finally {
+      set({ loading: false });
     }
-
-    // No row yet — this user creates it and becomes the "creator".
-    const myId = useAuthStore.getState().profile?.id;
-    const { data: created } = await supabase
-      .from('daily_quiz')
-      .insert({
-        couple_id: coupleId,
-        quiz_date: date,
-        question_id: questionIndexForDate(new Date()),
-        created_by: myId ?? null,
-      })
-      .select()
-      .single();
-
-    set({ today: (created as QuizRow) ?? null, loading: false });
   },
 
   submit: async (self, guess) => {

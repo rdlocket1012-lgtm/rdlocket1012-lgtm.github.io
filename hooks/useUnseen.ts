@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { useUnseenStore } from '@/stores/unseen.store';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -16,7 +17,19 @@ export function useUnseen() {
     if (!coupleId) return;
     fetch(coupleId);
     const unsub = subscribe(coupleId);
-    return unsub;
+
+    // Realtime drops while the app is backgrounded, so anything the partner did
+    // in the meantime never fires a postgres_changes event. Re-fetch on
+    // foreground or the bell dot and app-icon badge come back stale — which is
+    // the most common way a "new" item goes unnoticed.
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void fetch(coupleId);
+    });
+
+    return () => {
+      unsub();
+      sub.remove();
+    };
   }, [coupleId]);
 
   return counts;

@@ -1,0 +1,445 @@
+import React from 'react';
+import { View, Text, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { LK, shade, rgba, theme } from '@/constants/theme';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { StreakMascot } from '@/components/ui/streak-mascot';
+import { ChallengeCard } from '@/components/ui/ChallengeCard';
+import { FadeSlideIn } from '@/components/ui/FadeSlideIn';
+import { SectionEyebrow } from '@/components/ui/section-eyebrow';
+import { useQuizStreak } from '@/hooks/useQuizStreak';
+import { useStreakPause } from '@/hooks/useStreakPause';
+import { useChallengesStore } from '@/stores/challenges.store';
+import { addDays } from '@/utils/streak';
+import { confirm, choose, toast } from '@/lib/feedback';
+import { success as hapticSuccess } from '@/lib/haptics';
+import { STREAK_BADGES, nextBadge, unlockedCount, type StreakBadge } from '@/constants/streak-achievements';
+
+const BADGE_COL_GAP = 12;
+
+function BadgeTile({ badge, unlocked }: { badge: StreakBadge; unlocked: boolean }) {
+  return (
+    <View
+      style={{
+        width: `${100 / 3}%`,
+        paddingHorizontal: BADGE_COL_GAP / 2,
+        marginBottom: 18,
+        alignItems: 'center',
+      }}
+    >
+      <View
+        accessible
+        accessibilityLabel={`${badge.title}, ${unlocked ? 'unlocked' : 'locked'}. ${badge.blurb}`}
+        style={{
+          width: 70,
+          height: 70,
+          borderRadius: 35,
+          borderCurve: 'continuous',
+          backgroundColor: unlocked ? rgba(badge.accent, 0.16) : rgba(LK.espresso, 0.05),
+          borderWidth: 1.5,
+          borderColor: unlocked ? rgba(badge.accent, 0.5) : rgba(LK.espresso, 0.08),
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon
+          name={unlocked ? badge.icon : 'lock'}
+          size={30}
+          color={unlocked ? badge.accent : LK.ink45}
+          strokeWidth={unlocked ? 2 : 1.8}
+        />
+      </View>
+      <Text
+        numberOfLines={1}
+        style={{
+          fontFamily: theme.fonts.body,
+          fontWeight: '700',
+          fontSize: 12.5,
+          color: unlocked ? LK.espresso : LK.ink70,
+          marginTop: 8,
+          textAlign: 'center',
+        }}
+      >
+        {badge.title}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={{
+          fontFamily: theme.fonts.body,
+          fontSize: 11,
+          color: LK.ink70,
+          marginTop: 1,
+          textAlign: 'center',
+        }}
+      >
+        {badge.blurb}
+      </Text>
+    </View>
+  );
+}
+
+function InfoCard({ icon, accent, title, children }: {
+  icon: string;
+  accent: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        backgroundColor: LK.ivory,
+        borderRadius: 20,
+        borderCurve: 'continuous',
+        borderWidth: 1.5,
+        borderColor: LK.hairline,
+        padding: 16,
+        flexDirection: 'row',
+        gap: 13,
+        boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
+      } as any}
+    >
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          backgroundColor: rgba(accent, 0.16),
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name={icon} size={20} color={accent} strokeWidth={2} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 16, color: LK.espresso, marginBottom: 5 }}>
+          {title}
+        </Text>
+        <Text style={{ fontFamily: theme.fonts.body, fontSize: 13.5, color: LK.ink70, lineHeight: 20 }}>
+          {children}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export default function StreakScreen() {
+  const streak = useQuizStreak();
+  const { activePause, pause, resume } = useStreakPause();
+
+  // Streak pause — fixed-duration hold, either partner, auto-resumes.
+  const resumeLabel = activePause
+    ? new Date(addDays(activePause.end_date, 1) + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+    : '';
+
+  async function doPause(days: number) {
+    try {
+      await pause(days);
+      hapticSuccess();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Couldn’t pause your streak.');
+    }
+  }
+
+  async function openPausePicker() {
+    const picked = await choose({
+      title: 'Pause your streak',
+      message: 'Your run will hold — no breaks — until the pause ends, then pick right back up. Either of you can resume early.',
+      icon: 'pause',
+      options: [
+        { label: '3 days', value: '3' },
+        { label: '1 week', value: '7' },
+        { label: '2 weeks', value: '14' },
+      ],
+    });
+    if (picked) doPause(Number(picked));
+  }
+
+  async function confirmResume() {
+    const ok = await confirm({
+      title: 'Resume your streak?',
+      message: 'Your streak starts counting again from today.',
+      confirmLabel: 'Resume',
+      cancelLabel: 'Not yet',
+      icon: 'play',
+    });
+    if (!ok) return;
+    try { await resume(); } catch (e: any) { toast.error(e?.message ?? 'Couldn’t resume your streak.'); }
+  }
+
+  // This week's challenge — read from the already-subscribed store (Home keeps it
+  // fresh) instead of re-subscribing, to avoid an extra realtime channel.
+  const chDef = useChallengesStore((s) => s.def);
+  const chCurrent = useChallengesStore((s) => s.current);
+  const chProgress = useChallengesStore((s) => s.progress);
+  const chComplete = !!chCurrent?.completed_at;
+  const chDaysLeft = chCurrent
+    ? Math.max(0, Math.ceil((new Date(chCurrent.period_end + 'T23:59:59').getTime() - Date.now()) / 86400000))
+    : 0;
+
+  const best = streak.best;
+  const goal = nextBadge(best);
+  const earned = unlockedCount(best);
+
+  // Progress toward the next badge — relative to the previous threshold.
+  const prevThreshold = goal ? (STREAK_BADGES[STREAK_BADGES.indexOf(goal) - 1]?.days ?? 0) : 0;
+  const span = goal ? goal.days - prevThreshold : 1;
+  const into = goal ? Math.max(0, best - prevThreshold) : 1;
+  const pct = goal ? Math.min(1, into / span) : 1;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }} edges={['top']}>
+      <ScreenHeader eyebrow="Daily Match" title="Your Streak" onBack={() => router.back()} />
+
+      {streak.loading ? (
+        <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16, gap: 16 }}>
+          <Skeleton height={150} radius={theme.radii.lg} />
+          <Skeleton height={90} radius={theme.radii.md} />
+          <Skeleton height={90} radius={theme.radii.md} />
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+          {/* ── Hero: current streak ───────────────────────────────────────── */}
+          <FadeSlideIn delay={60} fromY={10}>
+            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
+              <View
+                style={{
+                  backgroundColor: LK.vellum,
+                  borderRadius: theme.radii.lg,
+                  borderCurve: 'continuous',
+                  borderWidth: 1.5,
+                  borderColor: LK.hairline,
+                  paddingVertical: 26,
+                  paddingHorizontal: 20,
+                  alignItems: 'center',
+                  ...theme.shadow.card,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <StreakMascot size={120} active={streak.current > 0} />
+                  <Text
+                    style={{
+                      fontFamily: theme.fonts.heading,
+                      fontWeight: '800',
+                      fontSize: 64,
+                      letterSpacing: -2,
+                      color: streak.current > 0 ? LK.coral : LK.espresso,
+                      fontVariant: ['tabular-nums'],
+                      lineHeight: 70,
+                    }}
+                  >
+                    {streak.current}
+                  </Text>
+                </View>
+                {streak.current > 0 ? (
+                  <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, marginTop: 2 }}>
+                    day streak
+                  </Text>
+                ) : (
+                  // Zero is the next action, never a loss (PREMIUM_STANDARD §4).
+                  <View style={{ alignItems: 'center', gap: 12, marginTop: 4 }}>
+                    <Text style={{ fontFamily: theme.fonts.handMedium, fontSize: 17, color: LK.sepia, textAlign: 'center' }}>
+                      Start a streak today
+                    </Text>
+                    <ScalePressable
+                      onPress={() => router.navigate('/(tabs)')}
+                      accessibilityRole="button"
+                      style={{ backgroundColor: LK.coral, borderRadius: 9999, paddingHorizontal: 22, minHeight: 44, justifyContent: 'center' }}
+                    >
+                      <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 15, color: '#fff' }}>Answer today's quiz together</Text>
+                    </ScalePressable>
+                  </View>
+                )}
+                {streak.freezeActive && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, backgroundColor: rgba(LK.sky, 0.14), borderRadius: 9999, paddingHorizontal: 11, paddingVertical: 5 }}>
+                    <Icon name="shield" size={13} color={shade(LK.sky, 0.4)} strokeWidth={2} />
+                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 11.5, color: shade(LK.sky, 0.4) }}>
+                      A freeze is holding your streak
+                    </Text>
+                  </View>
+                )}
+                {/* A record is quiet context — with no record yet, there's nothing to show. */}
+                {best > 0 && (
+                <View style={{ flexDirection: 'row', gap: 28, marginTop: 18 }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso }}>{best}</Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70, marginTop: 1 }}>best ever</Text>
+                  </View>
+                  <View style={{ width: 1, backgroundColor: LK.hairline }} />
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 22, color: LK.espresso }}>{earned}/{STREAK_BADGES.length}</Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70, marginTop: 1 }}>badges</Text>
+                  </View>
+                </View>
+                )}
+              </View>
+            </View>
+          </FadeSlideIn>
+
+          {/* ── Streak pause ───────────────────────────────────────────────── */}
+          <FadeSlideIn delay={90}>
+            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
+              {activePause ? (
+                <View
+                  style={{
+                    backgroundColor: rgba(LK.sky, 0.1),
+                    borderRadius: 20,
+                    borderCurve: 'continuous',
+                    borderWidth: 1.5,
+                    borderColor: rgba(LK.sky, 0.32),
+                    padding: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 13,
+                  }}
+                >
+                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: rgba(LK.sky, 0.18), alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="pause" size={19} color={shade(LK.sky, 0.4)} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 16, color: LK.espresso }}>
+                      Streak paused
+                    </Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 2 }}>
+                      Held safe · resumes {resumeLabel}
+                    </Text>
+                  </View>
+                  <ScalePressable
+                    onPress={confirmResume}
+                    scaleTo={0.96}
+                    accessibilityLabel="Resume your streak now"
+                    style={{ backgroundColor: LK.espresso, borderRadius: 9999, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center', ...theme.shadow.sm }}
+                  >
+                    <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 13.5, color: '#fff' }}>Resume</Text>
+                  </ScalePressable>
+                </View>
+              ) : (
+                <ScalePressable
+                  onPress={openPausePicker}
+                  scaleTo={0.98}
+                  accessibilityLabel="Pause your streak"
+                  style={{
+                    backgroundColor: LK.ivory,
+                    borderRadius: 20,
+                    borderCurve: 'continuous',
+                    borderWidth: 1.5,
+                    borderColor: LK.hairline,
+                    padding: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 13,
+                    boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
+                  } as any}
+                >
+                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: rgba(LK.sky, 0.14), alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="pause" size={19} color={shade(LK.sky, 0.4)} strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '700', fontSize: 16, color: LK.espresso }}>
+                      Going away?
+                    </Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 13, color: LK.ink70, marginTop: 2 }}>
+                      Pause your streak so a break won't cost your run
+                    </Text>
+                  </View>
+                  <Icon name="chevR" size={18} color={LK.ink70} />
+                </ScalePressable>
+              )}
+            </View>
+          </FadeSlideIn>
+
+          {/* ── Next badge progress ────────────────────────────────────────── */}
+          {goal && (
+            <FadeSlideIn delay={110}>
+              <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 16 }}>
+                <View
+                  style={{
+                    backgroundColor: LK.ivory,
+                    borderRadius: 20,
+                    borderCurve: 'continuous',
+                    borderWidth: 1.5,
+                    borderColor: LK.hairline,
+                    padding: 16,
+                    boxShadow: '0 2px 8px rgba(42,33,26,0.07)',
+                  } as any}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: rgba(goal.accent, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name={goal.icon} size={17} color={goal.accent} strokeWidth={2} />
+                    </View>
+                    <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.espresso }}>
+                      Next: {goal.title}
+                    </Text>
+                    <Text style={{ fontFamily: theme.fonts.body, fontSize: 12, color: LK.ink70 }}>
+                      {Math.max(0, goal.days - best)} {goal.days - best === 1 ? 'day' : 'days'} to go
+                    </Text>
+                  </View>
+                  <View style={{ height: 6, backgroundColor: rgba(LK.espresso, 0.1), borderRadius: 3, overflow: 'hidden' }}>
+                    <View style={{ height: '100%', width: `${Math.max(4, Math.round(pct * 100))}%`, backgroundColor: goal.accent, borderRadius: 3 }} />
+                  </View>
+                </View>
+              </View>
+            </FadeSlideIn>
+          )}
+
+          {/* ── This week's challenge ──────────────────────────────────────── */}
+          {chDef && (
+            <FadeSlideIn delay={130}>
+              <SectionEyebrow label="This week's challenge" />
+              <View style={{ paddingHorizontal: theme.layout.screenX }}>
+                <ChallengeCard
+                  title={chDef.title}
+                  icon={chDef.icon}
+                  accent={chDef.accent}
+                  progress={chProgress}
+                  target={chDef.target}
+                  daysLeft={chDaysLeft}
+                  isComplete={chComplete}
+                />
+              </View>
+            </FadeSlideIn>
+          )}
+
+          {/* ── Badge grid ─────────────────────────────────────────────────── */}
+          <FadeSlideIn delay={150}>
+            <SectionEyebrow label="Achievements" handTrailing={`${earned} of ${STREAK_BADGES.length}`} />
+            <View style={{ paddingHorizontal: theme.layout.screenX, paddingTop: 4 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -BADGE_COL_GAP / 2 }}>
+                {STREAK_BADGES.map((b) => (
+                  <BadgeTile key={b.key} badge={b} unlocked={best >= b.days} />
+                ))}
+              </View>
+            </View>
+          </FadeSlideIn>
+
+          {/* ── How it works ───────────────────────────────────────────────── */}
+          <FadeSlideIn delay={190}>
+            <SectionEyebrow label="How it works" paddingTop={8} />
+            <View style={{ paddingHorizontal: theme.layout.screenX }}>
+              <View style={{ gap: 12 }}>
+                <InfoCard icon="star" accent={LK.coral} title="Building your streak">
+                  Your streak grows by one each day you <Text style={{ fontWeight: '700', color: LK.espresso }}>both</Text> answer the Daily Match. Today never counts against you until the day ends — so there's no rush.
+                </InfoCard>
+                <InfoCard icon="shield" accent={LK.sky} title="One free freeze">
+                  Miss a single day and an automatic freeze quietly bridges the gap, keeping your run alive. Two missed days in a row is what ends a streak.
+                </InfoCard>
+                <InfoCard icon="pause" accent={LK.sky} title="Pause for a trip">
+                  Heading somewhere without signal? Either of you can pause the streak for a few days up above — it holds steady and picks right back up when the pause ends. No rescue needed.
+                </InfoCard>
+                <InfoCard icon="palette" accent={LK.lilac} title="Weekly challenges">
+                  Each week brings a shared goal — answer quizzes, send letters or drawings, tick off a bucket-list dream. Complete it and the whole week counts toward your streak, even days you missed the quiz.
+                </InfoCard>
+                <InfoCard icon="gift" accent={LK.gold} title="Streak rescue coupon">
+                  If a streak does break, either of you can gift a Streak Rescue from the Coupons screen within 48 hours. It restores your run instantly for both of you and stays in your coupon history as a little keepsake.
+                </InfoCard>
+              </View>
+            </View>
+          </FadeSlideIn>
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
+}

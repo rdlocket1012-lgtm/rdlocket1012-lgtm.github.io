@@ -11,18 +11,16 @@ import { useAuthStore } from '@/stores/auth.store';
  * (Authentication → Providers → Anonymous), and migration 002 to be applied.
  */
 export async function ensureCoupleSession(startDate: string): Promise<string> {
-  // 1. Ensure a session exists.
-  let {
+  // 1. Require a REAL, recoverable account — never create an anonymous one.
+  // Anonymous accounts are unrecoverable after a reinstall, so onboarding must
+  // be reached only after the user has signed up (welcome → sign-up → onboarding).
+  const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session) {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) throw new Error(`Sign-in failed: ${error.message}`);
-    session = data.session;
+  if (!session?.user || session.user.is_anonymous) {
+    throw new Error('Please create an account before setting up your Locket.');
   }
-
-  if (!session?.user) throw new Error('Could not establish a session.');
 
   // 2. Create / link couple atomically via RPC.
   const { data: coupleId, error: rpcError } = await supabase.rpc('bootstrap_couple', {

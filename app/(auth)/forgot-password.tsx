@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/lib/supabase';
+import { toast } from '@/lib/feedback';
 import { LK, theme } from '@/constants/theme';
-import { Btn } from '@/components/ui';
+import { LINKS } from '@/constants/links';
+import { Btn } from '@/components/ui/btn';
 import { Icon } from '@/components/ui/Icon';
+import { ScalePressable } from '@/components/ui/scale-pressable';
+import { AnimatedField } from '@/components/ui/AnimatedField';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -22,25 +27,31 @@ export default function ForgotPasswordScreen() {
   async function onSubmit(data: FormData) {
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo: 'locket://reset-password',
+      // HTTPS, not `locket://` — Gmail, Outlook and several iOS mail clients
+      // render a custom scheme as plain text rather than a tappable link, which
+      // left the only account-recovery path unreachable. The domain is in
+      // `associatedDomains`, so an installed app opens this as a Universal Link;
+      // everyone else gets the landing page at `/reset-password`, which forwards
+      // the credential on to `locket://reset-password`.
+      redirectTo: LINKS.resetPassword,
     });
     setLoading(false);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { toast.error(error.message); return; }
     setSent(true);
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: LK.cream }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: LK.parchment }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={{ flex: 1, padding: 30, justifyContent: 'center' }}>
 
           {/* Back */}
-          <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 32, alignSelf: 'flex-start', padding: 4 }}>
-            <Icon name="chevron-left" size={24} color={LK.ink} />
-          </TouchableOpacity>
+          <ScalePressable onPress={() => router.back()} scaleTo={0.9} haptic={false} accessibilityLabel="Back" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} containerStyle={{ marginBottom: 32, alignSelf: 'flex-start' }} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="chevron-left" size={24} color={LK.espresso} />
+          </ScalePressable>
 
           <View style={{ marginBottom: 36 }}>
-            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.ink, letterSpacing: -1 }}>
+            <Text style={{ fontFamily: theme.fonts.heading, fontWeight: '800', fontSize: 36, color: LK.espresso, letterSpacing: -1 }}>
               Reset password
             </Text>
             <Text style={{ fontFamily: theme.fonts.serif, fontStyle: 'italic', fontSize: 18, color: LK.ink70, marginTop: 8, lineHeight: 26 }}>
@@ -56,20 +67,19 @@ export default function ForgotPasswordScreen() {
                 <Controller
                   control={control}
                   name="email"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      style={inputStyle}
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <AnimatedField
                       placeholder="Email"
-                      placeholderTextColor={LK.ink70}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoComplete="email"
                       value={value}
                       onChangeText={onChange}
+                      onBlur={onBlur}
+                      error={errors.email?.message}
                     />
                   )}
                 />
-                {errors.email && <Text style={errorStyle}>{errors.email.message}</Text>}
               </View>
 
               <Btn full kind="primary" onPress={handleSubmit(onSubmit)} disabled={loading}>
@@ -80,7 +90,7 @@ export default function ForgotPasswordScreen() {
             </>
           ) : (
             <Btn full kind="outline" onPress={() => router.back()}>
-              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: LK.ink }}>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 17, color: LK.espresso }}>
                 Back to sign in
               </Text>
             </Btn>
@@ -91,10 +101,3 @@ export default function ForgotPasswordScreen() {
     </SafeAreaView>
   );
 }
-
-const inputStyle = {
-  backgroundColor: LK.ivory, borderRadius: 16,
-  padding: 16, fontFamily: theme.fonts.body, fontSize: 16, color: LK.ink,
-  shadowColor: LK.ink, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-};
-const errorStyle = { fontFamily: theme.fonts.body, fontSize: 12.5, color: LK.destructive, marginTop: 5 };
