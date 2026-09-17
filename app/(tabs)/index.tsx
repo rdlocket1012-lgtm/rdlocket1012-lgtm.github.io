@@ -38,6 +38,7 @@ import { syncWidget } from '@/lib/widget-bridge';
 import { parseLocalDate } from '@/utils/date';
 import { useBiteFx } from '@/stores/bite-fx.store';
 import { useQuizStore } from '@/stores/quiz.store';
+import { useQuiz } from '@/hooks/useQuiz';
 import { useTabBarClearance } from '@/components/ui/locket-tab-bar';
 import { BiteAvatarFx } from '@/components/nudges/BiteAvatarFx';
 import { CountUp } from '@/components/onboarding/CountUp';
@@ -94,10 +95,14 @@ export default function HomeScreen() {
   const partnerFirst = (partner?.display_name || 'Partner').split(' ')[0];
   const feisty = useBiteFx((s) => s.feisty);
   const bottomClearance = useTabBarClearance();
-  // DailyQuizCard renders nothing until today's row exists. The spine can't see
-  // through the FadeSlideIn wrapper, so gate here or it draws an empty node.
-  const hasQuizToday = useQuizStore((s) => !!s.today);
-  const quizLoading = useQuizStore((s) => s.loading);
+  // Home owns today's quiz: fetch + realtime live here, not in the card. The card
+  // is gated on the row existing (the spine can't see through FadeSlideIn, so an
+  // ungated card draws an empty node), which means it can't do its own fetching —
+  // it would never mount. That's how build 28 lost the quiz.
+  const { today: quizToday, loading: quizLoading } = useQuiz();
+  const hasQuizToday = !!quizToday;
+  const quizFailed = useQuizStore((s) => s.failed);
+  const retryQuiz = () => { if (profile?.couple_id) void useQuizStore.getState().fetchToday(profile.couple_id); };
 
   const myInitial = ((profile?.display_name || user?.email || 'Y').charAt(0) || 'Y').toUpperCase();
   const partnerInitial = ((partner?.display_name || '?').charAt(0) || '?').toUpperCase();
@@ -370,6 +375,21 @@ export default function HomeScreen() {
               <Skeleton height={44} radius={14} />
               <Skeleton height={44} radius={14} />
             </View>
+          ) : quizFailed && profile?.couple_id ? (
+            // The fetch failed (offline, auth hiccup). A quiz that silently
+            // vanishes for the day is the bug this replaces — offer the way back.
+            <ScalePressable
+              key="quiz-retry"
+              onPress={retryQuiz}
+              accessibilityRole="button"
+              accessibilityLabel="Couldn't load today's quiz. Try again"
+              style={{ backgroundColor: LK.ivory, borderRadius: theme.radii.lg, borderCurve: 'continuous', borderWidth: 1.5, borderColor: LK.hairline, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+            >
+              <Text style={{ flex: 1, fontFamily: theme.fonts.body, fontSize: 14, color: LK.ink70, lineHeight: 20 }}>
+                Couldn’t load today’s quiz.
+              </Text>
+              <Text style={{ fontFamily: theme.fonts.body, fontWeight: '700', fontSize: 14, color: LK.coral }}>Try again</Text>
+            </ScalePressable>
           ) : null}
 
           {showChallenge && challenge.def && (

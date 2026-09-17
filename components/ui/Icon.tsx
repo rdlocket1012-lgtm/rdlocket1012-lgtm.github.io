@@ -37,7 +37,9 @@ const ICONS: Record<string, (p: P, c: string | ColorValue) => React.ReactNode> =
   leaf:     (p) => <G {...p}><Path d="M5 19C5 11 11 5 19 5c0 8-6 14-14 14z" /><Path d="M5 19c4-5 7-7 11-9" /></G>,
   bell:     (p) => <G {...p}><Path d="M6 16V11a6 6 0 0112 0v5l2 2H4z" /><Path d="M10 20a2 2 0 004 0" /></G>,
   search:   (p) => <G {...p}><Circle cx="11" cy="11" r="6" /><Path d="M16 16l4 4" /></G>,
-  gear:     (p) => <G {...p}><Circle cx="12" cy="12" r="4" /><Circle cx="12" cy="12" r="1.4" /><Path d="M16 12h2M6 12h2M12 16v2M12 6v2M14.83 14.83l1.41 1.41M7.76 7.76l1.41 1.41M9.17 14.83l-1.41 1.41M16.24 7.76l-1.41 1.41" /></G>,
+  // A toothed cog outline. The old one was a ring with eight detached spokes,
+  // which read as a sun, not settings.
+  gear:     (p) => <G {...p}><Path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><Circle cx="12" cy="12" r="3" /></G>,
   plus:     (p) => <Path {...p} d="M12 5v14M5 12h14" />,
   check:    (p) => <Path {...p} d="M5 12.5l5 5 9-10" />,
   x:        (p) => <Path {...p} d="M6 6l12 12M18 6L6 18" />,

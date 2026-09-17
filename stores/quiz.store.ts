@@ -98,6 +98,8 @@ export function resolveComments(row: QuizRow): { myComment: string | null; partn
 type QuizState = {
   today: QuizRow | null;
   loading: boolean;
+  /** Last fetch ended with no row (network/auth error). Drives Home's retry card. */
+  failed: boolean;
   fetchToday: (coupleId: string) => Promise<void>;
   /** Submit both the current user's self answer and their guess of the partner. */
   submit: (self: string, guess: string) => Promise<void>;
@@ -108,9 +110,10 @@ type QuizState = {
 export const useQuizStore = create<QuizState>((set, get) => ({
   today: null,
   loading: false,
+  failed: false,
 
   fetchToday: async (coupleId) => {
-    set({ loading: true });
+    set({ loading: true, failed: false });
     try {
       const date = todayISO();
       const { data } = await supabase
@@ -152,8 +155,11 @@ export const useQuizStore = create<QuizState>((set, get) => ({
         .eq('couple_id', coupleId)
         .eq('quiz_date', date)
         .maybeSingle();
-      set({ today: (existing as QuizRow) ?? null });
-    } catch { /* network/auth error — leave today as null */ } finally {
+      set({ today: (existing as QuizRow) ?? null, failed: !existing });
+    } catch {
+      // network/auth error — keep any row we already have, flag it for a retry
+      set({ failed: !get().today });
+    } finally {
       set({ loading: false });
     }
   },

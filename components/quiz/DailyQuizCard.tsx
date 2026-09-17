@@ -9,7 +9,7 @@ import { LK, tint, shade, theme } from '@/constants/theme';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { DoodleBackground } from '@/components/ui/doodle-background';
-import { useQuiz } from '@/hooks/useQuiz';
+import { useQuizStore } from '@/stores/quiz.store';
 import { useQuizStreak } from '@/hooks/useQuizStreak';
 import { usePartner } from '@/hooks/usePartner';
 import { resolveQuiz, resolveComments } from '@/stores/quiz.store';
@@ -26,7 +26,12 @@ export function DailyQuizCard({ hideStreak = false, bare = false, onReveal }: {
   bare?: boolean;
   onReveal?: (name: MascotAnimationName, message: string, subMessage?: string) => void;
 }) {
-  const { today, submit, comment } = useQuiz();
+  // Home owns the fetch + realtime subscription (useQuiz) and only mounts this
+  // card once today's row exists — so read the store here. Calling useQuiz in
+  // the card is what made the quiz vanish: nothing fetched until it rendered.
+  const today = useQuizStore((s) => s.today);
+  const submit = useQuizStore((s) => s.submit);
+  const comment = useQuizStore((s) => s.comment);
   const streak = useQuizStreak();
   const { partner } = usePartner();
   const partnerName = partner?.display_name?.split(' ')[0] || 'your partner';

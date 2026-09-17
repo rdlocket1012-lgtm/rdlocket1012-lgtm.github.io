@@ -99,7 +99,7 @@ export default function UsScreen() {
         title="Us"
         right={
           <RoundIcon onPress={() => router.push('/settings')} accessibilityLabel="Settings">
-            <Icon name="gear" size={22} color={LK.espresso} strokeWidth={1.6} />
+            <Icon name="gear" size={21} color={LK.espresso} strokeWidth={1.8} />
           </RoundIcon>
         }
       />
