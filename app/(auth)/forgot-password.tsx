@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/lib/feedback';
 import { LK, theme } from '@/constants/theme';
+import { LINKS } from '@/constants/links';
 import { Btn } from '@/components/ui/btn';
 import { Icon } from '@/components/ui/Icon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
@@ -32,7 +33,7 @@ export default function ForgotPasswordScreen() {
       // `associatedDomains`, so an installed app opens this as a Universal Link;
       // everyone else gets the landing page at `/reset-password`, which forwards
       // the credential on to `locket://reset-password`.
-      redirectTo: 'https://rdlocket1012-lgtm.github.io/reset-password',
+      redirectTo: LINKS.resetPassword,
     });
     setLoading(false);
     if (error) { toast.error(error.message); return; }

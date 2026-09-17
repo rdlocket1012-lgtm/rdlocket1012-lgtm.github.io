@@ -18,6 +18,7 @@
       "bundleIdentifier": "com.siren96.locket",
       "appleTeamId": "6BSN47U3U2",
       "associatedDomains": [
+        "applinks:locketfortwo.com",
         "applinks:rdlocket1012-lgtm.github.io"
       ],
       "entitlements": {

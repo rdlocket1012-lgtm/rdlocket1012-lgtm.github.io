@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { alert, toast } from '@/lib/feedback';
 import { routeAfterAuth } from '@/lib/post-auth';
 import { LK, theme } from '@/constants/theme';
+import { LINKS } from '@/constants/links';
 import { Icon } from '@/components/ui/Icon';
 import { Canvas, BackOrb, PrimaryCta, T } from '@/components/onboarding/Shell';
 import { PressableScale } from '@/components/onboarding/PressableScale';
@@ -44,7 +45,7 @@ export default function SignUpScreen() {
       // Authentication → URL Configuration → Redirect URLs.
       options: {
         data: { display_name: data.name },
-        emailRedirectTo: 'https://rdlocket1012-lgtm.github.io/confirm-email',
+        emailRedirectTo: LINKS.confirmEmail,
       },
     });
     setLoading(false);

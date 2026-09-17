@@ -120,21 +120,22 @@ address should agree.
 Ordered by what blocks what. The first three are Supabase dashboard settings that
 take minutes; the domain gates the most.
 
-### 1. Register the domain, then settle the support address — **blocker**
-`hello@locket.app` appears **9 times** (Settings rows, the privacy policy, the ToS)
-and is the only support channel. Decided: you're registering a domain. Once you
-have it, tell me and I'll update all 9 in one pass. App Store Connect's Support URL
-and Marketing URL must match. Do this before build 25 — the address is compiled
-into the bundle.
+### 1. Create the support mailbox — **blocker**
+Domain registered: `locketfortwo.com` (Namecheap DNS → GitHub Pages repo
+`rdlocket1012-lgtm/locketfortwo.com`). Every support reference now reads
+`hello@locketfortwo.com` (`constants/links.ts`, privacy policy, ToS). **The mailbox
+doesn't exist yet** — create it (Hostinger) and send a test mail before submitting.
+App Store Connect's Support URL and Marketing URL should be `https://locketfortwo.com/`.
 
 ### 2. Supabase → Authentication → URL Configuration — **blocker**
 Add to the redirect allowlist:
 ```
-https://rdlocket1012-lgtm.github.io/confirm-email
+https://locketfortwo.com/confirm-email
+https://locketfortwo.com/reset-password
 ```
 `signUp` **silently ignores** a `redirectTo` that isn't allowlisted — it won't
-error, the email just goes to the Site URL instead. `https://rdlocket1012-lgtm.github.io/reset-password`
-should already be there from the password-reset fix; confirm both.
+error, the email just goes to the Site URL instead. Keep the old
+`rdlocket1012-lgtm.github.io` entries too — builds already installed still send them.
 
 ### 3. Supabase → Authentication → Emails → SMTP — **blocker**
 Configure custom SMTP (Resend is the quickest). Use the domain from step 1 as the
@@ -205,9 +206,8 @@ Verified this session, not assumed:
    `components/letter/ComposeLetterModal.tsx:23,44,341`. It was always temporary, it is now
    inert dead weight hard-coded to one couple's UUID, and it ships to every install. **Blocker
    for a public v1.1** — a reviewer reading the bundle sees a hardcoded user ID.
-3. **`hello@locket.app` appears 9 times** across settings, the privacy policy and the ToS, and
-   is your only support channel. Confirm the domain and mailbox exist and are monitored, or
-   swap every occurrence. A support address that bounces is a 1.5 rejection. **Blocker.**
+3. **Support address is `hello@locketfortwo.com`** — make sure the mailbox exists and is
+   monitored. A support address that bounces is a 1.5 rejection. **Blocker.**
 
 ---
 
@@ -308,11 +308,8 @@ Exact steps (from the teardown note recorded when it shipped):
 **Done when:** `grep -rn "REUNION" app/ components/ constants/` returns nothing and tsc is clean.
 
 ### 2.3 Fix the support contact — **blocker**
-Decide the real address, then:
-```bash
-grep -rln "hello@locket.app" app/ docs/ privacy-policy/ terms-of-service/
-```
-and replace in all of them. Keep the in-app string, the privacy policy, the ToS and the App
+Done in code: `hello@locketfortwo.com` (`constants/links.ts`, privacy policy, ToS). Create the
+mailbox. Keep the in-app string, the privacy policy, the ToS and the App
 Store Connect "Support URL"/"Marketing URL" identical.
 
 **Done when:** you have sent and received a test mail at that address, and the three surfaces
@@ -503,8 +500,7 @@ Parchment background, a Shantell caption per shot.
   Scrapbook visual language.
 - Description, keywords, subtitle, promo text.
 - Support URL and Marketing URL — must match the address from §2.3.
-- Privacy Policy URL: `https://rdlocket1012-lgtm.github.io/privacy-policy/` (verify it loads
-  after the §1.1 push — `2c09430` changed these from markdown to HTML).
+- Privacy Policy URL: `https://locketfortwo.com/privacy-policy/`
 
 ### 6.3 App Privacy nutrition labels
 Must match the code, not the intent. Walk the permission strings in `app.json` and the actual

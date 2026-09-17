@@ -41,6 +41,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
+import { LINKS, SUPPORT_EMAIL } from '@/constants/links';
 import { Icon } from '@/components/ui/Icon';
 import { IconChip } from '@/components/ui/icon-chip';
 import { RoundIcon } from '@/components/ui/round-icon';
@@ -340,16 +341,16 @@ export default function SettingsScreen() {
 
         <SectionLabel>Legal</SectionLabel>
         <SGroup>
-          <SRow icon="shield" color={LK.dusk} title="Privacy Policy" chevron onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/privacy-policy/')} />
-          <SRow icon="info" color={LK.dusk} title="Terms of Service" chevron onPress={() => Linking.openURL('https://rdlocket1012-lgtm.github.io/terms-of-service/')} />
-          <SRow icon="envelope" color={LK.dusk} title="Contact us" chevron last onPress={() => Linking.openURL('mailto:hello@locket.app')} />
+          <SRow icon="shield" color={LK.dusk} title="Privacy Policy" chevron onPress={() => Linking.openURL(LINKS.privacyPolicy)} />
+          <SRow icon="info" color={LK.dusk} title="Terms of Service" chevron onPress={() => Linking.openURL(LINKS.termsOfService)} />
+          <SRow icon="envelope" color={LK.dusk} title="Contact us" chevron last onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)} />
         </SGroup>
 
         <SectionLabel>Support</SectionLabel>
         <SGroup>
           <SRow icon="star" color={LK.marigold} title="Rate Locket" onPress={rateLocket} />
-          <SRow icon="chat" color={LK.success} title="Send feedback" chevron onPress={() => Linking.openURL('mailto:hello@locket.app')} />
-          <SRow icon="help" color={LK.lilac} title="Help & FAQ" chevron last onPress={() => alert('Help', 'Contact us any time at hello@locket.app and we’ll get back to you.')} />
+          <SRow icon="chat" color={LK.success} title="Send feedback" chevron onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)} />
+          <SRow icon="help" color={LK.lilac} title="Help & FAQ" chevron last onPress={() => alert('Help', `Contact us any time at ${SUPPORT_EMAIL} and we’ll get back to you.`)} />
         </SGroup>
 
         <SectionLabel danger>Account</SectionLabel>

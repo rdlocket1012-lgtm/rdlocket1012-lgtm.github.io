@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Share, TextInput, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { LK, tint, shade, theme } from '@/constants/theme';
+import { LINKS } from '@/constants/links';
 import { Icon } from '@/components/ui/Icon';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Shell, PrimaryCta, QuietCta } from '@/components/onboarding/Shell';
@@ -47,7 +48,7 @@ export default function InvitePartnerScreen() {
     })();
   }, []);
 
-  const link = code ? `https://rdlocket1012-lgtm.github.io/invite?token=${code}` : '';
+  const link = code ? LINKS.invite(code) : '';
 
   async function share() {
     if (!code) return;
